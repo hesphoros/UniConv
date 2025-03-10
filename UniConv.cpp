@@ -229,12 +229,12 @@ std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage)
 		return "Encoding not found.";
 }
 
-std::string UniConv::LocateConvertToUtf8(const std::string& sInput)
+std::string UniConv::LocaleConvertToUtf8(const std::string& sInput)
 {	
-	return LocateConvertToUtf8(sInput.c_str());
+	return LocaleConvertToUtf8(sInput.c_str());
 }
 
-std::string UniConv::LocateConvertToUtf8(const char* sInput)
+std::string UniConv::LocaleConvertToUtf8(const char* sInput)
 {
 	std::string currentEncoding = GetCurrentSystemEncoding();
 	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_8_encoding);
@@ -245,7 +245,7 @@ std::string UniConv::LocateConvertToUtf8(const char* sInput)
 	return std::string(res.error_msg);
 }
 
-std::string UniConv::Utf8ConvertToLocate(const char* sInput)
+std::string UniConv::Utf8ConvertToLocale(const char* sInput)
 {
 	std::string currentEncoding = GetCurrentSystemEncoding();
     auto res = Convert(sInput, UniConv::utf_8_encoding, currentEncoding.c_str());
@@ -256,7 +256,7 @@ std::string UniConv::Utf8ConvertToLocate(const char* sInput)
     return std::string(res.error_msg);
 }
 
-std::u16string UniConv::LocateConvertToUtf16LE(const char* sInput)
+std::u16string UniConv::LocaleConvertToUtf16LE(const char* sInput)
 {   
 	std::string currentEncoding = GetCurrentSystemEncoding();
 	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_16le_encoding);
@@ -271,14 +271,50 @@ std::u16string UniConv::LocateConvertToUtf16LE(const char* sInput)
 
 
 
-std::u16string UniConv::LocateConvertToUtf16LE(const std::string& sInput)
+std::u16string UniConv::LocaleConvertToUtf16LE(const std::string& sInput)
 {
-	LocateConvertToUtf16LE(sInput.c_str());
+	return LocaleConvertToUtf16LE(sInput.c_str());
 }
 
-std::string UniConv::Utf8ConvertToLocate(const std::string& sInput)
+std::u16string UniConv::LocaleConvertToUtf16BE(const std::string& sInput)
 {
-	return Utf8ConvertToLocate(sInput.data());
+	return LocaleConvertToUtf16BE(sInput.c_str());
+}
+
+std::u16string UniConv::LocaleConvertToUtf16BE(const char* sInput)
+{
+	std::string currentEncoding = GetCurrentSystemEncoding();
+	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_16be_encoding);
+
+	if (res && res.conv_result_str.size() % sizeof(char16_t) == 0) {
+		std::cout << __FUNCTION__ << "Convert successful :" << res.conv_result_str <<std::endl;
+		const char16_t* p = reinterpret_cast<const char16_t*>(res.conv_result_str.data());
+		return std::u16string(p, res.conv_result_str.size() / sizeof(char16_t));
+	}
+	return std::u16string(reinterpret_cast<const char16_t*>(sInput), strlen(sInput) / sizeof(char16_t));
+	
+}
+
+std::string UniConv::Utf16BEConvertToLocale(const std::u16string& sInput)
+{
+	return Utf16BEConvertToLocale(sInput.c_str());
+}
+
+
+std::string UniConv::Utf16BEConvertToLocale(const char16_t* sInput)
+{
+	std::string currentEncoding = GetCurrentSystemEncoding();
+	
+	auto res = Convert(reinterpret_cast<const char*>(sInput), UniConv::utf_16be_encoding, currentEncoding.c_str());
+	if (res) {
+		return std::move(res.conv_result_str);
+	}
+	return std::string(res.error_msg);
+}
+
+std::string UniConv::Utf8ConvertToLocale(const std::string& sInput)
+{
+	return Utf8ConvertToLocale(sInput.data());
 }
 
 UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode) {

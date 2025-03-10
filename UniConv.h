@@ -265,7 +265,6 @@ private:
 
 public:
 	
-
 	/// <summary>
 	/// 转换结果结构体
 	/// </summary>
@@ -330,24 +329,35 @@ public:
 	/// </summary>
 	/// <param name="input"></param>
 	/// <returns></returns>
-	std::string          LocateConvertToUtf8(const std::string& sInput);
-	std::string          LocateConvertToUtf8(const char* sInput);
+	std::string          LocaleConvertToUtf8(const std::string& sInput);
+	std::string          LocaleConvertToUtf8(const char* sInput);
 
 	/// <summary>
 	/// UTF-8 转换为本地编码
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
-	std::string          Utf8ConvertToLocate(const std::string& sInput);
-    std::string          Utf8ConvertToLocate(const char* sInput);
+	std::string          Utf8ConvertToLocale(const std::string& sInput);
+    std::string          Utf8ConvertToLocale(const char* sInput);
 
 	/// <summary>
-	/// 本地编码转换为UTF-16
+	/// 本地编码转换为UTF-16LE 小端
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
-	std::u16string LocateConvertToUtf16(const std::string& sInput) {/*TODO*/ };
-    std::u16string LocateConvertToUtf16(const char* sInput);
+	std::u16string       LocaleConvertToUtf16LE(const std::string& sInput);
+    std::u16string       LocaleConvertToUtf16LE(const char* sInput);
+
+	/// <summary>
+	/// 本地编码转换为UTF-16BE 大端
+	/// </summary>
+	/// <param name="sInput"></param>
+	/// <returns></returns>
+	std::u16string       LocaleConvertToUtf16BE(const std::string& sInput);
+	std::u16string       LocaleConvertToUtf16BE(const char* sInput);
+
+	std::string          Utf16BEConvertToLocale(const std::u16string& sInput);
+	std::string          Utf16BEConvertToLocale(const char16_t* sInput);
 	
 private:
 	static const std::unordered_map<std::uint16_t,EncodingInfo>             m_encodingMap;
