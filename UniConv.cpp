@@ -168,6 +168,7 @@ const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePa
 	{ "VISCII1.1-HYBRID", 1258 }, // Vietnamese (VISCII 1.1 Hybrid)
 
 };
+std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDesscriptorCacheMapS = {};
 
 
 std::string UniConv::GetCurrentSystemEncoding()
@@ -230,14 +231,24 @@ std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage)
 }
 
 std::string UniConv::LocateConvertToUtf8(const std::string& sInput)
-{
-	//TODO
-	// 获取当前系统编码
-	std::string currsysencoding = UniConv::GetCurrentSystemEncoding();
-	//iconv_t cd;
-	return std::string();
-
+{	
+	return LocateConvertToUtf8(sInput.c_str());
 }
+
+std::string UniConv::LocateConvertToUtf8(const char* sInput)
+{
+	std::string current_encoding = GetCurrentSystemEncoding();
+	auto res = Convert(sInput, current_encoding.c_str(), UniConv::utf_8_encoding);
+	if (res) {
+		return std::move(res.conv_result_str);
+	}
+	else {
+		return std::string(res.error_msg);
+	}
+}
+
+
+
 
 UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode) {
 	// 转换返回的结果
@@ -362,10 +373,5 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptorS(const char* fromcode, const
 	return iconvPtr;
 }
 
-void UniConv::CleanupIconvDescriptorCache()
-{
-	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
-	m_iconvDesscriptorCacheMapS.clear();
-}
 
 
