@@ -272,7 +272,7 @@ public:
 	struct IConvResult {
 		std::string        conv_result_str;// 转换成功的结果 使用新编码的字符串
 		int                error_code = 0; // 错误码
-		std::string_view   error_msg = {}; // 错误信息
+		std::string        error_msg = {}; // 错误信息
 
 		// 判断是否转换成功
 		bool IsSuccess() const {
@@ -374,9 +374,18 @@ public:
 	std::string          Utf16LEConvertToUtf8(const char16_t* sInput);
 
 
-	std::string          Utf16BEConvertToUtf8(const std::u16string& sInput);;
-	std::string          Utf16BEConvertToUtf8(const char16_t* sInput) {};
+	std::string          Utf16BEConvertToUtf8(const std::u16string& sInput);
+	std::string          Utf16BEConvertToUtf8(const char16_t* sInput);
 
+
+	std::u16string       Utf8ConvertToUtf16LE(const std::string& sInput);
+	std::u16string       Utf8ConvertToUtf16LE(const char* sInput);
+
+	std::u16string       Utf8ConvertToUtf16BE(const std::string& sInput);
+	std::u16string       Utf8ConvertToUtf16BE(const char* sInput);
+
+	std::u16string       Utf16LEConvertToUtf16BE(const std::u16string& sInput);
+	std::u16string       Utf16LEConvertToUtf16BE(const char16_t* sInput);
 	
 private:
 	static const std::unordered_map<std::uint16_t,EncodingInfo>             m_encodingMap;
@@ -424,14 +433,11 @@ private:
 // UTF-16LE/BE 转 UTF-8
 
 // UTF-8 转 UTF-16LE/BE
-//std::u16string Utf8ToUtf16LE(const std::string& sInput) {};
-//std::u16string Utf8ToUtf16LE(const char* sInput) {};
-//std::u16string Utf8ToUtf16BE(const std::string& sInput) {};
-//std::u16string Utf8ToUtf16BE(const char* sInput) {};
+
+
 //
 ////补充 UTF-16LE/BE 互转接口
-//std::u16string Utf16LEToUtf16BE(const std::u16string& sInput) {};
-//std::u16string Utf16LEToUtf16BE(const char16_t* sInput) {};
+
 //std::u16string Utf16BEToUtf16LE(const std::u16string& sInput) {};
 //std::u16string Utf16BEToUtf16LE(const char16_t* sInput) {};
 
