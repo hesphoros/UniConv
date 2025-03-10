@@ -19,7 +19,8 @@
 #include <mutex>
 #include <memory>
 #include <functional>
-
+#include <io.h>
+#include <fcntl.h>
 #include "Singleton.h"
 
 #ifdef _WIN32
@@ -356,8 +357,26 @@ public:
 	std::u16string       LocaleConvertToUtf16BE(const std::string& sInput);
 	std::u16string       LocaleConvertToUtf16BE(const char* sInput);
 
+	/// <summary>
+	/// UTF-16LE 小端 转换为本地编码 目前存在问题
+	/// </summary>
+	/// <param name="sInput"></param>
+	/// <returns></returns>
 	std::string          Utf16BEConvertToLocale(const std::u16string& sInput);
 	std::string          Utf16BEConvertToLocale(const char16_t* sInput);
+
+	/// <summary>
+	/// UTF-16LE 小端 转换为UTF8编码
+	/// </summary>
+	/// <param name="sInput"></param>
+	/// <returns></returns>
+	std::string          Utf16LEConvertToUtf8(const std::u16string& sInput);
+	std::string          Utf16LEConvertToUtf8(const char16_t* sInput);
+
+
+	std::string          Utf16BEConvertToUtf8(const std::u16string& sInput);;
+	std::string          Utf16BEConvertToUtf8(const char16_t* sInput) {};
+
 	
 private:
 	static const std::unordered_map<std::uint16_t,EncodingInfo>             m_encodingMap;
@@ -400,5 +419,48 @@ private:
 };
 
 
+
+//TODO : 接口
+// UTF-16LE/BE 转 UTF-8
+
+// UTF-8 转 UTF-16LE/BE
+//std::u16string Utf8ToUtf16LE(const std::string& sInput) {};
+//std::u16string Utf8ToUtf16LE(const char* sInput) {};
+//std::u16string Utf8ToUtf16BE(const std::string& sInput) {};
+//std::u16string Utf8ToUtf16BE(const char* sInput) {};
+//
+////补充 UTF-16LE/BE 互转接口
+//std::u16string Utf16LEToUtf16BE(const std::u16string& sInput) {};
+//std::u16string Utf16LEToUtf16BE(const char16_t* sInput) {};
+//std::u16string Utf16BEToUtf16LE(const std::u16string& sInput) {};
+//std::u16string Utf16BEToUtf16LE(const char16_t* sInput) {};
+
+//补充宽字符（wchar_t）支持接口
+//兼容 Windows 宽字符（UTF-16）和 Linux 宽字符（UTF-32）的转换
+//
+//// Locale 转宽字符
+//std::wstring LocaleToWide(const std::string& sInput);
+//std::wstring LocaleToWide(const char* sInput);
+//
+//// 宽字符转 Locale
+//std::string WideToLocale(const std::wstring& sInput);
+//std::string WideToLocale(const wchar_t* sInput);
+//
+//// 宽字符与 UTF-8 互转
+//std::wstring Utf8ToWide(const std::string& sInput);
+//std::wstring Utf8ToWide(const char* sInput);
+//std::string WideToUtf8(const std::wstring& sInput);
+//std::string WideToUtf8(const wchar_t* sInput);
+//
+////补充 UTF-32 编码支持接口
+//// UTF-32 转其他编码
+//std::string Utf32ToUtf8(const std::u32string& sInput);
+//std::u16string Utf32ToUtf16LE(const std::u32string& sInput);
+//std::u16string Utf32ToUtf16BE(const std::u32string& sInput);
+//
+//// 其他编码转 UTF-32
+//std::u32string Utf8ToUtf32(const std::string& sInput);
+//std::u32string Utf16LEToUtf32(const std::u16string& sInput);
+//std::u32string Utf16BEToUtf32(const std::u16string& sInput);
 #endif // __UNICONV_H__
 

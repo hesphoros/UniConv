@@ -286,11 +286,11 @@ std::u16string UniConv::LocaleConvertToUtf16BE(const char* sInput)
 	std::string currentEncoding = GetCurrentSystemEncoding();
 	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_16be_encoding);
 
-	if (res && res.conv_result_str.size() % sizeof(char16_t) == 0) {
-		std::cout << __FUNCTION__ << "Convert successful :" << res.conv_result_str <<std::endl;
+	if (res && res.conv_result_str.size() % sizeof(char16_t) == 0) {		
 		const char16_t* p = reinterpret_cast<const char16_t*>(res.conv_result_str.data());
 		return std::u16string(p, res.conv_result_str.size() / sizeof(char16_t));
 	}
+	std::cout << __FUNCTION__ << "Convert failed Error:" << res.error_msg << std::endl;
 	return std::u16string(reinterpret_cast<const char16_t*>(sInput), strlen(sInput) / sizeof(char16_t));
 	
 }
@@ -312,9 +312,30 @@ std::string UniConv::Utf16BEConvertToLocale(const char16_t* sInput)
 	return std::string(res.error_msg);
 }
 
+std::string UniConv::Utf16LEConvertToUtf8(const char16_t* sInput)
+{
+	std::string currentEncoding = GetCurrentSystemEncoding();
+	auto res    = Convert(reinterpret_cast<const char*>(sInput), UniConv::utf_16le_encoding, UniConv::utf_8_encoding);
+	if (res.IsSuccess()) {
+        return std::move(res.conv_result_str);
+	}
+	return std::string(res.error_msg);
+}
+
+std::string UniConv::Utf16LEConvertToUtf8(const std::u16string& sInput)
+{
+	return Utf16LEConvertToUtf8(sInput.c_str());
+}
+
+std::string UniConv::Utf16BEConvertToUtf8(const std::u16string& sInput)
+{
+	//todo
+	return std::string();
+}
+
 std::string UniConv::Utf8ConvertToLocale(const std::string& sInput)
 {
-	return Utf8ConvertToLocale(sInput.data());
+	return Utf8ConvertToLocale(sInput.c_str());
 }
 
 UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode) {
