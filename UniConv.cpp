@@ -173,13 +173,12 @@ std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDesscri
 
 std::string UniConv::GetCurrentSystemEncoding()
 {
-	std::stringstream ss;
-	std::string extra_info;
-
+	std::stringstream ss;	
 #ifdef _WIN32
 	UINT codePage = GetACP();
 	auto it = m_encodingMap.find(codePage);
 	if (it != m_encodingMap.end()) ss << it->second.dotNetName;
+
 #endif // _WIN32
 
 
@@ -188,9 +187,9 @@ std::string UniConv::GetCurrentSystemEncoding()
 	char* locstr = setlocale(LC_CTYPE, NULL);
 	char* encoding = nl_langinfo(CODESET);
 	ss << encoding;
-
 #endif // __linux__
 	if (ss.str().empty()) ss << "Encoding not found.";
+	
 
 	return ss.str();
 }
@@ -237,38 +236,72 @@ std::string UniConv::LocateConvertToUtf8(const std::string& sInput)
 
 std::string UniConv::LocateConvertToUtf8(const char* sInput)
 {
-	std::string current_encoding = GetCurrentSystemEncoding();
-	auto res = Convert(sInput, current_encoding.c_str(), UniConv::utf_8_encoding);
+	std::string currentEncoding = GetCurrentSystemEncoding();
+	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_8_encoding);
 	if (res) {
 		return std::move(res.conv_result_str);
 	}
-	else {
-		return std::string(res.error_msg);
+	
+	return std::string(res.error_msg);
+}
+
+std::string UniConv::Utf8ConvertToLocate(const char* sInput)
+{
+	std::string currentEncoding = GetCurrentSystemEncoding();
+    auto res = Convert(sInput, UniConv::utf_8_encoding, currentEncoding.c_str());
+	if (res) {
+        return std::move(res.conv_result_str);
 	}
+	
+    return std::string(res.error_msg);
+}
+
+std::u16string UniConv::LocateConvertToUtf16LE(const char* sInput)
+{   
+	std::string currentEncoding = GetCurrentSystemEncoding();
+	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_16le_encoding);
+
+	if (res && res.conv_result_str.size() % sizeof(char16_t) == 0) {
+		const char16_t* p = reinterpret_cast<const char16_t*>(res.conv_result_str.data());
+		return std::u16string(p, res.conv_result_str.size() / sizeof(char16_t));
+	}	
+	return std::u16string(reinterpret_cast<const char16_t*>(sInput), strlen(sInput) / sizeof(char16_t));
 }
 
 
 
+
+std::u16string UniConv::LocateConvertToUtf16LE(const std::string& sInput)
+{
+	LocateConvertToUtf16LE(sInput.c_str());
+}
+
+std::string UniConv::Utf8ConvertToLocate(const std::string& sInput)
+{
+	return Utf8ConvertToLocate(sInput.data());
+}
 
 UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode) {
 	// 转换返回的结果
 	IConvResult iconv_result;
 
 	// 获取 iconv 描述符（直接使用 IconvUniquePtr）
-	auto cd = GetIconvDescriptorS(fromcode, tocode);
-	if (!cd) {
+	auto cd = GetIconvDescriptorS(fromcode, tocode);	
+	if (!cd || (cd.get() == reinterpret_cast<iconv_t>(-1))) {
+
 		iconv_result.error_code = errno;
 		iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
 		return iconv_result;
 	}
 
 	// 输入缓冲区
-	const char* inbuf_ptr = const_cast<char*>(in.data()); // 输入缓存
+	std::vector<char> in_buffer(in.begin(), in.end());
+	const char* inbuf_ptr = in_buffer.data(); // 输入缓存
 	std::size_t inbuf_letf = in.size(); // 输入缓存剩余长度
 
 	// 输出缓冲区
-	constexpr std::size_t out_buf_size = 4096;
-	std::vector<char> out_buffer(out_buf_size);
+	constexpr std::size_t initial_buffer_size = 4096;
+	std::vector<char> out_buffer(initial_buffer_size);
 	std::string converted_result;
 	converted_result.reserve(in.size() * 2); // 预分配空间
 
@@ -285,6 +318,12 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 			iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
 			break;
 		}
+		// 动态扩展缓冲区
+		if (out_left < 128 && out_buffer.size() < 1048576) { // 最大1MB
+			out_buffer.resize(out_buffer.size() * 2);
+			continue;
+		}
+
 
 		// 检查输入是否处理完毕
 		if (inbuf_letf == 0) {
@@ -304,6 +343,7 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 
 	// 返回转换结果
 	if (iconv_result.error_code == 0) {
+		converted_result.shrink_to_fit();
 		iconv_result.conv_result_str = std::move(converted_result);
 	}
 	return iconv_result;
@@ -316,8 +356,7 @@ std::string_view UniConv::GetIconvErrorString(int err_code)
 	if (it != m_iconvErrorMap.end()) {
 		return it->second;
 	}
-	static const std::string_view unknown_error = "Unknown error Failed to initialize iconv descriptor";
-	return unknown_error;
+	return std::generic_category().message(err_code);
 
 }
 

@@ -32,5 +32,8 @@
     <ClCompile Include="gbk_str.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="utf8_str.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

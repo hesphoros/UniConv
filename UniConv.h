@@ -172,7 +172,7 @@ public:
 	static constexpr const char* ucs_4_encoding = "UCS-4";
 	static constexpr const char* ucs_4be_encoding = "UCS-4BE";
 	static constexpr const char* ucs_4le_encoding = "UCS-4LE";
-	static constexpr const char* utf_16_encoding = "UTF-16";
+	static constexpr const char* utf_16_encoding  = "UTF-16";
 	static constexpr const char* utf_16be_encoding = "UTF-16BE";
 	static constexpr const char* utf_16le_encoding = "UTF-16LE";
 	static constexpr const char* utf_32_encoding = "UTF-32";
@@ -310,7 +310,7 @@ public:
 	/// 获取当前系统编码
 	/// </summary>
 	/// <returns> 当前系统编码的.Net name </returns>
-	static std::string GetCurrentSystemEncoding();
+	std::string          GetCurrentSystemEncoding();
 
 	/// <summary>
 	/// 获取当前系统编码代码页
@@ -330,23 +330,33 @@ public:
 	/// </summary>
 	/// <param name="input"></param>
 	/// <returns></returns>
-	std::string LocateConvertToUtf8(const std::string& sInput);
+	std::string          LocateConvertToUtf8(const std::string& sInput);
+	std::string          LocateConvertToUtf8(const char* sInput);
 
 	/// <summary>
-	/// 本地编码转换为UTF-8
+	/// UTF-8 转换为本地编码
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
-	std::string LocateConvertToUtf8(const char* sInput);
+	std::string          Utf8ConvertToLocate(const std::string& sInput);
+    std::string          Utf8ConvertToLocate(const char* sInput);
 
+	/// <summary>
+	/// 本地编码转换为UTF-16
+	/// </summary>
+	/// <param name="sInput"></param>
+	/// <returns></returns>
+	std::u16string LocateConvertToUtf16(const std::string& sInput) {/*TODO*/ };
+    std::u16string LocateConvertToUtf16(const char* sInput);
 	
 private:
 	static const std::unordered_map<std::uint16_t,EncodingInfo>             m_encodingMap;
 	static const std::unordered_map<std::string,std::uint16_t>              m_encodingToCodePageMap;
-	//std::unordered_map<std::string,UniConv::IconvUniquePtr>                 m_iconvDesscriptorCacheMap;
+	//std::unordered_map<std::string,UniConv::IconvUniquePtr>               m_iconvDesscriptorCacheMap;
 	std::mutex                                                              m_iconvcCacheMutex;
 	static const std::unordered_map<int,std::string_view>                   m_iconvErrorMap;
 	static std::unordered_map<std::string, IconvSharedPtr>                  m_iconvDesscriptorCacheMapS;
+	
 private:
 	/// <summary>
 	/// 包装的iconv 转换函数
@@ -367,13 +377,14 @@ private:
 	/// <returns>
 	///  iconv_t 描述符 当错误发生时也会返回一个错误的iconv_t 描述符
 	/// </returns>
-	//IconvUniquePtr                 GetIconvDescriptor(const char* fromcode, const char* tocode);
+	//IconvUniquePtr                    GetIconvDescriptor(const char* fromcode, const char* tocode);
 	IconvSharedPtr                      GetIconvDescriptorS(const char* fromcode, const char* tocode);
 
 	
 
 private:
-	UniConv() = default;
+	UniConv() {					
+	}
 	UniConv(const UniConv&) = delete;
 	UniConv& operator=(const UniConv&) = delete;
 };
