@@ -1,0 +1,436 @@
+#include "UniConv.h"
+
+
+const std::unordered_map<int, std::string_view> UniConv::m_iconvErrorMap = {
+	{EILSEQ, "Invalid multibyte sequence"},
+	{EINVAL, "Incomplete multibyte sequence"},
+	{E2BIG,  "Output buffer too small"},
+	{EBADF,  "Invalid conversion descriptor"},
+	{EFAULT, "Invalid buffer address"},
+	{EINTR,  "Conversion interrupted by signal"},
+	{ENOMEM, "Out of memory"}
+};
+
+const std::unordered_map<std::uint16_t, UniConv::EncodingInfo> UniConv::m_encodingMap = {
+	{37, {"IBM037", "IBM EBCDIC US-Canada"}},
+	{437, {"IBM437", "OEM United States"}},
+	{850, {"IBM850", "OEM Multilingual Latin 1; Western European (DOS)"}},
+	{852, {"IBM852", "OEM Latin 2; Central European (DOS)"}},
+	{855, {"IBM855", "OEM Cyrillic (primarily Russian)"}},
+	{857, {"IBM857", "OEM Turkish; Turkish (DOS)"}},
+	{860, {"IBM860", "OEM Portuguese; Portuguese (DOS)"}},
+	{861, {"IBM861", "OEM Icelandic; Icelandic (DOS)"}},
+	{862, {"DOS-862", "OEM Hebrew; Hebrew (DOS)"}},
+	{863, {"IBM863", "OEM French Canadian; French Canadian (DOS)"}},
+	{865, {"IBM865", "OEM Nordic; Nordic (DOS)"}},
+	{866, {"CP866", "OEM Russian; Cyrillic (DOS)"}},
+	{874, {"Windows-874", "Thai (Windows)"}},
+	{932, {"Shift_JIS", "ANSI/OEM Japanese; Japanese (Shift-JIS)"}},
+	{936, {"GB2312", "ANSI/OEM Simplified Chinese (PRC, Singapore); Chinese Simplified (GB2312)"}},
+	{949, {"KS_C_5601-1987", "ANSI/OEM Korean (Unified Hangul Code)"}},
+	{950, {"Big5", "ANSI/OEM Traditional Chinese (Taiwan; Hong Kong SAR, PRC); Chinese Traditional (Big5)"}},
+	{1200, {"UTF-16", "Unicode UTF-16, little endian byte order (BMP of ISO 10646); available only to managed applications"}},
+	{1201, {"UTF-16BE", "Unicode UTF-16, big endian byte order; available only to managed applications"}},
+	{1250, {"Windows-1250", "ANSI Central European; Central European (Windows)"}},
+	{1251, {"Windows-1251", "ANSI Cyrillic; Cyrillic (Windows)"}},
+	{1252, {"Windows-1252", "ANSI Latin 1; Western European (Windows)"}},
+	{1253, {"Windows-1253", "ANSI Greek; Greek (Windows)"}},
+	{1254, {"Windows-1254", "ANSI Turkish; Turkish (Windows)"}},
+	{1255, {"Windows-1255", "ANSI Hebrew; Hebrew (Windows)"}},
+	{1256, {"Windows-1256", "ANSI Arabic; Arabic (Windows)"}},
+	{1257, {"Windows-1257", "ANSI Baltic; Baltic (Windows)"}},
+	{1258, {"Windows-1258", "ANSI/OEM Vietnamese; Vietnamese (Windows)"}},
+	{20866, {"KOI8-R", "Russian (KOI8-R); Cyrillic (KOI8-R)"}},
+	{21866, {"KOI8-U", "Ukrainian (KOI8-U); Cyrillic (KOI8-U)"}},
+	{28591, {"ISO-8859-1", "ISO 8859-1 Latin 1; Western European (ISO)"}},
+	{28592, {"ISO-8859-2", "ISO 8859-2 Central European; Central European (ISO)"}},
+	{28595, {"ISO-8859-5", "ISO 8859-5 Cyrillic"}},
+	{28597, {"ISO-8859-7", "ISO 8859-7 Greek"}},
+	{28599, {"ISO-8859-9", "ISO 8859-9 Turkish"}},
+	{28605, {"ISO-8859-15", "ISO 8859-15 Latin 9"}},
+	{50220, {"ISO-2022-JP", "ISO 2022 Japanese with no halfwidth Katakana; Japanese (JIS)"}},
+	{50225, {"ISO-2022-KR", "ISO 2022 Korean"}},
+	{51932, {"EUC-JP", "EUC Japanese"}},
+	{51936, {"EUC-CN", "EUC Simplified Chinese; Chinese Simplified (EUC)"}},
+	{51949, {"EUC-KR", "EUC Korean"}},
+	{52936, {"HZ-GB-2312", "HZ-GB2312 Simplified Chinese; Chinese Simplified (HZ)"}},
+	{54936, {"GB18030", "Windows XP and later: GB18030 Simplified Chinese (4 byte); Chinese Simplified (GB18030)"}},
+	{65000, {"UTF-7", "Unicode (UTF-7)"}},
+	{65001, {"UTF-8", "Unicode (UTF-8)"}}
+};
+
+
+std::mutex UniConv::m_iconvcCacheMutex;
+std::unordered_map<std::string,UniConv::IconvUniquePtr> UniConv::m_iconvDesscriptorCacheMap{};
+std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDesscriptorCacheMap_s{};
+
+// 定义编码名称到代码页的映射表
+const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePageMap = {
+	{"UTF-8", 65001},          // Unicode (UTF-8)
+	{"ANSI_X3.4-1968", 20127}, // US-ASCII
+	{"ISO-8859-1", 28591},     // Latin-1
+	{"ISO-8859-2", 28592},     // Latin-2
+	{"ISO-8859-3", 28593},     // Latin-3
+	{"ISO-8859-4", 28594},     // Latin-4 (Baltic)
+	{"ISO-8859-5", 28595},     // Cyrillic
+	{"ISO-8859-6", 28596},     // Arabic
+	{"ISO-8859-7", 28597},     // Greek
+	{"ISO-8859-8", 28598},     // Hebrew
+	{"ISO-8859-9", 28599},     // Latin-5 (Turkish)
+	{"ISO-8859-10", 28600},    // Latin-6 (Nordic)
+	{"ISO-8859-11", 28601},    // Thai
+	{"ISO-8859-13", 28603},    // Latin-7 (Baltic Rim)
+	{"ISO-8859-14", 28604},    // Latin-8 (Celtic)
+	{"ISO-8859-15", 28605},    // Latin-9 (Western European with Euro)
+	{"ISO-8859-16", 28606},    // Latin-10 (South-Eastern European)
+	{"GB2312", 936},           // Simplified Chinese
+	{"GBK", 936},              // Simplified Chinese (GBK)
+	{"GB18030", 54936},        // Simplified Chinese (GB18030)
+	{"BIG5", 950},             // Traditional Chinese
+	{"EUC-JP", 20932},         // Japanese
+	{"EUC-KR", 51949},         // Korean
+	{"KOI8-R", 20866},         // Russian
+	{"KOI8-U", 21866},         // Ukrainian
+	{"Windows-1250", 1250},    // Central European (Windows)
+	{"Windows-1251", 1251},    // Cyrillic (Windows)
+	{"Windows-1252", 1252},    // Western European (Windows)
+	{"Windows-1253", 1253},    // Greek (Windows)
+	{"Windows-1254", 1254},    // Turkish (Windows)
+	{"Windows-1255", 1255},    // Hebrew (Windows)
+	{"Windows-1256", 1256},    // Arabic (Windows)
+	{"Windows-1257", 1257},    // Baltic (Windows)
+	{"Windows-1258", 1258},    // Vietnamese (Windows)
+	{"Shift_JIS", 932},        // Japanese (Shift-JIS)
+	{"CP932", 932},            // Japanese (Shift-JIS, Windows)
+	{"CP949", 949},            // Korean (Unified Hangul Code, Windows)
+	{"CP950", 950},            // Traditional Chinese (Big5, Windows)
+	{"CP866", 866},            // Cyrillic (DOS)
+	{"CP850", 850},            // Western European (DOS)
+	{"CP852", 852},            // Central European (DOS)
+	{"CP855", 855},            // Cyrillic (DOS, primarily Russian)
+	{"CP857", 857},            // Turkish (DOS)
+	{"CP860", 860},            // Portuguese (DOS)
+	{"CP861", 861},            // Icelandic (DOS)
+	{"CP862", 862},            // Hebrew (DOS)
+	{"CP863", 863},            // French Canadian (DOS)
+	{"CP864", 864},            // Arabic (DOS)
+	{"CP865", 865},            // Nordic (DOS)
+	{"CP869", 869},            // Modern Greek (DOS)
+	{"CP874", 874},            // Thai (Windows)
+	{"CP1250", 1250},          // Central European (Windows)
+	{"CP1251", 1251},          // Cyrillic (Windows)
+	{"CP1252", 1252},          // Western European (Windows)
+	{"CP1253", 1253},          // Greek (Windows)
+	{"CP1254", 1254},          // Turkish (Windows)
+	{"CP1255", 1255},          // Hebrew (Windows)
+	{"CP1256", 1256},          // Arabic (Windows)
+	{"CP1257", 1257},          // Baltic (Windows)
+	{"CP1258", 1258},          // Vietnamese (Windows)
+	{"MacRoman", 10000},       // Western European (Mac)
+	{"MacCyrillic", 10007},    // Cyrillic (Mac)
+	{"MacGreek", 10006},       // Greek (Mac)
+	{"MacTurkish", 10081},     // Turkish (Mac)
+	{"MacIcelandic", 10079},   // Icelandic (Mac)
+	{"MacCentralEurope", 10029}, // Central European (Mac)
+	{"MacThai", 10021},        // Thai (Mac)
+	{"MacJapanese", 10001},    // Japanese (Mac)
+	{"MacChineseTrad", 10002}, // Traditional Chinese (Mac)
+	{"MacChineseSimp", 10008}, // Simplified Chinese (Mac)
+	{"MacKorean", 10003},      // Korean (Mac)
+	{"MacArabic", 10004},      // Arabic (Mac)
+	{"MacHebrew", 10005},      // Hebrew (Mac)
+	{"TIS-620", 874},          // Thai (TIS-620)
+	{"ISCII-DEVANAGARI", 57002}, // ISCII Devanagari
+	{"ISCII-BENGALI", 57003},  // ISCII Bangla
+	{"ISCII-TAMIL", 57004},    // ISCII Tamil
+	{"ISCII-TELUGU", 57005},   // ISCII Telugu
+	{"ISCII-ASSAMESE", 57006}, // ISCII Assamese
+	{"ISCII-ORIYA", 57007},    // ISCII Odia
+	{"ISCII-KANNADA", 57008},  // ISCII Kannada
+	{"ISCII-MALAYALAM", 57009}, // ISCII Malayalam
+	{"ISCII-GUJARATI", 57010}, // ISCII Gujarati
+	{"ISCII-PUNJABI", 57011},  // ISCII Punjabi
+	{"VISCII", 1258},          // Vietnamese (VISCII)
+	{"VPS", 1258},             // Vietnamese (VPS)
+	{"UTF-16", 1200},          // Unicode UTF-16 (Little Endian)
+	{"UTF-16BE", 1201},        // Unicode UTF-16 (Big Endian)
+	{"UTF-32", 12000},         // Unicode UTF-32 (Little Endian)
+	{ "UTF-32BE", 12001 },       // Unicode UTF-32 (Big Endian)
+	{ "UTF-7", 65000 },          // Unicode UTF-7
+	{ "HZ-GB-2312", 52936 },     // HZ-GB2312 Simplified Chinese
+	{ "ISO-2022-JP", 50220 },    // Japanese (ISO-2022-JP)
+	{ "ISO-2022-KR", 50225 },    // Korean (ISO-2022-KR)
+	{ "ISO-2022-CN", 50227 },    // Simplified Chinese (ISO-2022-CN)
+	{ "EUC-TW", 51950 },         // Traditional Chinese (EUC-TW)
+	{ "ARMSCII-8", 0 },          // Armenian (ARMSCII-8, no Windows code page)
+	{ "GEORGIAN-ACADEMY", 0 },   // Georgian (Academy, no Windows code page)
+	{ "GEORGIAN-PS", 0 },        // Georgian (PS, no Windows code page)
+	{ "TSCII", 0 },              // Tamil (TSCII, no Windows code page)
+	{ "RK1048", 0 },             // Kazakh (RK1048, no Windows code page)
+	{ "MULELAO-1", 0 },          // Lao (MULELAO-1, no Windows code page)
+	{ "TCVN", 1258 },            // Vietnamese (TCVN)
+	{ "VISCII1.1", 1258 },       // Vietnamese (VISCII 1.1)
+	{ "VISCII1.1-HYBRID", 1258 }, // Vietnamese (VISCII 1.1 Hybrid)
+
+};
+
+
+std::string UniConv::GetCurrentSystemEncoding()
+{
+	std::stringstream ss;
+	std::string extra_info;
+
+#ifdef _WIN32
+	UINT codePage = GetACP();
+	auto it = m_encodingMap.find(codePage);
+	if (it != m_encodingMap.end()) ss << it->second.dotNetName;
+#endif // _WIN32
+
+
+#ifdef __linux__
+	setlocale(LC_ALL, "");
+	char* locstr = setlocale(LC_CTYPE, NULL);
+	char* encoding = nl_langinfo(CODESET);
+	ss << encoding;
+
+#endif // __linux__
+	if (ss.str().empty()) ss << "Encoding not found.";
+
+	return ss.str();
+}
+
+std::uint16_t UniConv::GetCurrentSystemEncodingCodePage()
+{
+#ifdef _WIN32
+	UINT codePage = GetACP();
+	return static_cast<std::uint16_t>(codePage);
+#endif // _WIN32
+
+
+#ifdef __linux__
+	setlocale(LC_ALL, "");
+	char* locstr = setlocale(LC_CTYPE, NULL);
+	char* encoding = nl_langinfo(CODESET);
+	auto it = m_encodingToCodePage.find(encoding);
+
+	if (it != m_encodingToCodePage.end()) return it->second;
+	else {
+		// 如果编码名称未在映射表中找到，返回默认值（UTF-8）
+		std::cerr << "Warning: Encoding '" << encoding << "' not found in mapping table. Defaulting to UTF-8 (65001)." << std::endl;
+		return 65001;
+	}
+
+#endif // __linux__
+	return 0;
+
+}
+
+std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage)
+{
+	auto it = m_encodingMap.find(codePage);
+	if (it != m_encodingMap.end())
+		return it->second.dotNetName;
+	else
+		return "Encoding not found.";
+}
+
+std::string UniConv::LocateConvertToUtf8(const std::string& sInput)
+{
+	// 获取当前系统编码
+	std::string currsysencoding = UniConv::GetCurrentSystemEncoding();
+	//iconv_t cd;
+	return std::string();
+
+}
+
+UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode) {
+	// 转换返回的结果
+	IConvResult iconv_result;
+
+	// 获取 iconv 描述符（直接使用 IconvUniquePtr）
+	IconvUniquePtr cd = GetIconvDescriptor(fromcode, tocode);
+	if (!cd) {
+		iconv_result.error_code = errno;
+		iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
+		return iconv_result;
+	}
+
+	// 输入缓冲区
+	const char* inbuf_ptr = const_cast<char*>(in.data()); // 输入缓存
+	std::size_t inbuf_letf = in.size(); // 输入缓存剩余长度
+
+	// 输出缓冲区
+	constexpr std::size_t out_buf_size = 4096;
+	std::vector<char> out_buffer(out_buf_size);
+	std::string converted_result;
+	converted_result.reserve(in.size() * 2); // 预分配空间
+
+	while (true) {
+		char* out_ptr = out_buffer.data();
+		std::size_t out_left = out_buffer.size();
+
+		// 执行转换
+		std::size_t ret = iconv(cd.get(), &inbuf_ptr, &inbuf_letf, &out_ptr, &out_left);
+		// 写入已转换的数据
+		converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
+		if (static_cast<std::size_t>(-1) == ret) {
+			iconv_result.error_code = errno;
+			iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
+			break;
+		}
+
+		// 检查输入是否处理完毕
+		if (inbuf_letf == 0) {
+			// 刷新转换器的内部状态
+			out_ptr = out_buffer.data();
+			out_left = out_buffer.size();
+			ret = iconv(cd.get(), nullptr, &inbuf_letf, &out_ptr, &out_left);
+			converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
+
+			if (static_cast<std::size_t>(-1) == ret) {
+				iconv_result.error_code = errno;
+				iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
+			}
+			break;
+		}
+	}
+
+	// 返回转换结果
+	if (iconv_result.error_code == 0) {
+		iconv_result.conv_result_str = std::move(converted_result);
+	}
+	return iconv_result;
+}
+
+//UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode)
+//{
+//	//转换返回的结果
+//	IConvResult iconv_result;
+//	iconv_t cd = GetIconvDescriptor(fromcode, tocode).get();
+//	 // 获取 iconv 描述符（直接使用 IconvUniquePtr）
+//	IconvUniquePtr cd = GetIconvDescriptor(fromcode, tocode);
+//	if (cd == NULL) {
+//		std::cout << "The cd is empty" << std::endl;
+//	}
+//	if (reinterpret_cast<iconv_t>(-1) == cd) {
+//		iconv_result.error_code = errno;
+//		iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
+//		return iconv_result;
+//	}
+//
+//	//输入缓冲区
+//	const char* inbuf_ptr = const_cast<char*>(in.data());//输入缓存
+//	std::size_t inbuf_letf = in.size();//输入缓存剩余长度
+//
+//	//输出缓冲区
+//	constexpr std::size_t out_buf_size = 4096;
+//	std::vector<char> out_buffer(out_buf_size);
+//	std::string converted_result;
+//	converted_result.reserve(in.size() * 2); // 预分配空间
+//
+//	while (true) {
+//		char* out_ptr        = out_buffer.data();
+//		std::size_t out_left = out_buffer.size();
+//
+//		//执行转换
+//		std::size_t ret = iconv(cd, &inbuf_ptr, &inbuf_letf, &out_ptr, &out_left);
+//		// 写入已转换的数据
+//		converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
+//		if (static_cast<std::size_t>(-1) == ret){
+//			iconv_result.error_code = errno;
+//			iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
+//			break;
+//		}
+//
+//		// 检查输入是否处理完毕
+//		if (inbuf_letf == 0) {
+//			// 刷新转换器的内部状态
+//			out_ptr = out_buffer.data();
+//			out_left = out_buffer.size();
+//			ret = iconv(cd, nullptr, &inbuf_letf, &out_ptr, &out_left);
+//			converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
+//
+//			if (static_cast<std::size_t>(-1) == ret) {
+//				iconv_result.error_code = errno;
+//				iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
+//			}
+//			break;
+//		}
+//	}
+//
+//	//返回转换结果
+//	if (iconv_result.error_code == 0) {
+//		iconv_result.conv_result_str = std::move(converted_result);
+//	}
+//	return iconv_result;
+//}
+
+std::string_view UniConv::GetIconvErrorString(int err_code)
+{
+	auto it = m_iconvErrorMap.find(err_code);
+	if (it != m_iconvErrorMap.end()) {
+		return it->second;
+	}
+	static const std::string_view unknown_error = "Unknown error Failed to initialize iconv descriptor";
+	return unknown_error;
+
+}
+
+UniConv::IconvUniquePtr  UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
+{
+	//缓存key
+	std::string key = std::string(fromcode) + ":" + tocode;
+
+	std::cout << key << std::endl;
+
+	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
+	// 查找缓存
+	auto it = m_iconvDesscriptorCacheMap.find(key);
+
+	if (it != m_iconvDesscriptorCacheMap.end()) {
+		// 返回缓存的描述符（直接返回 IconvUniquePtr） 此处不能使用get()获取原始指针来构造新的IconvUniquePtr
+		return UniConv::IconvUniquePtr(it->second.release());
+	}
+
+	//打开新的新的iconv 描述符
+	iconv_t cd = iconv_open(tocode, fromcode);
+	if (cd == reinterpret_cast<iconv_t>(-1)) {
+		std::cout <<"iconv_open error" << std::endl;
+		return IconvUniquePtr(nullptr); 
+	}
+	auto result = m_iconvDesscriptorCacheMap.emplace(key, IconvUniquePtr(cd));
+	if (!result.second) {
+		std::cerr << "Failed to insert into cache" << std::endl;
+		return IconvUniquePtr(nullptr);
+	}
+	//返回缓存的
+	return IconvUniquePtr(result.first->second.release());
+}
+
+UniConv::IconvSharedPtr UniConv::GetIconvDescriptorS(const char* fromcode, const char* tocode)
+{
+	std::string key = std::string(fromcode) + ":" + tocode;
+	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
+
+	auto it = m_iconvDesscriptorCacheMap_s.find(key);
+	if (it != m_iconvDesscriptorCacheMap_s.end()) {
+		return it->second; // 返回 shared_ptr 的拷贝
+	}
+
+	iconv_t cd = iconv_open(tocode, fromcode);
+	if (cd == reinterpret_cast<iconv_t>(-1)) {
+		return nullptr;
+	}
+
+	IconvSharedPtr descriptor(cd, IconvDeleter());
+	m_iconvDesscriptorCacheMap_s.emplace(key, descriptor);
+	return descriptor;
+}
+
+void UniConv::CleanupIconvDescriptorCache()
+{
+	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
+	m_iconvDesscriptorCacheMap.clear();
+}
+
+
