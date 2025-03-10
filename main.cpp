@@ -12,12 +12,12 @@ int main(void) {
 	std::cout << UniConv::GetCurrentSystemEncoding() << std::endl;
 	extern char const* gbk_str;
 	extern std::string gbk_cppstr;
-	auto res = UniConv::Convert(gbk_cppstr, "gbk", "utf-8");
-	if (res) {
+	//auto res = UniConv::GetInstance()->Convert(gbk_str, UniConv::UTF8,UniConv::GBK);
+	/*if (res) {
 		std::cout << res.conv_result_str << std::endl;
 	}
 	else {
 		std::cout << res.error_msg << std::endl;
-	}
+	}*/
 	return 0;
 }

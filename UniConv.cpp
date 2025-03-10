@@ -59,11 +59,6 @@ const std::unordered_map<std::uint16_t, UniConv::EncodingInfo> UniConv::m_encodi
 	{65001, {"UTF-8", "Unicode (UTF-8)"}}
 };
 
-
-std::mutex UniConv::m_iconvcCacheMutex;
-std::unordered_map<std::string,UniConv::IconvUniquePtr> UniConv::m_iconvDesscriptorCacheMap{};
-std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDesscriptorCacheMap_s{};
-
 // 定义编码名称到代码页的映射表
 const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePageMap = {
 	{"UTF-8", 65001},          // Unicode (UTF-8)
@@ -236,6 +231,7 @@ std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage)
 
 std::string UniConv::LocateConvertToUtf8(const std::string& sInput)
 {
+	//TODO
 	// 获取当前系统编码
 	std::string currsysencoding = UniConv::GetCurrentSystemEncoding();
 	//iconv_t cd;
@@ -248,7 +244,7 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 	IConvResult iconv_result;
 
 	// 获取 iconv 描述符（直接使用 IconvUniquePtr）
-	IconvUniquePtr cd = GetIconvDescriptor(fromcode, tocode);
+	auto cd = GetIconvDescriptorS(fromcode, tocode);
 	if (!cd) {
 		iconv_result.error_code = errno;
 		iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
@@ -266,7 +262,7 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 	converted_result.reserve(in.size() * 2); // 预分配空间
 
 	while (true) {
-		char* out_ptr = out_buffer.data();
+		char*       out_ptr  = out_buffer.data();
 		std::size_t out_left = out_buffer.size();
 
 		// 执行转换
@@ -302,68 +298,6 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 	return iconv_result;
 }
 
-//UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode)
-//{
-//	//转换返回的结果
-//	IConvResult iconv_result;
-//	iconv_t cd = GetIconvDescriptor(fromcode, tocode).get();
-//	 // 获取 iconv 描述符（直接使用 IconvUniquePtr）
-//	IconvUniquePtr cd = GetIconvDescriptor(fromcode, tocode);
-//	if (cd == NULL) {
-//		std::cout << "The cd is empty" << std::endl;
-//	}
-//	if (reinterpret_cast<iconv_t>(-1) == cd) {
-//		iconv_result.error_code = errno;
-//		iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
-//		return iconv_result;
-//	}
-//
-//	//输入缓冲区
-//	const char* inbuf_ptr = const_cast<char*>(in.data());//输入缓存
-//	std::size_t inbuf_letf = in.size();//输入缓存剩余长度
-//
-//	//输出缓冲区
-//	constexpr std::size_t out_buf_size = 4096;
-//	std::vector<char> out_buffer(out_buf_size);
-//	std::string converted_result;
-//	converted_result.reserve(in.size() * 2); // 预分配空间
-//
-//	while (true) {
-//		char* out_ptr        = out_buffer.data();
-//		std::size_t out_left = out_buffer.size();
-//
-//		//执行转换
-//		std::size_t ret = iconv(cd, &inbuf_ptr, &inbuf_letf, &out_ptr, &out_left);
-//		// 写入已转换的数据
-//		converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
-//		if (static_cast<std::size_t>(-1) == ret){
-//			iconv_result.error_code = errno;
-//			iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
-//			break;
-//		}
-//
-//		// 检查输入是否处理完毕
-//		if (inbuf_letf == 0) {
-//			// 刷新转换器的内部状态
-//			out_ptr = out_buffer.data();
-//			out_left = out_buffer.size();
-//			ret = iconv(cd, nullptr, &inbuf_letf, &out_ptr, &out_left);
-//			converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
-//
-//			if (static_cast<std::size_t>(-1) == ret) {
-//				iconv_result.error_code = errno;
-//				iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
-//			}
-//			break;
-//		}
-//	}
-//
-//	//返回转换结果
-//	if (iconv_result.error_code == 0) {
-//		iconv_result.conv_result_str = std::move(converted_result);
-//	}
-//	return iconv_result;
-//}
 
 std::string_view UniConv::GetIconvErrorString(int err_code)
 {
@@ -376,61 +310,62 @@ std::string_view UniConv::GetIconvErrorString(int err_code)
 
 }
 
-UniConv::IconvUniquePtr  UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
-{
-	//缓存key
-	std::string key = std::string(fromcode) + ":" + tocode;
-
-	std::cout << key << std::endl;
-
-	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
-	// 查找缓存
-	auto it = m_iconvDesscriptorCacheMap.find(key);
-
-	if (it != m_iconvDesscriptorCacheMap.end()) {
-		// 返回缓存的描述符（直接返回 IconvUniquePtr） 此处不能使用get()获取原始指针来构造新的IconvUniquePtr
-		return UniConv::IconvUniquePtr(it->second.release());
-	}
-
-	//打开新的新的iconv 描述符
-	iconv_t cd = iconv_open(tocode, fromcode);
-	if (cd == reinterpret_cast<iconv_t>(-1)) {
-		std::cout <<"iconv_open error" << std::endl;
-		return IconvUniquePtr(nullptr); 
-	}
-	auto result = m_iconvDesscriptorCacheMap.emplace(key, IconvUniquePtr(cd));
-	if (!result.second) {
-		std::cerr << "Failed to insert into cache" << std::endl;
-		return IconvUniquePtr(nullptr);
-	}
-	//返回缓存的
-	return IconvUniquePtr(result.first->second.release());
-}
+//UniConv::IconvUniquePtr  UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
+//{
+//	//缓存key
+//	std::string key = std::string(fromcode) + ":" + tocode;
+//
+//	std::cout << key << std::endl;
+//
+//	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
+//	// 查找缓存
+//	auto it = m_iconvDesscriptorCacheMap.find(key);
+//
+//	if (it != m_iconvDesscriptorCacheMap.end()) {
+//		// 返回缓存的描述符（直接返回 IconvUniquePtr） 此处不能使用get()获取原始指针来构造新的IconvUniquePtr
+//		return UniConv::IconvUniquePtr(it->second.release());
+//	}
+//
+//	//打开新的新的iconv 描述符
+//	iconv_t cd = iconv_open(tocode, fromcode);
+//	if (cd == reinterpret_cast<iconv_t>(-1)) {
+//		std::cout <<"iconv_open error" << std::endl;
+//		return IconvUniquePtr(nullptr); 
+//	}
+//	auto result = m_iconvDesscriptorCacheMap.emplace(key, IconvUniquePtr(cd));
+//	if (!result.second) {
+//		std::cerr << "Failed to insert into cache" << std::endl;
+//		return IconvUniquePtr(nullptr);
+//	}
+//	//返回缓存的
+//	return IconvUniquePtr(result.first->second.release());
+//}
 
 UniConv::IconvSharedPtr UniConv::GetIconvDescriptorS(const char* fromcode, const char* tocode)
 {
 	std::string key = std::string(fromcode) + ":" + tocode;
 	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
 
-	auto it = m_iconvDesscriptorCacheMap_s.find(key);
-	if (it != m_iconvDesscriptorCacheMap_s.end()) {
+	auto it = m_iconvDesscriptorCacheMapS.find(key);
+	if (it != m_iconvDesscriptorCacheMapS.end()) {
 		return it->second; // 返回 shared_ptr 的拷贝
 	}
 
 	iconv_t cd = iconv_open(tocode, fromcode);
 	if (cd == reinterpret_cast<iconv_t>(-1)) {
+		std::cout << "iconv_open error" << std::endl;
 		return nullptr;
 	}
 
-	IconvSharedPtr descriptor(cd, IconvDeleter());
-	m_iconvDesscriptorCacheMap_s.emplace(key, descriptor);
-	return descriptor;
+	auto iconvPtr = std::shared_ptr<std::remove_pointer_t<iconv_t>>(cd, IconvDeleter());
+	m_iconvDesscriptorCacheMapS.emplace(key, iconvPtr);
+	return iconvPtr;
 }
 
 void UniConv::CleanupIconvDescriptorCache()
 {
 	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
-	m_iconvDesscriptorCacheMap.clear();
+	m_iconvDesscriptorCacheMapS.clear();
 }
 
 
