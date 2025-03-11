@@ -1,5 +1,5 @@
 #include "UniConv.h"
-
+#include "pch.h"
 
 const std::unordered_map<int, std::string_view> UniConv::m_iconvErrorMap = {
 	{EILSEQ, "Invalid multibyte sequence"},
@@ -505,11 +505,7 @@ std::string UniConv::WideConvertToUtf8(const wchar_t* sInput)
 #ifdef __linux__
 	wchar_t_encoding;
 #endif
-	auto res = Convert(
-			WstringConvertToString(sInput),
-        	from_encoding,
-        	UniConv::utf_8_encoding
-		);
+	auto res = Convert(reinterpret_cast<const char*>(sInput), from_encoding, UniConv::utf_8_encoding);
 	if (res) {
 		return std::move(res.conv_result_str);
 	}
@@ -517,7 +513,7 @@ std::string UniConv::WideConvertToUtf8(const wchar_t* sInput)
 	std::cout << "Convert failed " << __FUNCTION__ << "error message: "<< res.error_msg<< "\n";
 #endif // DEBUG
 
-    return res.error_msg;
+    return std::move(res.error_msg);
 
 }
 
@@ -653,48 +649,6 @@ std::u32string UniConv::Utf16BEConvertToUtf32(const std::u16string& sInput)
 	);
 }
 
-std::wstring UniConv::StringConvertToWstring(const std::string& str)
-{
-#ifdef _WIN32
-	int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), NULL, 0);
-	wchar_t* buffer = new wchar_t[len + 1];
-	MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.size(), buffer, len);
-	buffer[len] = L'\0';
-	std::wstring result(buffer);
-	delete[] buffer;
-	return result;
-#else
-	setlocale(LC_ALL, "chs");
-	int size = mbstowcs(NULL, str.c_str(), 0);
-	wchar_t* wcs = new wchar_t[size + 1];
-	mbstowcs(wcs, str.c_str(), size + 1);
-	std::wstring result(wcs);
-	delete[] wcs;
-	return result;
-#endif
-}
-
-std::string UniConv::WstringConvertToString(const std::wstring& wstr)
-{
-#ifdef _WIN32
-	int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
-	char* buffer = new char[len + 1];
-	WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wstr.size(), buffer, len, NULL, NULL);
-	buffer[len] = '\0';
-	std::string result(buffer);
-	delete[] buffer;
-	return result;
-#else
-	setlocale(LC_ALL, "chs");
-	int size = wcstombs(NULL, wstr.c_str(), 0);
-	char* mbs = new char[size + 1];
-	wcstombs(mbs, wstr.c_str(), size + 1);
-	std::string result(mbs);
-	delete[] mbs;
-	return result;
-#endif
-}
-
 std::wstring UniConv::LocaleConvertToWide(const std::string& sInput)
 {
 	return LocaleConvertToWide(sInput.c_str());
@@ -724,8 +678,8 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 	}
 
 	// 输入缓冲区
-	//std::vector<char> in_buffer(in.begin(), in.end());
-	const char* inbuf_ptr = in.data(); // 输入缓存
+	std::vector<char> in_buffer(in.begin(), in.end());
+	const char* inbuf_ptr = in_buffer.data(); // 输入缓存
 	std::size_t inbuf_letf = in.size(); // 输入缓存剩余长度
 
 	// 输出缓冲区
@@ -773,8 +727,7 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 	// 返回转换结果
 	if (iconv_result.error_code == 0) {
 		converted_result.shrink_to_fit();
-		//iconv_result.conv_result_str = std::move(converted_result);
-		iconv_result.conv_result_str = converted_result;
+		iconv_result.conv_result_str = std::move(converted_result);
 	}
 	return iconv_result;
 }

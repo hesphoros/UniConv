@@ -39,207 +39,18 @@
 #define UNICONV_EXPORT
 #endif
 
+#define DEBUG
 
 
 //TODO: 错误记录使用unique_ptr get() 罗指针构造错误 
 // 最终使用shared_ptr 保存错误信息
 
 
-class UniConv : public Singleton<UniConv> 
+class UNICONV_EXPORT UniConv : public Singleton<UniConv>
 {
 
 	friend class Singleton<UniConv>; // 允许 Singleton 访问 Convert 的私有构造函数
-public:
-	/// <summary>
-	/// 这里定义一些常用的编码
-	/// </summary>
-	/*{@ */
-		
-	// European languages 欧洲语言
-	static constexpr const char* ascii_encoding = "ASCII";
-	static constexpr const char* iso_8859_1_encoding = "ISO-8859-1";
-	static constexpr const char* iso_8859_2_encoding = "ISO-8859-2";
-	static constexpr const char* iso_8859_3_encoding = "ISO-8859-3";
-	static constexpr const char* iso_8859_4_encoding = "ISO-8859-4";
-	static constexpr const char* iso_8859_5_encoding = "ISO-8859-5";
-	static constexpr const char* iso_8859_7_encoding = "ISO-8859-7";
-	static constexpr const char* iso_8859_9_encoding = "ISO-8859-9";
-	static constexpr const char* iso_8859_10_encoding = "ISO-8859-10";
-	static constexpr const char* iso_8859_13_encoding = "ISO-8859-13";
-	static constexpr const char* iso_8859_14_encoding = "ISO-8859-14";
-	static constexpr const char* iso_8859_15_encoding = "ISO-8859-15";
-	static constexpr const char* iso_8859_16_encoding = "ISO-8859-16";
-	static constexpr const char* koi8_r_encoding = "KOI8-R";
-	static constexpr const char* koi8_u_encoding = "KOI8-U";
-	static constexpr const char* koi8_ru_encoding = "KOI8-RU";
-	static constexpr const char* cp1250_encoding = "CP1250";
-	static constexpr const char* cp1251_encoding = "CP1251";
-	static constexpr const char* cp1252_encoding = "CP1252";
-	static constexpr const char* cp1253_encoding = "CP1253";
-	static constexpr const char* cp1254_encoding = "CP1254";
-	static constexpr const char* cp1257_encoding = "CP1257";
-	static constexpr const char* cp850_encoding = "CP850";
-	static constexpr const char* cp866_encoding = "CP866";
-	static constexpr const char* cp1131_encoding = "CP1131";
-	static constexpr const char* mac_roman_encoding = "MacRoman";
-	static constexpr const char* mac_central_europe_encoding = "MacCentralEurope";
-	static constexpr const char* mac_iceland_encoding = "MacIceland";
-	static constexpr const char* mac_croatian_encoding = "MacCroatian";
-	static constexpr const char* mac_romania_encoding = "MacRomania";
-	static constexpr const char* mac_cyrillic_encoding = "MacCyrillic";
-	static constexpr const char* mac_ukraine_encoding = "MacUkraine";
-	static constexpr const char* mac_greek_encoding = "MacGreek";
-	static constexpr const char* mac_turkish_encoding = "MacTurkish";
-	static constexpr const char* macintosh_encoding = "Macintosh";
 
-	// Semitic languages
-	static constexpr const char* iso_8859_6_encoding = "ISO-8859-6";
-	static constexpr const char* iso_8859_8_encoding = "ISO-8859-8";
-	static constexpr const char* cp1255_encoding = "CP1255";
-	static constexpr const char* cp1256_encoding = "CP1256";
-	static constexpr const char* cp862_encoding = "CP862";
-	static constexpr const char* mac_hebrew_encoding = "MacHebrew";
-	static constexpr const char* mac_arabic_encoding = "MacArabic";
-
-	// Japanese
-	static constexpr const char* euc_jp_encoding = "EUC-JP";
-	static constexpr const char* shift_jis_encoding = "SHIFT_JIS";
-	static constexpr const char* cp932_encoding = "CP932";
-	static constexpr const char* iso_2022_jp_encoding = "ISO-2022-JP";
-	static constexpr const char* iso_2022_jp_2_encoding = "ISO-2022-JP-2";
-	static constexpr const char* iso_2022_jp_1_encoding = "ISO-2022-JP-1";
-	static constexpr const char* iso_2022_jp_ms_encoding = "ISO-2022-JP-MS";
-
-	// Chinese
-	static constexpr const char* euc_cn_encoding = "EUC-CN";
-	static constexpr const char* hz_encoding = "HZ";
-	static constexpr const char* gbk_encoding = "GBK";
-	static constexpr const char* cp936_encoding = "CP936";
-	static constexpr const char* gb18030_encoding = "GB18030";
-	static constexpr const char* gb18030_2022_encoding = "GB18030:2022";
-	static constexpr const char* euc_tw_encoding = "EUC-TW";
-	static constexpr const char* big5_encoding = "BIG5";
-	static constexpr const char* cp950_encoding = "CP950";
-	static constexpr const char* big5_hkscs_encoding = "BIG5-HKSCS";
-	static constexpr const char* big5_hkscs_2004_encoding = "BIG5-HKSCS:2004";
-	static constexpr const char* big5_hkscs_2001_encoding = "BIG5-HKSCS:2001";
-	static constexpr const char* big5_hkscs_1999_encoding = "BIG5-HKSCS:1999";
-	static constexpr const char* iso_2022_cn_encoding = "ISO-2022-CN";
-	static constexpr const char* iso_2022_cn_ext_encoding = "ISO-2022-CN-EXT";
-
-	// Korean
-	static constexpr const char* euc_kr_encoding = "EUC-KR";
-	static constexpr const char* cp949_encoding = "CP949";
-	static constexpr const char* iso_2022_kr_encoding = "ISO-2022-KR";
-	static constexpr const char* johab_encoding = "JOHAB";
-
-	// Armenian
-	static constexpr const char* armscii_8_encoding = "ARMSCII-8";
-
-	// Georgian
-	static constexpr const char* georgian_academy_encoding = "Georgian-Academy";
-	static constexpr const char* georgian_ps_encoding = "Georgian-PS";
-
-	// Tajik
-	static constexpr const char* koi8_t_encoding = "KOI8-T";
-
-	// Kazakh
-	static constexpr const char* pt154_encoding = "PT154";
-	static constexpr const char* rk1048_encoding = "RK1048";
-
-	// Thai
-	static constexpr const char* tis_620_encoding = "TIS-620";
-	static constexpr const char* cp874_encoding = "CP874";
-	static constexpr const char* mac_thai_encoding = "MacThai";
-
-	// Laotian
-	static constexpr const char* mulelao_1_encoding = "MuleLao-1";
-	static constexpr const char* cp1133_encoding = "CP1133";
-
-	// Vietnamese
-	static constexpr const char* viscii_encoding = "VISCII";
-	static constexpr const char* tcvn_encoding = "TCVN";
-	static constexpr const char* cp1258_encoding = "CP1258";
-
-	// Platform specifics
-	static constexpr const char* hp_roman8_encoding = "HP-ROMAN8";
-	static constexpr const char* nextstep_encoding = "NEXTSTEP";
-
-	// Full Unicode
-	static constexpr const char* utf_8_encoding = "UTF-8";
-	static constexpr const char* ucs_2_encoding = "UCS-2";
-	static constexpr const char* ucs_2be_encoding = "UCS-2BE";
-	static constexpr const char* ucs_2le_encoding = "UCS-2LE";
-	static constexpr const char* ucs_4_encoding = "UCS-4";
-	static constexpr const char* ucs_4be_encoding = "UCS-4BE";
-	static constexpr const char* ucs_4le_encoding = "UCS-4LE";
-	static constexpr const char* utf_16_encoding  = "UTF-16";
-	static constexpr const char* utf_16be_encoding = "UTF-16BE";
-	static constexpr const char* utf_16le_encoding = "UTF-16LE";
-	static constexpr const char* utf_32_encoding = "UTF-32";
-	static constexpr const char* utf_32be_encoding = "UTF-32BE";
-	static constexpr const char* utf_32le_encoding = "UTF-32LE";
-	static constexpr const char* utf_7_encoding = "UTF-7";
-
-	// Locale dependent
-	static constexpr const char* char_encoding = "char";
-	static constexpr const char* wchar_t_encoding = "wchar_t";
-
-	// EBCDIC compatible (not ASCII compatible, very rarely used)
-	static constexpr const char* ibm_037_encoding = "IBM-037";
-	static constexpr const char* ibm_273_encoding = "IBM-273";
-	static constexpr const char* ibm_277_encoding = "IBM-277";
-	static constexpr const char* ibm_278_encoding = "IBM-278";
-	static constexpr const char* ibm_280_encoding = "IBM-280";
-	static constexpr const char* ibm_282_encoding = "IBM-282";
-	static constexpr const char* ibm_284_encoding = "IBM-284";
-	static constexpr const char* ibm_285_encoding = "IBM-285";
-	static constexpr const char* ibm_297_encoding = "IBM-297";
-	static constexpr const char* ibm_423_encoding = "IBM-423";
-	static constexpr const char* ibm_500_encoding = "IBM-500";
-	static constexpr const char* ibm_870_encoding = "IBM-870";
-	static constexpr const char* ibm_871_encoding = "IBM-871";
-	static constexpr const char* ibm_875_encoding = "IBM-875";
-	static constexpr const char* ibm_880_encoding = "IBM-880";
-	static constexpr const char* ibm_905_encoding = "IBM-905";
-	static constexpr const char* ibm_924_encoding = "IBM-924";
-	static constexpr const char* ibm_1025_encoding = "IBM-1025";
-	static constexpr const char* ibm_1026_encoding = "IBM-1026";
-	static constexpr const char* ibm_1047_encoding = "IBM-1047";
-	static constexpr const char* ibm_1112_encoding = "IBM-1112";
-	static constexpr const char* ibm_1122_encoding = "IBM-1122";
-	static constexpr const char* ibm_1123_encoding = "IBM-1123";
-	static constexpr const char* ibm_1140_encoding = "IBM-1140";
-	static constexpr const char* ibm_1141_encoding = "IBM-1141";
-	static constexpr const char* ibm_1142_encoding = "IBM-1142";
-	static constexpr const char* ibm_1143_encoding = "IBM-1143";
-	static constexpr const char* ibm_1144_encoding = "IBM-1144";
-	static constexpr const char* ibm_1145_encoding = "IBM-1145";
-	static constexpr const char* ibm_1146_encoding = "IBM-1146";
-	static constexpr const char* ibm_1147_encoding = "IBM-1147";
-	static constexpr const char* ibm_1148_encoding = "IBM-1148";
-	static constexpr const char* ibm_1149_encoding = "IBM-1149";
-	static constexpr const char* ibm_1153_encoding = "IBM-1153";
-	static constexpr const char* ibm_1154_encoding = "IBM-1154";
-	static constexpr const char* ibm_1155_encoding = "IBM-1155";
-	static constexpr const char* ibm_1156_encoding = "IBM-1156";
-	static constexpr const char* ibm_1157_encoding = "IBM-1157";
-	static constexpr const char* ibm_1158_encoding = "IBM-1158";
-	static constexpr const char* ibm_1165_encoding = "IBM-1165";
-	static constexpr const char* ibm_1166_encoding = "IBM-1166";
-	static constexpr const char* ibm_4971_encoding = "IBM-4971";
-	static constexpr const char* ibm_424_encoding = "IBM-424";
-	static constexpr const char* ibm_425_encoding = "IBM-425";
-	static constexpr const char* ibm_12712_encoding = "IBM-12712";
-	static constexpr const char* ibm_16804_encoding = "IBM-16804";
-	static constexpr const char* ibm_1097_encoding = "IBM-1097";
-	static constexpr const char* ibm_838_encoding = "IBM-838";
-	static constexpr const char* ibm_1160_encoding = "IBM-1160";
-	static constexpr const char* ibm_1132_encoding = "IBM-1132";
-	static constexpr const char* ibm_1130_encoding = "IBM-1130";
-	static constexpr const char* ibm_1164_encoding = "IBM-1164";
-	static constexpr const char* ibm_1137_encoding = "IBM-1137";
-	/*@}*/
 private:
 	// 自定义删除器，用于释放 iconv_t 资源
 	struct IconvDeleter {
@@ -272,7 +83,7 @@ public:
 	struct IConvResult {
 		std::string        conv_result_str;// 转换成功的结果 使用新编码的字符串
 		int                error_code = 0; // 错误码
-		std::string        error_msg = {}; // 错误信息
+		std::string        error_msg = {NULL}; // 错误信息
 
 		// 判断是否转换成功
 		bool IsSuccess() const {
@@ -386,6 +197,33 @@ public:
 
 	std::u16string       Utf16LEConvertToUtf16BE(const std::u16string& sInput);
 	std::u16string       Utf16LEConvertToUtf16BE(const char16_t* sInput);
+
+	std::u16string       Utf16BEConvertToUtf16LE(const std::u16string& sInput);
+	std::u16string       Utf16BEConvertToUtf16LE(const char16_t* sInput);
+
+	std::wstring         LocaleConvertToWide(const std::string& sInput);
+	std::wstring         LocaleConvertToWide(const char* sInput);
+
+	//// 宽字符转 Locale
+	std::string          WideConvertToLocale(const std::wstring& sInput);
+	std::string          WideConvertToLocale(const wchar_t* sInput);
+
+	std::wstring         Utf8ConvertToWide(const std::string& sInput);
+	std::wstring         Utf8ConvertToWide(const char* sInput);
+
+	std::string          WideConvertToUtf8(const std::wstring& sInput);
+	std::string          WideConvertToUtf8(const wchar_t* sInput);
+
+	std::string          Utf32ConvertToUtf8(const std::u32string& sInput);
+	std::u16string       Utf32ConvertToUtf16LE(const std::u32string& sInput);
+	std::u16string       Utf32ConvertToUtf16BE(const std::u32string& sInput);
+
+	std::u32string       Utf8ConvertToUtf32(const std::string& sInput);
+	std::u32string       Utf16LEConvertToUtf32(const std::u16string& sInput);
+	std::u32string       Utf16BEConvertToUtf32(const std::u16string& sInput);
+	
+	std::wstring         StringConvertToWstring(const std::string& str);
+	std::string          WstringConvertToString(const std::wstring& wstr);
 	
 private:
 	static const std::unordered_map<std::uint16_t,EncodingInfo>             m_encodingMap;
@@ -425,48 +263,198 @@ private:
 	}
 	UniConv(const UniConv&) = delete;
 	UniConv& operator=(const UniConv&) = delete;
+	public:
+		/// <summary>
+		/// 这里定义一些常用的编码
+		/// </summary>
+		/*{@ */
+
+		// European languages 欧洲语言
+		static constexpr const char* ascii_encoding = "ASCII";
+		static constexpr const char* iso_8859_1_encoding = "ISO-8859-1";
+		static constexpr const char* iso_8859_2_encoding = "ISO-8859-2";
+		static constexpr const char* iso_8859_3_encoding = "ISO-8859-3";
+		static constexpr const char* iso_8859_4_encoding = "ISO-8859-4";
+		static constexpr const char* iso_8859_5_encoding = "ISO-8859-5";
+		static constexpr const char* iso_8859_7_encoding = "ISO-8859-7";
+		static constexpr const char* iso_8859_9_encoding = "ISO-8859-9";
+		static constexpr const char* iso_8859_10_encoding = "ISO-8859-10";
+		static constexpr const char* iso_8859_13_encoding = "ISO-8859-13";
+		static constexpr const char* iso_8859_14_encoding = "ISO-8859-14";
+		static constexpr const char* iso_8859_15_encoding = "ISO-8859-15";
+		static constexpr const char* iso_8859_16_encoding = "ISO-8859-16";
+		static constexpr const char* koi8_r_encoding = "KOI8-R";
+		static constexpr const char* koi8_u_encoding = "KOI8-U";
+		static constexpr const char* koi8_ru_encoding = "KOI8-RU";
+		static constexpr const char* cp1250_encoding = "CP1250";
+		static constexpr const char* cp1251_encoding = "CP1251";
+		static constexpr const char* cp1252_encoding = "CP1252";
+		static constexpr const char* cp1253_encoding = "CP1253";
+		static constexpr const char* cp1254_encoding = "CP1254";
+		static constexpr const char* cp1257_encoding = "CP1257";
+		static constexpr const char* cp850_encoding = "CP850";
+		static constexpr const char* cp866_encoding = "CP866";
+		static constexpr const char* cp1131_encoding = "CP1131";
+		static constexpr const char* mac_roman_encoding = "MacRoman";
+		static constexpr const char* mac_central_europe_encoding = "MacCentralEurope";
+		static constexpr const char* mac_iceland_encoding = "MacIceland";
+		static constexpr const char* mac_croatian_encoding = "MacCroatian";
+		static constexpr const char* mac_romania_encoding = "MacRomania";
+		static constexpr const char* mac_cyrillic_encoding = "MacCyrillic";
+		static constexpr const char* mac_ukraine_encoding = "MacUkraine";
+		static constexpr const char* mac_greek_encoding = "MacGreek";
+		static constexpr const char* mac_turkish_encoding = "MacTurkish";
+		static constexpr const char* macintosh_encoding = "Macintosh";
+
+		// Semitic languages
+		static constexpr const char* iso_8859_6_encoding = "ISO-8859-6";
+		static constexpr const char* iso_8859_8_encoding = "ISO-8859-8";
+		static constexpr const char* cp1255_encoding = "CP1255";
+		static constexpr const char* cp1256_encoding = "CP1256";
+		static constexpr const char* cp862_encoding = "CP862";
+		static constexpr const char* mac_hebrew_encoding = "MacHebrew";
+		static constexpr const char* mac_arabic_encoding = "MacArabic";
+
+		// Japanese
+		static constexpr const char* euc_jp_encoding = "EUC-JP";
+		static constexpr const char* shift_jis_encoding = "SHIFT_JIS";
+		static constexpr const char* cp932_encoding = "CP932";
+		static constexpr const char* iso_2022_jp_encoding = "ISO-2022-JP";
+		static constexpr const char* iso_2022_jp_2_encoding = "ISO-2022-JP-2";
+		static constexpr const char* iso_2022_jp_1_encoding = "ISO-2022-JP-1";
+		static constexpr const char* iso_2022_jp_ms_encoding = "ISO-2022-JP-MS";
+
+		// Chinese
+		static constexpr const char* euc_cn_encoding = "EUC-CN";
+		static constexpr const char* hz_encoding = "HZ";
+		static constexpr const char* gbk_encoding = "GBK";
+		static constexpr const char* cp936_encoding = "CP936";
+		static constexpr const char* gb18030_encoding = "GB18030";
+		static constexpr const char* gb18030_2022_encoding = "GB18030:2022";
+		static constexpr const char* euc_tw_encoding = "EUC-TW";
+		static constexpr const char* big5_encoding = "BIG5";
+		static constexpr const char* cp950_encoding = "CP950";
+		static constexpr const char* big5_hkscs_encoding = "BIG5-HKSCS";
+		static constexpr const char* big5_hkscs_2004_encoding = "BIG5-HKSCS:2004";
+		static constexpr const char* big5_hkscs_2001_encoding = "BIG5-HKSCS:2001";
+		static constexpr const char* big5_hkscs_1999_encoding = "BIG5-HKSCS:1999";
+		static constexpr const char* iso_2022_cn_encoding = "ISO-2022-CN";
+		static constexpr const char* iso_2022_cn_ext_encoding = "ISO-2022-CN-EXT";
+
+		// Korean
+		static constexpr const char* euc_kr_encoding = "EUC-KR";
+		static constexpr const char* cp949_encoding = "CP949";
+		static constexpr const char* iso_2022_kr_encoding = "ISO-2022-KR";
+		static constexpr const char* johab_encoding = "JOHAB";
+
+		// Armenian
+		static constexpr const char* armscii_8_encoding = "ARMSCII-8";
+
+		// Georgian
+		static constexpr const char* georgian_academy_encoding = "Georgian-Academy";
+		static constexpr const char* georgian_ps_encoding = "Georgian-PS";
+
+		// Tajik
+		static constexpr const char* koi8_t_encoding = "KOI8-T";
+
+		// Kazakh
+		static constexpr const char* pt154_encoding = "PT154";
+		static constexpr const char* rk1048_encoding = "RK1048";
+
+		// Thai
+		static constexpr const char* tis_620_encoding = "TIS-620";
+		static constexpr const char* cp874_encoding = "CP874";
+		static constexpr const char* mac_thai_encoding = "MacThai";
+
+		// Laotian
+		static constexpr const char* mulelao_1_encoding = "MuleLao-1";
+		static constexpr const char* cp1133_encoding = "CP1133";
+
+		// Vietnamese
+		static constexpr const char* viscii_encoding = "VISCII";
+		static constexpr const char* tcvn_encoding = "TCVN";
+		static constexpr const char* cp1258_encoding = "CP1258";
+
+		// Platform specifics
+		static constexpr const char* hp_roman8_encoding = "HP-ROMAN8";
+		static constexpr const char* nextstep_encoding = "NEXTSTEP";
+
+		// Full Unicode
+		static constexpr const char* utf_8_encoding = "UTF-8";
+		static constexpr const char* ucs_2_encoding = "UCS-2";
+		static constexpr const char* ucs_2be_encoding = "UCS-2BE";
+		static constexpr const char* ucs_2le_encoding = "UCS-2LE";
+		static constexpr const char* ucs_4_encoding = "UCS-4";
+		static constexpr const char* ucs_4be_encoding = "UCS-4BE";
+		static constexpr const char* ucs_4le_encoding = "UCS-4LE";
+		static constexpr const char* utf_16_encoding = "UTF-16";
+		static constexpr const char* utf_16be_encoding = "UTF-16BE";
+		static constexpr const char* utf_16le_encoding = "UTF-16LE";
+		static constexpr const char* utf_32_encoding = "UTF-32";
+		static constexpr const char* utf_32be_encoding = "UTF-32BE";
+		static constexpr const char* utf_32le_encoding = "UTF-32LE";
+		static constexpr const char* utf_7_encoding = "UTF-7";
+
+		// Locale dependent
+		static constexpr const char* char_encoding = "char";
+		static constexpr const char* wchar_t_encoding = "wchar_t";
+
+		// EBCDIC compatible (not ASCII compatible, very rarely used)
+		static constexpr const char* ibm_037_encoding = "IBM-037";
+		static constexpr const char* ibm_273_encoding = "IBM-273";
+		static constexpr const char* ibm_277_encoding = "IBM-277";
+		static constexpr const char* ibm_278_encoding = "IBM-278";
+		static constexpr const char* ibm_280_encoding = "IBM-280";
+		static constexpr const char* ibm_282_encoding = "IBM-282";
+		static constexpr const char* ibm_284_encoding = "IBM-284";
+		static constexpr const char* ibm_285_encoding = "IBM-285";
+		static constexpr const char* ibm_297_encoding = "IBM-297";
+		static constexpr const char* ibm_423_encoding = "IBM-423";
+		static constexpr const char* ibm_500_encoding = "IBM-500";
+		static constexpr const char* ibm_870_encoding = "IBM-870";
+		static constexpr const char* ibm_871_encoding = "IBM-871";
+		static constexpr const char* ibm_875_encoding = "IBM-875";
+		static constexpr const char* ibm_880_encoding = "IBM-880";
+		static constexpr const char* ibm_905_encoding = "IBM-905";
+		static constexpr const char* ibm_924_encoding = "IBM-924";
+		static constexpr const char* ibm_1025_encoding = "IBM-1025";
+		static constexpr const char* ibm_1026_encoding = "IBM-1026";
+		static constexpr const char* ibm_1047_encoding = "IBM-1047";
+		static constexpr const char* ibm_1112_encoding = "IBM-1112";
+		static constexpr const char* ibm_1122_encoding = "IBM-1122";
+		static constexpr const char* ibm_1123_encoding = "IBM-1123";
+		static constexpr const char* ibm_1140_encoding = "IBM-1140";
+		static constexpr const char* ibm_1141_encoding = "IBM-1141";
+		static constexpr const char* ibm_1142_encoding = "IBM-1142";
+		static constexpr const char* ibm_1143_encoding = "IBM-1143";
+		static constexpr const char* ibm_1144_encoding = "IBM-1144";
+		static constexpr const char* ibm_1145_encoding = "IBM-1145";
+		static constexpr const char* ibm_1146_encoding = "IBM-1146";
+		static constexpr const char* ibm_1147_encoding = "IBM-1147";
+		static constexpr const char* ibm_1148_encoding = "IBM-1148";
+		static constexpr const char* ibm_1149_encoding = "IBM-1149";
+		static constexpr const char* ibm_1153_encoding = "IBM-1153";
+		static constexpr const char* ibm_1154_encoding = "IBM-1154";
+		static constexpr const char* ibm_1155_encoding = "IBM-1155";
+		static constexpr const char* ibm_1156_encoding = "IBM-1156";
+		static constexpr const char* ibm_1157_encoding = "IBM-1157";
+		static constexpr const char* ibm_1158_encoding = "IBM-1158";
+		static constexpr const char* ibm_1165_encoding = "IBM-1165";
+		static constexpr const char* ibm_1166_encoding = "IBM-1166";
+		static constexpr const char* ibm_4971_encoding = "IBM-4971";
+		static constexpr const char* ibm_424_encoding = "IBM-424";
+		static constexpr const char* ibm_425_encoding = "IBM-425";
+		static constexpr const char* ibm_12712_encoding = "IBM-12712";
+		static constexpr const char* ibm_16804_encoding = "IBM-16804";
+		static constexpr const char* ibm_1097_encoding = "IBM-1097";
+		static constexpr const char* ibm_838_encoding = "IBM-838";
+		static constexpr const char* ibm_1160_encoding = "IBM-1160";
+		static constexpr const char* ibm_1132_encoding = "IBM-1132";
+		static constexpr const char* ibm_1130_encoding = "IBM-1130";
+		static constexpr const char* ibm_1164_encoding = "IBM-1164";
+		static constexpr const char* ibm_1137_encoding = "IBM-1137";
+		/*@}*/
 };
 
-
-
-//TODO : 接口
-// UTF-16LE/BE 转 UTF-8
-
-// UTF-8 转 UTF-16LE/BE
-
-
-//
-////补充 UTF-16LE/BE 互转接口
-
-//std::u16string Utf16BEToUtf16LE(const std::u16string& sInput) {};
-//std::u16string Utf16BEToUtf16LE(const char16_t* sInput) {};
-
-//补充宽字符（wchar_t）支持接口
-//兼容 Windows 宽字符（UTF-16）和 Linux 宽字符（UTF-32）的转换
-//
-//// Locale 转宽字符
-//std::wstring LocaleToWide(const std::string& sInput);
-//std::wstring LocaleToWide(const char* sInput);
-//
-//// 宽字符转 Locale
-//std::string WideToLocale(const std::wstring& sInput);
-//std::string WideToLocale(const wchar_t* sInput);
-//
-//// 宽字符与 UTF-8 互转
-//std::wstring Utf8ToWide(const std::string& sInput);
-//std::wstring Utf8ToWide(const char* sInput);
-//std::string WideToUtf8(const std::wstring& sInput);
-//std::string WideToUtf8(const wchar_t* sInput);
-//
-////补充 UTF-32 编码支持接口
-//// UTF-32 转其他编码
-//std::string Utf32ToUtf8(const std::u32string& sInput);
-//std::u16string Utf32ToUtf16LE(const std::u32string& sInput);
-//std::u16string Utf32ToUtf16BE(const std::u32string& sInput);
-//
-//// 其他编码转 UTF-32
-//std::u32string Utf8ToUtf32(const std::string& sInput);
-//std::u32string Utf16LEToUtf32(const std::u16string& sInput);
-//std::u32string Utf16BEToUtf32(const std::u16string& sInput);
 #endif // __UNICONV_H__
 
