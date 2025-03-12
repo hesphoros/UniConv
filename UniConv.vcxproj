@@ -133,11 +133,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="convert_tools.h" />
     <ClInclude Include="Singleton.h" />
     <ClInclude Include="UniConv.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="convet_tools.cpp" />
     <ClCompile Include="gbk_str.cpp" />
+    <ClCompile Include="LightLogWriteImpl.h" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="UniConv.cpp" />
     <ClCompile Include="utf8_str.cpp" />

@@ -40,8 +40,6 @@
 #define UNICONV_EXPORT
 #endif
 
-
-
 #define DEBUG
 
 // 适配 Visual Studio 的 __cplusplus 宏
@@ -51,18 +49,24 @@
 #else
 #define CPP_STANDARD __cplusplus
 #endif
-std::string current_cpp_standard =
+
+// 强制要求最低 C++11 标准
+static_assert(CPP_STANDARD >= 201103L, "Error: This code requires C++11 or later");
+
+// 在头文件中定义常量
+inline constexpr std::string_view current_cpp_standard() {
 #if CPP_STANDARD >= 202002L
-"C++20 or later";
+	return "C++20 or later";
 #elif CPP_STANDARD >= 201703L
-"C++17";
+	return "C++17";
 #elif CPP_STANDARD >= 201402L
-"C++14";
+	return "C++14";
 #elif CPP_STANDARD >= 201103L
-"C++11";
+	return "C++11";
 #else
-"C++03 or earlier";
+	return "C++03 or earlier";
 #endif
+}
 
 
 //TODO: 错误记录使用unique_ptr get() 罗指针构造错误 

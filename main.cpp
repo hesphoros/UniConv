@@ -1,6 +1,10 @@
 ﻿#include "UniConv.h"
+#include "LightLogWriteImpl.h"
+
+#if CPP_STANDARD < CPP_STANDARD
 #include <codecvt>
-#define DEBUG
+#endif
+
 
 auto gUniConv = UniConv::GetInstance();
 
@@ -22,25 +26,8 @@ void TestLocale2Utf8() {
 }
 
 
-void TestLocale2Utf16LE() {
-	const char* test_cstr = "这是一个c测试字符串,用来转换成Utf-16LE编码";
-	std::string test_str = "这是一个cpp测试字符串,用来转换成Utf-16LE编码";
-	
-	std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
-	std::cout << converter.to_bytes(gUniConv->LocaleConvertToUtf16LE(test_cstr)) << "\n";
-	std::cout << converter.to_bytes(gUniConv->LocaleConvertToUtf16LE(test_str)) << "\n";
-	
-}
 
-void TestLocale2Utf16BE() {
 
-	const char* test_cstr = "这是一个c测试字符串,用来转换成Utf-16BE编码";
-	std::string test_str = "这是一个cpp测试字符串,用来转换成Utf-16BE编码";
-	std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
-	//std::cout << gUniConv->Utf16BEConvertToLocale((gUniConv->LocaleConvertToUtf16BE(test_cstr))) << "\n";
-    std::cout << converter.to_bytes(gUniConv->LocaleConvertToUtf16BE(test_cstr)) << "\n";
-    //std::cout << converter.to_bytes(gUniConv->LocaleConvertToUtf16BE(test_str)) << "\n";
-}
 
 
 void TestWide2Utf8() {
@@ -53,8 +40,9 @@ void TestWide2Utf8() {
 	std::cout << sstr1 << "\n" << sstr2 << "\n";
 }
 
+// 测试成功
 void TestGB2321ToUtf8() {
-	// 测试成功
+	
 	//设置本地环境编码为UTF-8
 	
 	std::string src_str = "这是一个测试的字符串，用来转换成Utf-8编码";
@@ -75,7 +63,7 @@ void TestGB2321ToUtf8() {
 	}
 	std::string iutf8_str;
 	std::string iutf8_cstr;
-	std::ifstream in_file("outputUTF8.txt");
+	std::ifstream in_file("InputGB18030.txt");
 	if (in_file.is_open()) {		
        
 		std::getline(in_file, iutf8_str);		
@@ -112,3 +100,50 @@ void TestGB18030ToUTF8() {
 int main(void) {
 	TestGB2321ToUtf8();
 }
+
+
+
+// 测试日志文件创建和写入
+void TestLogFileCreation() {
+	LightLogWrite_Impl logger;
+
+	logger.SetLogsFileName(L"test_log.txt");
+	logger.WriteLogContent(L"INFO", L"This is a test info  log message.");
+	std::this_thread::sleep_for(std::chrono::seconds(1)); // 等待日志写入完成
+	std::cout << "TestLogFileCreation: Log file created and message written.\n";
+}
+
+// 测试多线程日志写入
+void TestMultiThreadLogging() {
+	LightLogWrite_Impl logger;
+	logger.SetLogsFileName(L"multi_thread_log.txt");
+
+	auto logTask = [&logger](int threadId) {
+		for (int i = 0; i < 5; ++i) {
+			std::wstring message = L"Thread " + std::to_wstring(threadId) + L" - Log " + std::to_wstring(i);
+			logger.WriteLogContent(L"TestMultiThreadLogging", message);
+			std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 模拟延迟
+		}
+		};
+
+	std::vector<std::thread> threads;
+	for (int i = 0; i < 5; ++i) {
+		threads.emplace_back(logTask, i + 1);
+	}
+
+	for (auto& t : threads) {
+		t.join();
+	}
+
+	std::cout << "TestMultiThreadLogging: Log messages written from multiple threads.\n";
+}
+
+// 测试日志持久化功能
+void TestLogLasting() {
+	LightLogWrite_Impl logger;
+	logger.SetLastingsLogs(L"./logs", L"test_log_");
+	logger.WriteLogContent(L"TestLogLasting", L"This is a persistent log message.");
+	logger.WriteLogContent(L"     INFO     ", L"This is a debug log message.");
+	std::this_thread::sleep_for(std::chrono::seconds(1)); // 等待日志写入完成
+}
+

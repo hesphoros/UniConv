@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SINGLETON_H
+#define SINGLETON_H
 #include <memory>
 
 template <typename T>
@@ -30,3 +31,5 @@ public:
 
 template <typename T>
 std::shared_ptr<T> Singleton<T>::_instance = nullptr;
+
+#endif SINGLETON_H

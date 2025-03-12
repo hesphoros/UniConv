@@ -21,6 +21,9 @@
     <ClInclude Include="Singleton.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="convert_tools.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -34,6 +37,12 @@
     </ClCompile>
     <ClCompile Include="utf8_str.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="convet_tools.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="LightLogWriteImpl.h">
+      <Filter>头文件</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
