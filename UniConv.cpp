@@ -773,24 +773,28 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 	// 返回转换结果
 	if (iconv_result.error_code == 0) {
 		converted_result.shrink_to_fit();
-		//iconv_result.conv_result_str = std::move(converted_result);
-		iconv_result.conv_result_str = converted_result;
+		iconv_result.conv_result_str = std::move(converted_result);
+	
 	}
 	return iconv_result;
 }
 
 
-std::string_view UniConv::GetIconvErrorString(int err_code)
+UniConv::IConvResult UniConv::Convert(std::wstring_view in, const char* fromcode, const char* tocode)
+{
+	//todo
+	return Convert(std::string(in.begin(), in.end()), fromcode, tocode);
+}
+
+std::string UniConv::GetIconvErrorString(int err_code)
 {
 	auto it = m_iconvErrorMap.find(err_code);
 	if (it != m_iconvErrorMap.end()) {
-		return it->second;
+		return std::string(it->second);
 	}
-	std::string error_message = std::generic_category().message(err_code);
-	return std::string_view(error_message);
-
-
+	return std::string(std::generic_category().message(err_code));
 }
+
 
 //UniConv::IconvUniquePtr  UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
 //{

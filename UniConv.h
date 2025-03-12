@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <string_view>
 #include <cerrno>
+#include <fstream>
 #include <cstring>
 #include <system_error>
 #include <mutex>
@@ -39,7 +40,27 @@
 #define UNICONV_EXPORT
 #endif
 
+#if __cplusplus >= 202002L
+// C++20或更高版本
+	std::cout << "C++20 or later" << std::endl;	
+#elif __cplusplus >= 201703L
+// C++17
+	std::cout << "C++17" << std::endl;
+#elif __cplusplus >= 201402L
+// C++14
+	std::cout << "C++14" << std::endl;
+#elif __cplusplus >= 201103L
+// C++11
+	std::cout << "C++11" << std::endl;
+#else
+// C++03或更早
+	std::cout << "C++03 or earlier" << std::endl;
+#endif
+
+
 #define DEBUG
+
+
 
 
 //TODO: 错误记录使用unique_ptr get() 罗指针构造错误 
@@ -137,7 +158,7 @@ public:
 	static std::string   GetEncodingNameByCodePage(std::uint16_t codePage);
 
 	/// <summary>
-	/// 本地编码转换为UTF-8
+	/// 本地编码转换为UTF-8 TEST SUCCESS
 	/// </summary>
 	/// <param name="input"></param>
 	/// <returns></returns>
@@ -145,7 +166,7 @@ public:
 	std::string          LocaleConvertToUtf8(const char* sInput);
 
 	/// <summary>
-	/// UTF-8 转换为本地编码
+	/// UTF-8 转换为本地编码 TEST SUCCESS
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
@@ -242,8 +263,8 @@ private:
 	/// <param name="tocode"></param>
 	/// <returns></returns>
 	IConvResult                         Convert(std::string_view in, const char* fromcode, const char* tocode);
-
-	static std::string_view             GetIconvErrorString(int err_code);
+	IConvResult                         Convert(std::wstring_view in, const char* fromcode, const char* tocode);
+	static std::string                  GetIconvErrorString(int err_code);
 
 	/// <summary>
 	/// 获取iconv 转换描述符
