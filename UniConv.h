@@ -9,7 +9,7 @@
 #include <cwchar>
 #include <clocale>
 #include <sstream>
-#include <string>
+#include <iostream>
 #include <vector>
 #include <errno.h>
 #include <string_view>
@@ -40,27 +40,29 @@
 #define UNICONV_EXPORT
 #endif
 
-#if __cplusplus >= 202002L
-// C++20或更高版本
-	std::cout << "C++20 or later" << std::endl;	
-#elif __cplusplus >= 201703L
-// C++17
-	std::cout << "C++17" << std::endl;
-#elif __cplusplus >= 201402L
-// C++14
-	std::cout << "C++14" << std::endl;
-#elif __cplusplus >= 201103L
-// C++11
-	std::cout << "C++11" << std::endl;
-#else
-// C++03或更早
-	std::cout << "C++03 or earlier" << std::endl;
-#endif
 
 
 #define DEBUG
 
-
+// 适配 Visual Studio 的 __cplusplus 宏
+#if defined(_MSC_VER)
+	// MSVC 编译器需要检查 _MSVC_LANG
+#define CPP_STANDARD _MSVC_LANG
+#else
+#define CPP_STANDARD __cplusplus
+#endif
+std::string current_cpp_standard =
+#if CPP_STANDARD >= 202002L
+"C++20 or later";
+#elif CPP_STANDARD >= 201703L
+"C++17";
+#elif CPP_STANDARD >= 201402L
+"C++14";
+#elif CPP_STANDARD >= 201103L
+"C++11";
+#else
+"C++03 or earlier";
+#endif
 
 
 //TODO: 错误记录使用unique_ptr get() 罗指针构造错误 
