@@ -796,36 +796,7 @@ std::string UniConv::GetIconvErrorString(int err_code)
 }
 
 
-//UniConv::IconvUniquePtr  UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
-//{
-//	//缓存key
-//	std::string key = std::string(fromcode) + ":" + tocode;
-//
-//	std::cout << key << std::endl;
-//
-//	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
-//	// 查找缓存
-//	auto it = m_iconvDesscriptorCacheMap.find(key);
-//
-//	if (it != m_iconvDesscriptorCacheMap.end()) {
-//		// 返回缓存的描述符（直接返回 IconvUniquePtr） 此处不能使用get()获取原始指针来构造新的IconvUniquePtr
-//		return UniConv::IconvUniquePtr(it->second.release());
-//	}
-//
-//	//打开新的新的iconv 描述符
-//	iconv_t cd = iconv_open(tocode, fromcode);
-//	if (cd == reinterpret_cast<iconv_t>(-1)) {
-//		std::cout <<"iconv_open error" << std::endl;
-//		return IconvUniquePtr(nullptr); 
-//	}
-//	auto result = m_iconvDesscriptorCacheMap.emplace(key, IconvUniquePtr(cd));
-//	if (!result.second) {
-//		std::cerr << "Failed to insert into cache" << std::endl;
-//		return IconvUniquePtr(nullptr);
-//	}
-//	//返回缓存的
-//	return IconvUniquePtr(result.first->second.release());
-//}
+
 
 UniConv::IconvSharedPtr UniConv::GetIconvDescriptorS(const char* fromcode, const char* tocode)
 {

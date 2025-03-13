@@ -7,6 +7,7 @@
 
 
 auto gUniConv = UniConv::GetInstance();
+LightLogWrite_Impl gLogWrite;
 
 void TestUtf82Locale() {
 	extern char const* utf8_cstr;
@@ -43,7 +44,6 @@ void TestWide2Utf8() {
 // 测试成功
 void TestGB2321ToUtf8() {
 	
-	//设置本地环境编码为UTF-8
 	
 	std::string src_str = "这是一个测试的字符串，用来转换成Utf-8编码";
 	const char* src_cstr = "这是一个测试的C字符串，用来转换为Utf-8编码";
@@ -63,16 +63,16 @@ void TestGB2321ToUtf8() {
 	}
 	std::string iutf8_str;
 	std::string iutf8_cstr;
-	std::ifstream in_file("InputGB18030.txt");
+	std::ifstream in_file("outputUTF8.txt");
 	if (in_file.is_open()) {		
        
 		std::getline(in_file, iutf8_str);		
 		std::getline(in_file, iutf8_cstr);
 		in_file.close();
-		std::cout << "Before convert " << iutf8_str <<iutf8_str << std::endl;
+		std::cout << "Before convert:\n" << "\t" << iutf8_str <<"\n\t"<< iutf8_cstr << std::endl;
 		std::string convert_out_utf8_str = gUniConv->Utf8ConvertToLocale(iutf8_str);
 		std::string convert_oututf8_cstr = gUniConv->Utf8ConvertToLocale(iutf8_cstr); 
-		std::cout << "After convert" << convert_out_utf8_str << convert_oututf8_cstr << std::endl;
+		std::cout << "Before convert:\n" << "\t" << convert_out_utf8_str << "\n\t" << convert_oututf8_cstr << std::endl;
 	
 
 	}
@@ -93,12 +93,14 @@ void TestGB18030ToUTF8() {
 		std::cout<< "After convert" << convert_out_utf8_str << std::endl;
 	}
 
-
-
 }
 
-int main(void) {
+int main() {
+	gLogWrite.SetLastingsLogs("./log","uniconv");
+	//gLogWrite.SetLogsFileName(L"uniconv.log");
+	gLogWrite.WriteLogContent(L"INFO", L"This is a test info  log message.");
 	TestGB2321ToUtf8();
+	return 0;
 }
 
 
@@ -136,14 +138,5 @@ void TestMultiThreadLogging() {
 	}
 
 	std::cout << "TestMultiThreadLogging: Log messages written from multiple threads.\n";
-}
-
-// 测试日志持久化功能
-void TestLogLasting() {
-	LightLogWrite_Impl logger;
-	logger.SetLastingsLogs(L"./logs", L"test_log_");
-	logger.WriteLogContent(L"TestLogLasting", L"This is a persistent log message.");
-	logger.WriteLogContent(L"     INFO     ", L"This is a debug log message.");
-	std::this_thread::sleep_for(std::chrono::seconds(1)); // 等待日志写入完成
 }
 
