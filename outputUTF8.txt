@@ -1,2 +1,16 @@
 这是一个测试的字符串，用来转换成Utf-8编码
 这是一个测试的C字符串，用来转换为Utf-8编码
+This is a test C string to convert to UTF-8 encoding
+This is a test C string to convert to UTF-8 encoding
+Это тестовая C-строка для преобразования в кодировку Utf-8
+Это тестовая C-строка для преобразования в кодировку Utf-8
+Invalid multibyte sequence
+Invalid multibyte sequence
+??? UTF-8 ????? ???? ?? ??? C ??????
+??? UTF-8 ????? ???? ?? ??? C ??????
+Ceci est une cha?ne C de test pour convertir en encodage Utf-8
+Ceci est une cha?ne C de test pour convertir en encodage Utf-8
+Esta é uma string C de teste para converter para codifica??o Utf-8
+Esta é uma string C de teste para converter para codifica??o Utf-8
+Questa è una stringa C di test per la conversione in codifica Utf-8
+Questa è una stringa C di test per la conversione in codifica Utf-8

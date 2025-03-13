@@ -45,15 +45,59 @@ void TestWide2Utf8() {
 void TestGB2321ToUtf8() {
 	
 	
-	std::string src_str = "这是一个测试的字符串，用来转换成Utf-8编码";
-	const char* src_cstr = "这是一个测试的C字符串，用来转换为Utf-8编码";
-	std::string res_cstrutf8 = gUniConv->LocaleConvertToUtf8(src_cstr);
-	std::string res_strutf8  = gUniConv->LocaleConvertToUtf8(src_str);
+	std::string chinese_str = "这是一个测试的字符串，用来转换成Utf-8编码";
+	const char* chinese_cstr = "这是一个测试的C字符串，用来转换为Utf-8编码";
+	std::string chinese_cstrutf8 = gUniConv->LocaleConvertToUtf8(chinese_str);
+	std::string chinese_strutf8  = gUniConv->LocaleConvertToUtf8(chinese_cstr);
+
+	std::string english_str = "This is a test string to convert to UTF-8 encoding";
+	const char* english_cstr = "This is a test C string to convert to UTF-8 encoding";
+	std::string english_conv_str = gUniConv->LocaleConvertToUtf8(english_cstr);
+	std::string english_conv_cstr = gUniConv->LocaleConvertToUtf8(english_cstr);
+
+	std::string japanese_str = "これはUTF-8エンコードに変換するためのテスト文字列です";
+	const char* japanese_cstr = "これはUTF-8エンコードに変換するためのテストC文字列です";
+	std::string japanese_conv_str = gUniConv->LocaleConvertToUtf8(japanese_cstr);
+    std::string japanese_conv_cstr = gUniConv->LocaleConvertToUtf8(japanese_cstr);
+
+	//韩文
+	std::string korean_str = "이것은 UTF-8 인코딩으로 변환하기 위한 테스트 문자열입니다";
+	const char* korean_cstr = "이것은 UTF-8 인코딩으로 변환하기 위한 테스트 C 문자열입니다";
+	std::string	korean_conv_str = gUniConv->LocaleConvertToUtf8(korean_cstr);
+    std::string korean_conv_cstr = gUniConv->LocaleConvertToUtf8(korean_cstr);
+
+	std::string french_str = "Ceci est une chaîne de test pour convertir en encodage Utf-8";
+	const char* french_cstr = "Ceci est une chaîne C de test pour convertir en encodage Utf-8";
+	std::string french_conv_str = gUniConv->LocaleConvertToUtf8(french_cstr);
+    std::string french_conv_cstr = gUniConv->LocaleConvertToUtf8(french_cstr);
+
+	std::string spanish_str = "Esta es una cadena de prueba para convertir a codificación Utf-8";
+	const char* spanish_cstr = "Esta es una cadena C de prueba para convertir a codificación Utf-8";
+	std::string spanish_conv_str = gUniConv->LocaleConvertToUtf8(spanish_cstr);
+    std::string spanish_conv_cstr = gUniConv->LocaleConvertToUtf8(spanish_cstr);
+
+	std::string russian_str = "Это тестовая строка для преобразования в кодировку Utf-8";
+	const char* russian_cstr = "Это тестовая C-строка для преобразования в кодировку Utf-8";
+    std::string russian_conv_str = gUniConv->LocaleConvertToUtf8(russian_cstr);
+    std::string russian_conv_cstr = gUniConv->LocaleConvertToUtf8(russian_cstr);
+
+	//葡萄牙文
+	std::string portuguese_str = "Esta é uma string de teste para converter para codificação Utf-8";
+	const char* portuguese_cstr = "Esta é uma string C de teste para converter para codificação Utf-8";
+    std::string portuguese_conv_str = gUniConv->LocaleConvertToUtf8(portuguese_cstr);
+    std::string portuguese_conv_cstr = gUniConv->LocaleConvertToUtf8(portuguese_cstr);
+
+
+	std::string italian_str = "Questa è una stringa di test per la conversione in codifica Utf-8";
+	const char* italian_cstr = "Questa è una stringa C di test per la conversione in codifica Utf-8";
+	std::string italian_conv_str = gUniConv->LocaleConvertToUtf8(italian_cstr);
+    std::string italian_conv_cstr = gUniConv->LocaleConvertToUtf8(italian_cstr);
+
 	// 打开文件并写入字符串
 	std::ofstream out_file("outputUTF8.txt");
 	if (out_file.is_open()) {
-		out_file << res_strutf8 << std::endl; // 将字符串写入文件
-		out_file << res_cstrutf8;
+		//TODO 
+
 		out_file.close();
 		std::cout << "String successfully written to file." << std::endl;
 	}
@@ -96,9 +140,9 @@ void TestGB18030ToUTF8() {
 }
 
 int main() {
-	gLogWrite.SetLastingsLogs("./log","uniconv");
+	gLogWrite.SetLastingsLogs("./log","TestGB2312TOUTF8");
 	//gLogWrite.SetLogsFileName(L"uniconv.log");
-	gLogWrite.WriteLogContent(L"INFO", L"This is a test info  log message.");
+	
 	TestGB2321ToUtf8();
 	return 0;
 }
