@@ -7,7 +7,7 @@
 
 
 auto gUniConv = UniConv::GetInstance();
-LightLogWrite_Impl gLogWrite;
+
 
 void TestUtf82Locale() {
 	extern char const* utf8_cstr;
@@ -45,13 +45,13 @@ void TestWide2Utf8() {
 void TestGB2321ToUtf8() {
 	
 	
-	std::string chinese_str = "这是一个测试的字符串，用来转换成Utf-8编码";
-	const char* chinese_cstr = "这是一个测试的C字符串，用来转换为Utf-8编码";
-	std::string chinese_cstrutf8 = gUniConv->LocaleConvertToUtf8(chinese_str);
-	std::string chinese_strutf8  = gUniConv->LocaleConvertToUtf8(chinese_cstr);
+	std::string chinese_str =  "这是一个测试的string字符串，用来转换成Utf-8编码";
+	const char* chinese_cstr = "这是一个测试的const char 字符串，用来转换为Utf-8编码";
+	std::string chinese_conv_strutf8 = gUniConv->LocaleConvertToUtf8(chinese_str);
+	std::string chinese_conv_cstrutf8  = gUniConv->LocaleConvertToUtf8(chinese_cstr);
 
 	std::string english_str = "This is a test string to convert to UTF-8 encoding";
-	const char* english_cstr = "This is a test C string to convert to UTF-8 encoding";
+	const char* english_cstr = "This is a test  const char* str  to convert to UTF-8 encoding";
 	std::string english_conv_str = gUniConv->LocaleConvertToUtf8(english_cstr);
 	std::string english_conv_cstr = gUniConv->LocaleConvertToUtf8(english_cstr);
 
@@ -97,7 +97,11 @@ void TestGB2321ToUtf8() {
 	std::ofstream out_file("outputUTF8.txt");
 	if (out_file.is_open()) {
 		//TODO 
+		out_file << "Chinese:" << std::endl;
+		out_file << "\t" << chinese_conv_strutf8 << "\n" << "\t" << chinese_conv_cstrutf8 << "\n";
 
+		out_file << "English:" << std::endl;
+        out_file << "\t" << english_conv_str << "\n" << "\t" << english_conv_cstr << "\n";
 		out_file.close();
 		std::cout << "String successfully written to file." << std::endl;
 	}
@@ -105,25 +109,7 @@ void TestGB2321ToUtf8() {
 		std::cerr << "Failed to open file for writing." << std::endl;
 		
 	}
-	std::string iutf8_str;
-	std::string iutf8_cstr;
-	std::ifstream in_file("outputUTF8.txt");
-	if (in_file.is_open()) {		
-       
-		std::getline(in_file, iutf8_str);		
-		std::getline(in_file, iutf8_cstr);
-		in_file.close();
-		std::cout << "Before convert:\n" << "\t" << iutf8_str <<"\n\t"<< iutf8_cstr << std::endl;
-		std::string convert_out_utf8_str = gUniConv->Utf8ConvertToLocale(iutf8_str);
-		std::string convert_oututf8_cstr = gUniConv->Utf8ConvertToLocale(iutf8_cstr); 
-		std::cout << "Before convert:\n" << "\t" << convert_out_utf8_str << "\n\t" << convert_oututf8_cstr << std::endl;
-	
 
-	}
-	else {
-		std::cerr << "Failed to open file for reading." << std::endl;
-		
-	}
 }
 
 void TestGB18030ToUTF8() {

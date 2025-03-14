@@ -1,5 +1,6 @@
 #include "UniConv.h"
-
+#include "LightLogWriteImpl.h"
+ 
 
 const std::unordered_map<int, std::string_view> UniConv::m_iconvErrorMap = {
 	{EILSEQ, "Invalid multibyte sequence"},

@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include "Singleton.h"
 
+
 #ifdef _WIN32
 #include <windows.h>
 #endif // _WIN32
@@ -67,6 +68,8 @@ inline constexpr std::string_view current_cpp_standard() {
 	return "C++03 or earlier";
 #endif
 }
+
+ 
 
 
 //TODO: 错误记录使用unique_ptr get() 罗指针构造错误 
