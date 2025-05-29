@@ -41,21 +41,21 @@
 
 
 
-//TODO: ´íÎó¼ÇÂ¼Ê¹ÓÃunique_ptr get() ÂÞÖ¸Õë¹¹Ôì´íÎó 
-// ×îÖÕÊ¹ÓÃshared_ptr ±£´æ´íÎóÐÅÏ¢
+//TODO: ï¿½ï¿½ï¿½ï¿½ï¿½Â¼Ê¹ï¿½ï¿½unique_ptr get() ï¿½ï¿½Ö¸ï¿½ë¹¹ï¿½ï¿½ï¿½ï¿½ï¿½ 
+// ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½shared_ptr ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
 
 
 class __declspec(dllexport) UniConv : public Singleton<UniConv>
 {
 
-	friend class Singleton<UniConv>; // ÔÊÐí Singleton ·ÃÎÊ Convert µÄË½ÓÐ¹¹Ôìº¯Êý
+	friend class Singleton<UniConv>; // ï¿½ï¿½ï¿½ï¿½ Singleton ï¿½ï¿½ï¿½ï¿½ Convert ï¿½ï¿½Ë½ï¿½Ð¹ï¿½ï¿½ìº¯ï¿½ï¿½
 public:
 	/// <summary>
-	/// ÕâÀï¶¨ÒåÒ»Ð©³£ÓÃµÄ±àÂë
+	/// ï¿½ï¿½ï¿½ï¶¨ï¿½ï¿½Ò»Ð©ï¿½ï¿½ï¿½ÃµÄ±ï¿½ï¿½ï¿½
 	/// </summary>
 	/*{@ */
 		
-	// European languages Å·ÖÞÓïÑÔ
+	// European languages Å·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	static constexpr const char* ascii_encoding = "ASCII";
 	static constexpr const char* iso_8859_1_encoding = "ISO-8859-1";
 	static constexpr const char* iso_8859_2_encoding = "ISO-8859-2";
@@ -241,11 +241,11 @@ public:
 	static constexpr const char* ibm_1137_encoding = "IBM-1137";
 	/*@}*/
 private:
-	// ×Ô¶¨ÒåÉ¾³ýÆ÷£¬ÓÃÓÚÊÍ·Å iconv_t ×ÊÔ´
+	// ï¿½Ô¶ï¿½ï¿½ï¿½É¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í·ï¿½ iconv_t ï¿½ï¿½Ô´
 	struct IconvDeleter {
 		void operator()(iconv_t cd) const {
 			std::cerr << "Closing iconv_t: " << cd << std::endl;
-			// Ö»ÓÐÔÚ cd ²»ÊÇÎÞÐ§¾ä±úÊ±²Åµ÷ÓÃ iconv_close
+			// Ö»ï¿½ï¿½ï¿½ï¿½ cd ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§ï¿½ï¿½ï¿½Ê±ï¿½Åµï¿½ï¿½ï¿½ iconv_close
 			if (cd != reinterpret_cast<iconv_t>(-1)) {
 				iconv_close(cd);
 			}
@@ -256,25 +256,25 @@ private:
 	using IconvSharedPtr = std::shared_ptr <std::remove_pointer<iconv_t>::type>;
 	
 	/// <summary>
-	/// ±àÂëÐÅÏ¢
+	/// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
 	/// </summary>
 	struct EncodingInfo
 	{
-		std::string dotNetName;//±àÂëÃû³Æ
+		std::string dotNetName;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		std::string extra_info;
 	};
 
 public:
 	
 	/// <summary>
-	/// ×ª»»½á¹û½á¹¹Ìå
+	/// ×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½
 	/// </summary>
 	struct IConvResult {
-		std::string        conv_result_str;// ×ª»»³É¹¦µÄ½á¹û Ê¹ÓÃÐÂ±àÂëµÄ×Ö·û´®
-		int                error_code = 0; // ´íÎóÂë
-		std::string        error_msg = {}; // ´íÎóÐÅÏ¢
+		std::string        conv_result_str;// ×ªï¿½ï¿½ï¿½É¹ï¿½ï¿½Ä½ï¿½ï¿½ Ê¹ï¿½ï¿½ï¿½Â±ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½
+		int                error_code = 0; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		std::string        error_msg = {}; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
 
-		// ÅÐ¶ÏÊÇ·ñ×ª»»³É¹¦
+		// ï¿½Ð¶ï¿½ï¿½Ç·ï¿½×ªï¿½ï¿½ï¿½É¹ï¿½
 		bool IsSuccess() const {
 			return error_code == 0;
 		}
@@ -307,26 +307,26 @@ public:
 	
 
 	/// <summary>
-	/// »ñÈ¡µ±Ç°ÏµÍ³±àÂë
+	/// ï¿½ï¿½È¡ï¿½ï¿½Ç°ÏµÍ³ï¿½ï¿½ï¿½ï¿½
 	/// </summary>
-	/// <returns> µ±Ç°ÏµÍ³±àÂëµÄ.Net name </returns>
+	/// <returns> ï¿½ï¿½Ç°ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½.Net name </returns>
 	std::string          GetCurrentSystemEncoding();
 
 	/// <summary>
-	/// »ñÈ¡µ±Ç°ÏµÍ³±àÂë´úÂëÒ³
+	/// ï¿½ï¿½È¡ï¿½ï¿½Ç°ÏµÍ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò³
 	/// </summary>
-	/// <returns> ÈôÎ´ÕÒµ½Ä¬ÈÏÎª65001 ²»Ö§³ÖÔò·µ»Ø0 </returns>
+	/// <returns> ï¿½ï¿½Î´ï¿½Òµï¿½Ä¬ï¿½ï¿½Îª65001 ï¿½ï¿½Ö§ï¿½ï¿½ï¿½ò·µ»ï¿½0 </returns>
 	static std::uint16_t GetCurrentSystemEncodingCodePage();
 
 	/// <summary>
-	/// »ñÈ¡Ö¸¶¨´úÂëÒ³µÄ±àÂëÃû³Æ
+	/// ï¿½ï¿½È¡Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò³ï¿½Ä±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	/// </summary>
 	/// <param name="codePage"></param>
 	/// <returns></returns>
 	static std::string   GetEncodingNameByCodePage(std::uint16_t codePage);
 
 	/// <summary>
-	/// ±¾µØ±àÂë×ª»»ÎªUTF-8
+	/// ï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½×ªï¿½ï¿½ÎªUTF-8
 	/// </summary>
 	/// <param name="input"></param>
 	/// <returns></returns>
@@ -334,7 +334,7 @@ public:
 	std::string          LocaleConvertToUtf8(const char* sInput);
 
 	/// <summary>
-	/// UTF-8 ×ª»»Îª±¾µØ±àÂë
+	/// UTF-8 ×ªï¿½ï¿½Îªï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
@@ -342,7 +342,7 @@ public:
     std::string          Utf8ConvertToLocale(const char* sInput);
 
 	/// <summary>
-	/// ±¾µØ±àÂë×ª»»ÎªUTF-16LE Ð¡¶Ë
+	/// ï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½×ªï¿½ï¿½ÎªUTF-16LE Ð¡ï¿½ï¿½
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
@@ -350,7 +350,7 @@ public:
     std::u16string       LocaleConvertToUtf16LE(const char* sInput);
 
 	/// <summary>
-	/// ±¾µØ±àÂë×ª»»ÎªUTF-16BE ´ó¶Ë
+	/// ï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½×ªï¿½ï¿½ÎªUTF-16BE ï¿½ï¿½ï¿½
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
@@ -358,7 +358,7 @@ public:
 	std::u16string       LocaleConvertToUtf16BE(const char* sInput);
 
 	/// <summary>
-	/// UTF-16LE Ð¡¶Ë ×ª»»Îª±¾µØ±àÂë Ä¿Ç°´æÔÚÎÊÌâ
+	/// UTF-16LE Ð¡ï¿½ï¿½ ×ªï¿½ï¿½Îªï¿½ï¿½ï¿½Ø±ï¿½ï¿½ï¿½ Ä¿Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
@@ -366,7 +366,7 @@ public:
 	std::string          Utf16BEConvertToLocale(const char16_t* sInput);
 
 	/// <summary>
-	/// UTF-16LE Ð¡¶Ë ×ª»»ÎªUTF8±àÂë
+	/// UTF-16LE Ð¡ï¿½ï¿½ ×ªï¿½ï¿½ÎªUTF8ï¿½ï¿½ï¿½ï¿½
 	/// </summary>
 	/// <param name="sInput"></param>
 	/// <returns></returns>
@@ -390,10 +390,10 @@ public:
 	std::u16string       Utf16BEConvertToUtf16LE(const std::u16string& sInput);
 	std::u16string       Utf16BEConvertToUtf16LE(const char16_t* sInput);
 
-	std::wstring         LocaleConvertToWide(const std::string& sInput);
-	std::wstring         LocaleConvertToWide(const char* sInput);
+	std::wstring         LocaleToWideString(const std::string& sInput);
+	std::wstring         LocaleToWideString(const char* sInput);
 
-	//// ¿í×Ö·û×ª Locale
+	//// ï¿½ï¿½ï¿½Ö·ï¿½×ª Locale
 	std::string          WideConvertToLocale(const std::wstring& sInput);
 	std::string          WideConvertToLocale(const wchar_t* sInput);
 
@@ -422,7 +422,7 @@ private:
 	
 private:
 	/// <summary>
-	/// °ü×°µÄiconv ×ª»»º¯Êý
+	/// ï¿½ï¿½×°ï¿½ï¿½iconv ×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	/// </summary>
 	/// <param name="in"></param>
 	/// <param name="fromcode"></param>
@@ -433,12 +433,12 @@ private:
 	static std::string_view             GetIconvErrorString(int err_code);
 
 	/// <summary>
-	/// »ñÈ¡iconv ×ª»»ÃèÊö·û
+	/// ï¿½ï¿½È¡iconv ×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	/// </summary>
-	/// <param name="fromcode"> Ô­±àÂëc </param>
-	/// <param name="tocode"> Ä¿±ê±àÂë </param>
+	/// <param name="fromcode"> Ô­ï¿½ï¿½ï¿½ï¿½c </param>
+	/// <param name="tocode"> Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ </param>
 	/// <returns>
-	///  iconv_t ÃèÊö·û µ±´íÎó·¢ÉúÊ±Ò²»á·µ»ØÒ»¸ö´íÎóµÄiconv_t ÃèÊö·û
+	///  iconv_t ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±Ò²ï¿½á·µï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½iconv_t ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	/// </returns>
 	//IconvUniquePtr                    GetIconvDescriptor(const char* fromcode, const char* tocode);
 	IconvSharedPtr                      GetIconvDescriptorS(const char* fromcode, const char* tocode);

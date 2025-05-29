@@ -59,7 +59,7 @@ const std::unordered_map<std::uint16_t, UniConv::EncodingInfo> UniConv::m_encodi
 	{65001, {"UTF-8", "Unicode (UTF-8)"}}
 };
 
-// ¶¨Òå±àÂëÃû³Æµ½´úÂëÒ³µÄÓ³Éä±í
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½ï¿½Ò³ï¿½ï¿½Ó³ï¿½ï¿½ï¿½
 const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePageMap = {
 	{"UTF-8", 65001},          // Unicode (UTF-8)
 	{"ANSI_X3.4-1968", 20127}, // US-ASCII
@@ -210,7 +210,7 @@ std::uint16_t UniConv::GetCurrentSystemEncodingCodePage()
 
 	if (it != m_encodingToCodePage.end()) return it->second;
 	else {
-		// Èç¹û±àÂëÃû³ÆÎ´ÔÚÓ³Éä±íÖÐÕÒµ½£¬·µ»ØÄ¬ÈÏÖµ£¨UTF-8£©
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½Ó³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½Öµï¿½ï¿½UTF-8ï¿½ï¿½
 		std::cerr << "Warning: Encoding '" << encoding << "' not found in mapping table. Defaulting to UTF-8 (65001)." << std::endl;
 		return 65001;
 	}
@@ -418,7 +418,7 @@ std::u16string UniConv::Utf16BEConvertToUtf16LE(const char16_t* sInput)
 	return std::u16string(reinterpret_cast<const char16_t*>(res.error_msg, res.error_msg.size() / sizeof(char16_t)));
 }
 
-std::wstring UniConv::LocaleConvertToWide(const char* sInput)
+std::wstring UniConv::LocaleToWideString(const char* sInput)
 {
 	std::string currentEncoding = GetCurrentSystemEncoding();
 #ifdef _WIN32
@@ -427,7 +427,7 @@ std::wstring UniConv::LocaleConvertToWide(const char* sInput)
 	const char* to_encoding = UniConv::wchar_t_encoding;
 #endif
 	auto res = Convert(sInput, currentEncoding.c_str(), to_encoding);
-	//ÑéÖ¤¶ÔÆë
+	//ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½
 	if (res && res.conv_result_str.size() % sizeof(wchar_t) == 0) {
 		return std::wstring(
 			reinterpret_cast<const wchar_t*>(res.conv_result_str.c_str()),
@@ -649,9 +649,9 @@ std::u32string UniConv::Utf16BEConvertToUtf32(const std::u16string& sInput)
 	);
 }
 
-std::wstring UniConv::LocaleConvertToWide(const std::string& sInput)
+std::wstring UniConv::LocaleToWideString(const std::string& sInput)
 {
-	return LocaleConvertToWide(sInput.c_str());
+	return LocaleToWideString(sInput.c_str());
 }
 
 std::u16string UniConv::Utf16BEConvertToUtf16LE(const std::u16string& sInput)
@@ -665,10 +665,10 @@ std::string UniConv::Utf8ConvertToLocale(const std::string& sInput)
 }
 
 UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode) {
-	// ×ª»»·µ»ØµÄ½á¹û
+	// ×ªï¿½ï¿½ï¿½ï¿½ï¿½ØµÄ½ï¿½ï¿½
 	IConvResult iconv_result;
 
-	// »ñÈ¡ iconv ÃèÊö·û£¨Ö±½ÓÊ¹ÓÃ IconvUniquePtr£©
+	// ï¿½ï¿½È¡ iconv ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ï¿½Ê¹ï¿½ï¿½ IconvUniquePtrï¿½ï¿½
 	auto cd = GetIconvDescriptorS(fromcode, tocode);	
 	if (!cd || (cd.get() == reinterpret_cast<iconv_t>(-1))) {
 
@@ -677,40 +677,40 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 		return iconv_result;
 	}
 
-	// ÊäÈë»º³åÇø
+	// ï¿½ï¿½ï¿½ë»ºï¿½ï¿½ï¿½ï¿½
 	std::vector<char> in_buffer(in.begin(), in.end());
-	const char* inbuf_ptr = in_buffer.data(); // ÊäÈë»º´æ
-	std::size_t inbuf_letf = in.size(); // ÊäÈë»º´æÊ£Óà³¤¶È
+	const char* inbuf_ptr = in_buffer.data(); // ï¿½ï¿½ï¿½ë»ºï¿½ï¿½
+	std::size_t inbuf_letf = in.size(); // ï¿½ï¿½ï¿½ë»ºï¿½ï¿½Ê£ï¿½à³¤ï¿½ï¿½
 
-	// Êä³ö»º³åÇø
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	constexpr std::size_t initial_buffer_size = 4096;
 	std::vector<char> out_buffer(initial_buffer_size);
 	std::string converted_result;
-	converted_result.reserve(in.size() * 2); // Ô¤·ÖÅä¿Õ¼ä
+	converted_result.reserve(in.size() * 2); // Ô¤ï¿½ï¿½ï¿½ï¿½Õ¼ï¿½
 
 	while (true) {
 		char*       out_ptr  = out_buffer.data();
 		std::size_t out_left = out_buffer.size();
 
-		// Ö´ÐÐ×ª»»
+		// Ö´ï¿½ï¿½×ªï¿½ï¿½
 		std::size_t ret = iconv(cd.get(), &inbuf_ptr, &inbuf_letf, &out_ptr, &out_left);
-		// Ð´ÈëÒÑ×ª»»µÄÊý¾Ý
+		// Ð´ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
 		if (static_cast<std::size_t>(-1) == ret) {
 			iconv_result.error_code = errno;
 			iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
 			break;
 		}
-		// ¶¯Ì¬À©Õ¹»º³åÇø
-		if (out_left < 128 && out_buffer.size() < 1048576) { // ×î´ó1MB
+		// ï¿½ï¿½Ì¬ï¿½ï¿½Õ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		if (out_left < 128 && out_buffer.size() < 1048576) { // ï¿½ï¿½ï¿½1MB
 			out_buffer.resize(out_buffer.size() * 2);
 			continue;
 		}
 
 
-		// ¼ì²éÊäÈëÊÇ·ñ´¦ÀíÍê±Ï
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		if (inbuf_letf == 0) {
-			// Ë¢ÐÂ×ª»»Æ÷µÄÄÚ²¿×´Ì¬
+			// Ë¢ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½×´Ì¬
 			out_ptr = out_buffer.data();
 			out_left = out_buffer.size();
 			ret = iconv(cd.get(), nullptr, &inbuf_letf, &out_ptr, &out_left);
@@ -724,7 +724,7 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 		}
 	}
 
-	// ·µ»Ø×ª»»½á¹û
+	// ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ï¿½
 	if (iconv_result.error_code == 0) {
 		converted_result.shrink_to_fit();
 		iconv_result.conv_result_str = std::move(converted_result);
@@ -747,21 +747,21 @@ std::string_view UniConv::GetIconvErrorString(int err_code)
 
 //UniConv::IconvUniquePtr  UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
 //{
-//	//»º´ækey
+//	//ï¿½ï¿½ï¿½ï¿½key
 //	std::string key = std::string(fromcode) + ":" + tocode;
 //
 //	std::cout << key << std::endl;
 //
 //	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
-//	// ²éÕÒ»º´æ
+//	// ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½
 //	auto it = m_iconvDesscriptorCacheMap.find(key);
 //
 //	if (it != m_iconvDesscriptorCacheMap.end()) {
-//		// ·µ»Ø»º´æµÄÃèÊö·û£¨Ö±½Ó·µ»Ø IconvUniquePtr£© ´Ë´¦²»ÄÜÊ¹ÓÃget()»ñÈ¡Ô­Ê¼Ö¸ÕëÀ´¹¹ÔìÐÂµÄIconvUniquePtr
+//		// ï¿½ï¿½ï¿½Ø»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½Ó·ï¿½ï¿½ï¿½ IconvUniquePtrï¿½ï¿½ ï¿½Ë´ï¿½ï¿½ï¿½ï¿½ï¿½Ê¹ï¿½ï¿½get()ï¿½ï¿½È¡Ô­Ê¼Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½IconvUniquePtr
 //		return UniConv::IconvUniquePtr(it->second.release());
 //	}
 //
-//	//´ò¿ªÐÂµÄÐÂµÄiconv ÃèÊö·û
+//	//ï¿½ï¿½ï¿½Âµï¿½ï¿½Âµï¿½iconv ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //	iconv_t cd = iconv_open(tocode, fromcode);
 //	if (cd == reinterpret_cast<iconv_t>(-1)) {
 //		std::cout <<"iconv_open error" << std::endl;
@@ -772,7 +772,7 @@ std::string_view UniConv::GetIconvErrorString(int err_code)
 //		std::cerr << "Failed to insert into cache" << std::endl;
 //		return IconvUniquePtr(nullptr);
 //	}
-//	//·µ»Ø»º´æµÄ
+//	//ï¿½ï¿½ï¿½Ø»ï¿½ï¿½ï¿½ï¿½
 //	return IconvUniquePtr(result.first->second.release());
 //}
 
@@ -783,7 +783,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptorS(const char* fromcode, const
 
 	auto it = m_iconvDesscriptorCacheMapS.find(key);
 	if (it != m_iconvDesscriptorCacheMapS.end()) {
-		return it->second; // ·µ»Ø shared_ptr µÄ¿½±´
+		return it->second; // ï¿½ï¿½ï¿½ï¿½ shared_ptr ï¿½Ä¿ï¿½ï¿½ï¿½
 	}
 
 	iconv_t cd = iconv_open(tocode, fromcode);

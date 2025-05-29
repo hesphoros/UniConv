@@ -207,9 +207,9 @@ std::uint16_t UniConv::GetCurrentSystemEncodingCodePage()
 
 	if (it != m_encodingToCodePage.end()) return it->second;
 	else {
-		// 如果编码名称未在映射表中找到，返回默认值（UTF-8）
-		std::cerr << "Warning: Encoding '" << encoding << "' not found in mapping table. Defaulting to UTF-8 (65001)." << std::endl;
-		return 65001;
+		// If the encoding is not found in the mapping table, return 0
+		std::cerr << "Warning: Encoding '" << encoding << "' not found in mapping table. Defaulting to 0." << std::endl;
+		return 0;
 	}
 
 #endif // __linux__
@@ -415,7 +415,7 @@ std::u16string UniConv::Utf16BEConvertToUtf16LE(const char16_t* sInput)
 	return std::u16string(reinterpret_cast<const char16_t*>(res.error_msg, res.error_msg.size() / sizeof(char16_t)));
 }
 
-std::wstring UniConv::LocaleConvertToWide(const char* sInput)
+std::wstring UniConv::LocaleToWideString(const char* sInput)
 {
 	std::string currentEncoding = GetCurrentSystemEncoding();
 #ifdef _WIN32
@@ -692,7 +692,7 @@ std::string UniConv::WstringConvertToString(const std::wstring& wstr)
 #endif
 }
 
-std::wstring UniConv::LocaleConvertToWide(const std::string& sInput)
+std::wstring UniConv::LocaleToWideString(const std::string& sInput)
 {
 	return LocaleConvertToWide(sInput.c_str());
 }
