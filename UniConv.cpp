@@ -1,4 +1,4 @@
-#include "UniConv.h"
+ï»¿#include "UniConv.h"
 #include "LightLogWriteImpl.h"
  
 
@@ -60,7 +60,7 @@ const std::unordered_map<std::uint16_t, UniConv::EncodingInfo> UniConv::m_encodi
 	{65001, {"UTF-8", "Unicode (UTF-8)"}}
 };
 
-// ¶¨Òå±àÂëÃû³Æµ½´úÂëÒ³µÄÓ³Éä±í
+// å®šä¹‰ç¼–ç åç§°åˆ°ä»£ç é¡µçš„æ˜ å°„è¡¨
 const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePageMap = {
 	{"UTF-8", 65001},          // Unicode (UTF-8)
 	{"ANSI_X3.4-1968", 20127}, // US-ASCII
@@ -174,15 +174,13 @@ std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDesscri
 
 std::string UniConv::GetCurrentSystemEncoding()
 {
-	std::stringstream ss;	
+	std::stringstream ss;
 #ifdef _WIN32
 	UINT codePage = GetACP();
 	auto it = m_encodingMap.find(codePage);
 	if (it != m_encodingMap.end()) ss << it->second.dotNetName;
 
 #endif // _WIN32
-
-
 #ifdef __linux__
 	setlocale(LC_ALL, "");
 	char* locstr = setlocale(LC_CTYPE, NULL);
@@ -190,8 +188,6 @@ std::string UniConv::GetCurrentSystemEncoding()
 	ss << encoding;
 #endif // __linux__
 	if (ss.str().empty()) ss << "Encoding not found.";
-	
-
 	return ss.str();
 }
 
@@ -211,7 +207,7 @@ std::uint16_t UniConv::GetCurrentSystemEncodingCodePage()
 
 	if (it != m_encodingToCodePage.end()) return it->second;
 	else {
-		// Èç¹û±àÂëÃû³ÆÎ´ÔÚÓ³Éä±íÖĞÕÒµ½£¬·µ»ØÄ¬ÈÏÖµ£¨UTF-8£©
+		// å¦‚æœç¼–ç åç§°æœªåœ¨æ˜ å°„è¡¨ä¸­æ‰¾åˆ°ï¼Œè¿”å›é»˜è®¤å€¼ï¼ˆUTF-8ï¼‰
 		std::cerr << "Warning: Encoding '" << encoding << "' not found in mapping table. Defaulting to UTF-8 (65001)." << std::endl;
 		return 65001;
 	}
@@ -231,7 +227,7 @@ std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage)
 }
 
 std::string UniConv::LocaleConvertToUtf8(const std::string& sInput)
-{	
+{
 	return LocaleConvertToUtf8(sInput.c_str());
 }
 
@@ -242,7 +238,7 @@ std::string UniConv::LocaleConvertToUtf8(const char* sInput)
 	if (res) {
 		return std::move(res.conv_result_str);
 	}
-	
+
 	return std::string(res.error_msg);
 }
 
@@ -253,19 +249,19 @@ std::string UniConv::Utf8ConvertToLocale(const char* sInput)
 	if (res) {
         return std::move(res.conv_result_str);
 	}
-	
+
     return std::string(res.error_msg);
 }
 
 std::u16string UniConv::LocaleConvertToUtf16LE(const char* sInput)
-{   
+{
 	std::string currentEncoding = GetCurrentSystemEncoding();
 	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_16le_encoding);
 
 	if (res && res.conv_result_str.size() % sizeof(char16_t) == 0) {
 		const char16_t* p = reinterpret_cast<const char16_t*>(res.conv_result_str.data());
 		return std::u16string(p, res.conv_result_str.size() / sizeof(char16_t));
-	}	
+	}
 	return std::u16string(reinterpret_cast<const char16_t*>(sInput), strlen(sInput) / sizeof(char16_t));
 }
 
@@ -287,13 +283,13 @@ std::u16string UniConv::LocaleConvertToUtf16BE(const char* sInput)
 	std::string currentEncoding = GetCurrentSystemEncoding();
 	auto res = Convert(sInput, currentEncoding.c_str(), UniConv::utf_16be_encoding);
 
-	if (res && res.conv_result_str.size() % sizeof(char16_t) == 0) {		
+	if (res && res.conv_result_str.size() % sizeof(char16_t) == 0) {
 		const char16_t* p = reinterpret_cast<const char16_t*>(res.conv_result_str.data());
 		return std::u16string(p, res.conv_result_str.size() / sizeof(char16_t));
 	}
 	std::cout << __FUNCTION__ << "Convert failed Error:" << res.error_msg << std::endl;
 	return std::u16string(reinterpret_cast<const char16_t*>(sInput), strlen(sInput) / sizeof(char16_t));
-	
+
 }
 
 std::string UniConv::Utf16BEConvertToLocale(const std::u16string& sInput)
@@ -305,7 +301,7 @@ std::string UniConv::Utf16BEConvertToLocale(const std::u16string& sInput)
 std::string UniConv::Utf16BEConvertToLocale(const char16_t* sInput)
 {
 	std::string currentEncoding = GetCurrentSystemEncoding();
-	
+
 	auto res = Convert(reinterpret_cast<const char*>(sInput), UniConv::utf_16be_encoding, currentEncoding.c_str());
 	if (res) {
 		return std::move(res.conv_result_str);
@@ -428,7 +424,7 @@ std::wstring UniConv::LocaleConvertToWide(const char* sInput)
 	const char* to_encoding = UniConv::wchar_t_encoding;
 #endif
 	auto res = Convert(sInput, currentEncoding.c_str(), to_encoding);
-	//ÑéÖ¤¶ÔÆë
+	//éªŒè¯å¯¹é½
 	if (res && res.conv_result_str.size() % sizeof(wchar_t) == 0) {
 		return std::wstring(
 			reinterpret_cast<const wchar_t*>(res.conv_result_str.c_str()),
@@ -534,7 +530,7 @@ std::string UniConv::Utf32ConvertToUtf8(const std::u32string& sInput)
 	}
 #ifdef DEBUG
 	std::cout << __FUNCTION__ << " Convert failed " << res.error_msg << "\n";
-	
+
 #endif//DEBUG
 	return std::move(res.error_msg);
 }
@@ -712,11 +708,11 @@ std::string UniConv::Utf8ConvertToLocale(const std::string& sInput)
 }
 
 UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode, const char* tocode) {
-	// ×ª»»·µ»ØµÄ½á¹û
+	// è½¬æ¢è¿”å›çš„ç»“æœ
 	IConvResult iconv_result;
 
-	// »ñÈ¡ iconv ÃèÊö·û£¨Ö±½ÓÊ¹ÓÃ IconvUniquePtr£©
-	auto cd = GetIconvDescriptorS(fromcode, tocode);	
+	// è·å– iconv æè¿°ç¬¦ï¼ˆç›´æ¥ä½¿ç”¨ IconvUniquePtrï¼‰
+	auto cd = GetIconvDescriptorS(fromcode, tocode);
 	if (!cd || (cd.get() == reinterpret_cast<iconv_t>(-1))) {
 
 		iconv_result.error_code = errno;
@@ -724,40 +720,40 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 		return iconv_result;
 	}
 
-	// ÊäÈë»º³åÇø
+	// è¾“å…¥ç¼“å†²åŒº
 	//std::vector<char> in_buffer(in.begin(), in.end());
-	const char* inbuf_ptr = in.data(); // ÊäÈë»º´æ
-	std::size_t inbuf_letf = in.size(); // ÊäÈë»º´æÊ£Óà³¤¶È
+	const char* inbuf_ptr = in.data(); // è¾“å…¥ç¼“å­˜
+	std::size_t inbuf_letf = in.size(); // è¾“å…¥ç¼“å­˜å‰©ä½™é•¿åº¦
 
-	// Êä³ö»º³åÇø
+	// è¾“å‡ºç¼“å†²åŒº
 	constexpr std::size_t initial_buffer_size = 4096;
 	std::vector<char> out_buffer(initial_buffer_size);
 	std::string converted_result;
-	converted_result.reserve(in.size() * 2); // Ô¤·ÖÅä¿Õ¼ä
+	converted_result.reserve(in.size() * 2); // é¢„åˆ†é…ç©ºé—´
 
 	while (true) {
 		char*       out_ptr  = out_buffer.data();
 		std::size_t out_left = out_buffer.size();
 
-		// Ö´ĞĞ×ª»»
+		// æ‰§è¡Œè½¬æ¢
 		std::size_t ret = iconv(cd.get(), &inbuf_ptr, &inbuf_letf, &out_ptr, &out_left);
-		// Ğ´ÈëÒÑ×ª»»µÄÊı¾İ
+		// å†™å…¥å·²è½¬æ¢çš„æ•°æ®
 		converted_result.append(out_buffer.data(), out_buffer.size() - out_left);
 		if (static_cast<std::size_t>(-1) == ret) {
 			iconv_result.error_code = errno;
 			iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
 			break;
 		}
-		// ¶¯Ì¬À©Õ¹»º³åÇø
-		if (out_left < 128 && out_buffer.size() < 1048576) { // ×î´ó1MB
+		// åŠ¨æ€æ‰©å±•ç¼“å†²åŒº
+		if (out_left < 128 && out_buffer.size() < 1048576) { // æœ€å¤§1MB
 			out_buffer.resize(out_buffer.size() * 2);
 			continue;
 		}
 
 
-		// ¼ì²éÊäÈëÊÇ·ñ´¦ÀíÍê±Ï
+		// æ£€æŸ¥è¾“å…¥æ˜¯å¦å¤„ç†å®Œæ¯•
 		if (inbuf_letf == 0) {
-			// Ë¢ĞÂ×ª»»Æ÷µÄÄÚ²¿×´Ì¬
+			// åˆ·æ–°è½¬æ¢å™¨çš„å†…éƒ¨çŠ¶æ€
 			out_ptr = out_buffer.data();
 			out_left = out_buffer.size();
 			ret = iconv(cd.get(), nullptr, &inbuf_letf, &out_ptr, &out_left);
@@ -771,11 +767,10 @@ UniConv::IConvResult UniConv::Convert(std::string_view in, const char* fromcode,
 		}
 	}
 
-	// ·µ»Ø×ª»»½á¹û
+	// è¿”å›è½¬æ¢ç»“æœ
 	if (iconv_result.error_code == 0) {
 		converted_result.shrink_to_fit();
 		iconv_result.conv_result_str = std::move(converted_result);
-	
 	}
 	return iconv_result;
 }
@@ -806,7 +801,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptorS(const char* fromcode, const
 
 	auto it = m_iconvDesscriptorCacheMapS.find(key);
 	if (it != m_iconvDesscriptorCacheMapS.end()) {
-		return it->second; // ·µ»Ø shared_ptr µÄ¿½±´
+		return it->second; // è¿”å› shared_ptr çš„æ‹·è´
 	}
 
 	iconv_t cd = iconv_open(tocode, fromcode);

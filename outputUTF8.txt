@@ -1,6 +1,6 @@
 Chinese:
-	这是一个测试的string字符串，用来转换成Utf-8编码
-	这是一个测试的const char 字符串，用来转换为Utf-8编码
+	Invalid multibyte sequence
+	Invalid multibyte sequence
 English:
 	This is a test  const char* str  to convert to UTF-8 encoding
 	This is a test  const char* str  to convert to UTF-8 encoding

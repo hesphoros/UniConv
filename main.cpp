@@ -126,7 +126,7 @@ void TestGB18030ToUTF8() {
 }
 
 int main() {
-	gLogWrite.SetLastingsLogs("./log","TestGB2312TOUTF8");
+	//gLogWrite.SetLastingsLogs("./log","TestGB2312TOUTF8");
 	//gLogWrite.SetLogsFileName(L"uniconv.log");
 	
 	TestGB2321ToUtf8();
@@ -170,3 +170,6 @@ void TestMultiThreadLogging() {
 	std::cout << "TestMultiThreadLogging: Log messages written from multiple threads.\n";
 }
 
+void Test(){
+
+}
