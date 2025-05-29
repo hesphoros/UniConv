@@ -139,11 +139,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="convet_tools.cpp" />
-    <ClCompile Include="gbk_str.cpp" />
     <ClCompile Include="LightLogWriteImpl.h" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Test.cpp" />
     <ClCompile Include="UniConv.cpp" />
-    <ClCompile Include="utf8_str.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -32,17 +32,14 @@
     <ClCompile Include="UniConv.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="gbk_str.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="utf8_str.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="convet_tools.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="LightLogWriteImpl.h">
       <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Test.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -9,24 +9,6 @@
 auto gUniConv = UniConv::GetInstance();
 
 
-void TestUtf82Locale() {
-	extern char const* utf8_cstr;
-	extern std::string utf8_str;
-    std::cout << gUniConv->Utf8ConvertToLocale(utf8_cstr) << "\n";
-    std::cout << gUniConv->Utf8ConvertToLocale(utf8_str)  << "\n";
-}
-
-
-void TestLocale2Utf8() {
-	system("chcp 65001 > null");
-	extern char const* gbk_cstr;
-	extern std::string gbk_str;
-	std::cout << gUniConv->LocaleConvertToUtf8(gbk_cstr) << "\n";
-	std::cout << gUniConv->LocaleConvertToUtf8(gbk_str)  << "\n";
-
-}
-
-
 
 
 
@@ -125,13 +107,7 @@ void TestGB18030ToUTF8() {
 
 }
 
-int main() {
-	//gLogWrite.SetLastingsLogs("./log","TestGB2312TOUTF8");
-	//gLogWrite.SetLogsFileName(L"uniconv.log");
-	
-	TestGB2321ToUtf8();
-	return 0;
-}
+
 
 
 
