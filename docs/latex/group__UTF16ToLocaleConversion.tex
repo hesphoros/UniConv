@@ -1,0 +1,234 @@
+\doxysection{UTF-\/16 to Local Encoding Conversion Functions}
+\hypertarget{group__UTF16ToLocaleConversion}{}\label{group__UTF16ToLocaleConversion}\index{UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}}
+
+
+Functions for converting UTF-\/16 encoded data to system locale encoding.  
+
+
+\doxysubsubsection*{UTF-\/16 Conversion Functions}
+Functions for converting between UTF-\/16 and other encodings \begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{group__LocaleToUTF16Conversion_ga5be527d1a83956e621386d9d12469030}{Uni\+Conv\+::\+From\+Utf16\+LETo\+Local}} (const std\+::u16string \&input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+LE encoded string to system locale encoding. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__LocaleToUTF16Conversion_ga4fa4e458977ef7d63cb7a1fc15205076}{Uni\+Conv\+::\+From\+Utf16\+LETo\+Local}} (const char16\+\_\+t \texorpdfstring{$\ast$}{*}input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+LE C-\/style string to system locale encoding. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__LocaleToUTF16Conversion_ga7b8ba5b89d5f22948a64513174c2103c}{Uni\+Conv\+::\+From\+Utf16\+BETo\+Local}} (const std\+::u16string \&input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+BE encoded string to system locale encoding. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__LocaleToUTF16Conversion_gaa05d5afb48a0def16ba3f3a4089548f3}{Uni\+Conv\+::\+From\+Utf16\+BETo\+Local}} (const char16\+\_\+t \texorpdfstring{$\ast$}{*}input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+BE C-\/style string to system locale encoding. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for converting UTF-\/16 encoded data to system locale encoding. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__LocaleToUTF16Conversion_gaa05d5afb48a0def16ba3f3a4089548f3}\index{UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}!FromUtf16BEToLocal@{FromUtf16BEToLocal}}
+\index{FromUtf16BEToLocal@{FromUtf16BEToLocal}!UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16BEToLocal()}{FromUtf16BEToLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__LocaleToUTF16Conversion_gaa05d5afb48a0def16ba3f3a4089548f3} 
+std\+::string Uni\+Conv\+::\+From\+Utf16\+BETo\+Local (\begin{DoxyParamCaption}\item[{const char16\+\_\+t \texorpdfstring{$\ast$}{*}}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+BE C-\/style string to system locale encoding. 
+
+Convert null-\/terminated UTF-\/16\+BE string to system locale encoding.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+BE C-\/style string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style char16\+\_\+t strings. Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga7b8ba5b89d5f22948a64513174c2103c}{From\+Utf16\+BETo\+Local(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Null-\/terminated UTF-\/16\+BE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error or null input
+\end{DoxyReturn}
+Convenience overload for null-\/terminated UTF-\/16\+BE strings.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga7b8ba5b89d5f22948a64513174c2103c}{From\+Utf16\+BETo\+Local(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00714}{714}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__LocaleToUTF16Conversion_ga7b8ba5b89d5f22948a64513174c2103c}\index{UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}!FromUtf16BEToLocal@{FromUtf16BEToLocal}}
+\index{FromUtf16BEToLocal@{FromUtf16BEToLocal}!UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16BEToLocal()}{FromUtf16BEToLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__LocaleToUTF16Conversion_ga7b8ba5b89d5f22948a64513174c2103c} 
+std\+::string Uni\+Conv\+::\+From\+Utf16\+BETo\+Local (\begin{DoxyParamCaption}\item[{const std\+::u16string \&}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+BE encoded string to system locale encoding. 
+
+Convert UTF-\/16\+BE string to system locale encoding.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+BE encoded string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+This function converts UTF-\/16 Big Endian text to the system\textquotesingle{}s default locale encoding.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga99f4c15a40367498f5c48f2b4f9c16c6}{To\+Utf16\+BEFrom\+Local()}, \doxylink{group__LocaleToUTF16Conversion_ga5be527d1a83956e621386d9d12469030}{From\+Utf16\+LETo\+Local()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+BE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error
+\end{DoxyReturn}
+Similar to From\+Utf16\+LETo\+Local but handles big-\/endian input. Useful when processing network data or cross-\/platform files that use UTF-\/16\+BE encoding.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga5be527d1a83956e621386d9d12469030}{From\+Utf16\+LETo\+Local()} 
+
+\doxylink{group__LocaleToUTF16Conversion_ga99f4c15a40367498f5c48f2b4f9c16c6}{To\+Utf16\+BEFrom\+Local()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00695}{695}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__LocaleToUTF16Conversion_ga4fa4e458977ef7d63cb7a1fc15205076}\index{UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}!FromUtf16LEToLocal@{FromUtf16LEToLocal}}
+\index{FromUtf16LEToLocal@{FromUtf16LEToLocal}!UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16LEToLocal()}{FromUtf16LEToLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__LocaleToUTF16Conversion_ga4fa4e458977ef7d63cb7a1fc15205076} 
+std\+::string Uni\+Conv\+::\+From\+Utf16\+LETo\+Local (\begin{DoxyParamCaption}\item[{const char16\+\_\+t \texorpdfstring{$\ast$}{*}}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+LE C-\/style string to system locale encoding. 
+
+Convert null-\/terminated UTF-\/16\+LE string to system locale encoding.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+LE C-\/style string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style char16\+\_\+t strings. Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga5be527d1a83956e621386d9d12469030}{From\+Utf16\+LETo\+Local(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Null-\/terminated UTF-\/16\+LE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error or null input
+\end{DoxyReturn}
+Convenience overload for null-\/terminated UTF-\/16 strings.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga5be527d1a83956e621386d9d12469030}{From\+Utf16\+LETo\+Local(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00677}{677}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__LocaleToUTF16Conversion_ga5be527d1a83956e621386d9d12469030}\index{UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}!FromUtf16LEToLocal@{FromUtf16LEToLocal}}
+\index{FromUtf16LEToLocal@{FromUtf16LEToLocal}!UTF-\/16 to Local Encoding Conversion Functions@{UTF-\/16 to Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16LEToLocal()}{FromUtf16LEToLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__LocaleToUTF16Conversion_ga5be527d1a83956e621386d9d12469030} 
+std\+::string Uni\+Conv\+::\+From\+Utf16\+LETo\+Local (\begin{DoxyParamCaption}\item[{const std\+::u16string \&}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+LE encoded string to system locale encoding. 
+
+Convert UTF-\/16\+LE string to system locale encoding.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+LE encoded string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+This function converts UTF-\/16 Little Endian text to the system\textquotesingle{}s default locale encoding. Useful for preparing Unicode text for display in legacy applications.
+
+\begin{DoxyParagraph}{Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{std::u16string\ utf16\_text\ =\ u\textcolor{stringliteral}{"{}Hello\ World"{}};}
+\DoxyCodeLine{std::string\ local\_text\ =\ conv-\/>FromUtf16LEToLocal(utf16\_text);}
+
+\end{DoxyCode}
+
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga992bae141c725629c74b4a706a5e624a}{To\+Utf16\+LEFrom\+Local()}, \doxylink{group__LocaleToUTF16Conversion_ga7b8ba5b89d5f22948a64513174c2103c}{From\+Utf16\+BETo\+Local()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+LE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error
+\end{DoxyReturn}
+Converts UTF-\/16\+LE data to the current system\textquotesingle{}s default encoding. This is useful when preparing Unicode data for legacy systems or APIs that expect locale-\/specific encodings.
+
+\begin{DoxyWarning}{Warning}
+Some Unicode characters may be lost if the target locale encoding doesn\textquotesingle{}t support them. Use with caution for international text that may contain characters outside the system\textquotesingle{}s default character set.
+\end{DoxyWarning}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleToUTF16Conversion_ga7b8ba5b89d5f22948a64513174c2103c}{From\+Utf16\+BETo\+Local()} 
+
+\doxylink{group__LocaleToUTF16Conversion_ga992bae141c725629c74b4a706a5e624a}{To\+Utf16\+LEFrom\+Local()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00658}{658}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+

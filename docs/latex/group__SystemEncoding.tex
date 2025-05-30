@@ -1,0 +1,302 @@
+\doxysection{System Encoding Detection and Conversion}
+\hypertarget{group__SystemEncoding}{}\label{group__SystemEncoding}\index{System Encoding Detection and Conversion@{System Encoding Detection and Conversion}}
+
+
+Functions for detecting and working with system locale encodings.  
+
+
+\doxysubsubsection*{System Encoding Detection and Conversion}
+Functions for detecting and converting system locale encodings \begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Uni\+Conv\+::\+Get\+Current\+System\+Encoding}} ()
+\begin{DoxyCompactList}\small\item\em Get the current system\textquotesingle{}s default character encoding. \end{DoxyCompactList}\item 
+static std\+::uint16\+\_\+t \mbox{\hyperlink{group__SystemEncoding_ga755af3e0e9bc3958baa97104b120bdeb}{Uni\+Conv\+::\+Get\+Current\+System\+Encoding\+Code\+Page}} ()
+\begin{DoxyCompactList}\small\item\em Get the current system\textquotesingle{}s active code page number. \end{DoxyCompactList}\item 
+static std\+::string \mbox{\hyperlink{group__SystemEncoding_ga986ba712af80d6c4d700b464619ab1c3}{Uni\+Conv\+::\+Get\+Encoding\+Name\+By\+Code\+Page}} (std\+::uint16\+\_\+t code\+Page)
+\begin{DoxyCompactList}\small\item\em Convert a code page number to its corresponding encoding name. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structUniConv_1_1IConvResult}{IConv\+Result}} \mbox{\hyperlink{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417}{Uni\+Conv\+::\+Convert\+Encoding}} (const std\+::string \&input, const char \texorpdfstring{$\ast$}{*}from\+Encoding, const char \texorpdfstring{$\ast$}{*}to\+Encoding)
+\begin{DoxyCompactList}\small\item\em Universal encoding conversion function using iconv. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for detecting and working with system locale encodings. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417}\index{System Encoding Detection and Conversion@{System Encoding Detection and Conversion}!ConvertEncoding@{ConvertEncoding}}
+\index{ConvertEncoding@{ConvertEncoding}!System Encoding Detection and Conversion@{System Encoding Detection and Conversion}}
+\doxysubsubsection{\texorpdfstring{ConvertEncoding()}{ConvertEncoding()}}
+{\footnotesize\ttfamily \label{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417} 
+\mbox{\hyperlink{structUniConv_1_1IConvResult}{Uni\+Conv\+::\+IConv\+Result}} Uni\+Conv\+::\+Convert\+Encoding (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{input}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{from\+Encoding}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{to\+Encoding}{}\end{DoxyParamCaption})}
+
+
+
+Universal encoding conversion function using iconv. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & The input string data to be converted \\
+\hline
+{\em from\+Encoding} & Source encoding name (e.\+g., "{}\+UTF-\/8"{}, "{}\+GBK"{}, "{}\+UTF-\/16\+LE"{}) \\
+\hline
+{\em to\+Encoding} & Target encoding name (e.\+g., "{}\+UTF-\/8"{}, "{}\+GBK"{}, "{}\+UTF-\/16\+BE"{}) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{structUniConv_1_1IConvResult}{IConv\+Result} containing conversion result or error information
+\end{DoxyReturn}
+This is the core conversion function that handles conversion between any two supported encodings using the iconv library. It provides comprehensive error handling and memory management.
+
+\begin{DoxyParagraph}{Supported Encodings\+:}
+
+\begin{DoxyItemize}
+\item UTF-\/8, UTF-\/16\+LE, UTF-\/16\+BE
+\item GBK, GB2312, BIG5
+\item Windows code pages (CP936, CP950, etc.)
+\item ISO-\/8859 series
+\item And many others supported by iconv
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Error Handling\+:}
+
+\begin{DoxyItemize}
+\item Returns error code and message on failure
+\item Handles invalid input sequences gracefully
+\item Provides detailed error information
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keyword}{auto}\ result\ =\ conv-\/>ConvertEncoding(\textcolor{stringliteral}{"{}ÄãºÃ"{}},\ \textcolor{stringliteral}{"{}UTF-\/8"{}},\ \textcolor{stringliteral}{"{}GBK"{}});}
+\DoxyCodeLine{\textcolor{keywordflow}{if}\ (result.IsSuccess())\ \{}
+\DoxyCodeLine{\ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Converted\ successfully"{}}\ <<\ std::endl;}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{structUniConv_1_1IConvResult}{IConv\+Result} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00039}{39}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}\index{System Encoding Detection and Conversion@{System Encoding Detection and Conversion}!GetCurrentSystemEncoding@{GetCurrentSystemEncoding}}
+\index{GetCurrentSystemEncoding@{GetCurrentSystemEncoding}!System Encoding Detection and Conversion@{System Encoding Detection and Conversion}}
+\doxysubsubsection{\texorpdfstring{GetCurrentSystemEncoding()}{GetCurrentSystemEncoding()}}
+{\footnotesize\ttfamily \label{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2} 
+std\+::string Uni\+Conv\+::\+Get\+Current\+System\+Encoding (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Get the current system\textquotesingle{}s default character encoding. 
+
+\begin{DoxyReturn}{Returns}
+String representing the current system encoding name 
+\end{DoxyReturn}
+
+\begin{DoxyRetVals}{Return values}
+{\em UTF-\/8} & if the system uses UTF-\/8 encoding \\
+\hline
+{\em GBK} & if the system uses GBK encoding (Windows CP936) \\
+\hline
+{\em BIG5} & if the system uses Big5 encoding (Windows CP950) \\
+\hline
+{\em SHIFT\+\_\+\+JIS} & if the system uses Shift\+\_\+\+JIS encoding (Windows CP932) \\
+\hline
+{\em CP\#\#\#\#} & for other Windows code pages\\
+\hline
+\end{DoxyRetVals}
+This function detects the system\textquotesingle{}s active code page on Windows using Get\+ACP() and returns the corresponding encoding name. On Linux systems, it typically returns "{}\+UTF-\/8"{}.
+
+\begin{DoxyParagraph}{Platform Support\+:}
+
+\begin{DoxyItemize}
+\item Windows\+: Uses Get\+ACP() to detect active code page
+\item Linux\+: Returns "{}\+UTF-\/8"{} by default
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_ga755af3e0e9bc3958baa97104b120bdeb}{Get\+Current\+System\+Encoding\+Code\+Page()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+\begin{DoxyReturn}{Returns}
+String representation of the system encoding (e.\+g., "{}\+GBK"{}, "{}\+UTF-\/8"{})
+\end{DoxyReturn}
+This function detects the system\textquotesingle{}s active code page (Windows) or assumes UTF-\/8 (Unix-\/like systems) and returns the corresponding encoding name that can be used with iconv.
+
+\begin{DoxyParagraph}{Platform Support\+:}
+
+\begin{DoxyItemize}
+\item Windows\+: Uses Get\+ACP() to detect active code page
+\item Unix/\+Linux\+: Returns "{}\+UTF-\/8"{} as default
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Common Return Values\+:}
+
+\begin{DoxyItemize}
+\item "{}\+GBK"{} (CP936) -\/ Simplified Chinese
+\item "{}\+BIG5"{} (CP950) -\/ Traditional Chinese ~\newline
+
+\item "{}\+SHIFT\+\_\+\+JIS"{} (CP932) -\/ Japanese
+\item "{}\+UTF-\/8"{} (CP65001) -\/ Unicode UTF-\/8
+\item "{}\+CP\#\#\#\#"{} -\/ Generic code page format
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_ga755af3e0e9bc3958baa97104b120bdeb}{Get\+Current\+System\+Encoding\+Code\+Page()} 
+
+\doxylink{group__SystemEncoding_ga986ba712af80d6c4d700b464619ab1c3}{Get\+Encoding\+Name\+By\+Code\+Page()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00114}{114}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__SystemEncoding_ga755af3e0e9bc3958baa97104b120bdeb}\index{System Encoding Detection and Conversion@{System Encoding Detection and Conversion}!GetCurrentSystemEncodingCodePage@{GetCurrentSystemEncodingCodePage}}
+\index{GetCurrentSystemEncodingCodePage@{GetCurrentSystemEncodingCodePage}!System Encoding Detection and Conversion@{System Encoding Detection and Conversion}}
+\doxysubsubsection{\texorpdfstring{GetCurrentSystemEncodingCodePage()}{GetCurrentSystemEncodingCodePage()}}
+{\footnotesize\ttfamily \label{group__SystemEncoding_ga755af3e0e9bc3958baa97104b120bdeb} 
+std\+::uint16\+\_\+t Uni\+Conv\+::\+Get\+Current\+System\+Encoding\+Code\+Page (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Get the current system\textquotesingle{}s active code page number. 
+
+\begin{DoxyReturn}{Returns}
+The numeric code page identifier 
+\end{DoxyReturn}
+
+\begin{DoxyRetVals}{Return values}
+{\em 936} & for GBK (Simplified Chinese) \\
+\hline
+{\em 950} & for Big5 (Traditional Chinese) \\
+\hline
+{\em 932} & for Shift\+\_\+\+JIS (Japanese) \\
+\hline
+{\em 65001} & for UTF-\/8 \\
+\hline
+{\em Other} & values for various code pages\\
+\hline
+\end{DoxyRetVals}
+This static function returns the numeric identifier of the system\textquotesingle{}s active code page. On Windows, it uses Get\+ACP(). On Linux systems, it returns 65001 (UTF-\/8) by default.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Get\+Current\+System\+Encoding()}, \doxylink{group__SystemEncoding_ga986ba712af80d6c4d700b464619ab1c3}{Get\+Encoding\+Name\+By\+Code\+Page()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+\begin{DoxyReturn}{Returns}
+Code page number (e.\+g., 936 for GBK, 65001 for UTF-\/8)
+\end{DoxyReturn}
+Returns the numeric identifier of the system\textquotesingle{}s active code page. On Windows, this uses the Get\+ACP() API. On Unix-\/like systems, UTF-\/8 (65001) is assumed as the default.
+
+\begin{DoxyParagraph}{Common Code Pages\+:}
+
+\begin{DoxyItemize}
+\item 936\+: GBK (Simplified Chinese)
+\item 950\+: Big5 (Traditional Chinese)
+\item 932\+: Shift\+\_\+\+JIS (Japanese)
+\item 65001\+: UTF-\/8 (Unicode)
+\item 1252\+: CP1252 (Western European)
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Get\+Current\+System\+Encoding()} 
+
+\doxylink{group__SystemEncoding_ga986ba712af80d6c4d700b464619ab1c3}{Get\+Encoding\+Name\+By\+Code\+Page()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00148}{148}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__SystemEncoding_ga986ba712af80d6c4d700b464619ab1c3}\index{System Encoding Detection and Conversion@{System Encoding Detection and Conversion}!GetEncodingNameByCodePage@{GetEncodingNameByCodePage}}
+\index{GetEncodingNameByCodePage@{GetEncodingNameByCodePage}!System Encoding Detection and Conversion@{System Encoding Detection and Conversion}}
+\doxysubsubsection{\texorpdfstring{GetEncodingNameByCodePage()}{GetEncodingNameByCodePage()}}
+{\footnotesize\ttfamily \label{group__SystemEncoding_ga986ba712af80d6c4d700b464619ab1c3} 
+std\+::string Uni\+Conv\+::\+Get\+Encoding\+Name\+By\+Code\+Page (\begin{DoxyParamCaption}\item[{std\+::uint16\+\_\+t}]{code\+Page}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Convert a code page number to its corresponding encoding name. 
+
+Convert a numeric code page to its encoding name.
+
+
+\begin{DoxyParams}{Parameters}
+{\em code\+Page} & The numeric code page identifier \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String containing the encoding name 
+\end{DoxyReturn}
+
+\begin{DoxyRetVals}{Return values}
+{\em GBK} & for code page 936 \\
+\hline
+{\em BIG5} & for code page 950 \\
+\hline
+{\em SHIFT\+\_\+\+JIS} & for code page 932 \\
+\hline
+{\em UTF-\/8} & for code page 65001 \\
+\hline
+{\em CP1252} & for code page 1252 \\
+\hline
+{\em CP\#\#\#\#} & for other code pages (\#\#\#\# = code page number)\\
+\hline
+\end{DoxyRetVals}
+This static utility function provides a mapping from Windows code page numbers to standard encoding names used by iconv.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_ga755af3e0e9bc3958baa97104b120bdeb}{Get\+Current\+System\+Encoding\+Code\+Page()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em code\+Page} & The code page number to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String name of the encoding suitable for iconv
+\end{DoxyReturn}
+Maps common Windows code page numbers to their corresponding encoding names that can be used with the iconv library. Unknown code pages are returned in "{}\+CP\#\#\#\#"{} format.
+
+\begin{DoxyParagraph}{Supported Code Pages\+:}
+
+\begin{DoxyItemize}
+\item 936 ¡ú "{}\+GBK"{} (Simplified Chinese)
+\item 950 ¡ú "{}\+BIG5"{} (Traditional Chinese)
+\item 932 ¡ú "{}\+SHIFT\+\_\+\+JIS"{} (Japanese)
+\item 65001 ¡ú "{}\+UTF-\/8"{} (Unicode)
+\item 1252 ¡ú "{}\+CP1252"{} (Western European)
+\item Others ¡ú "{}\+CP\#\#\#\#"{} (Generic format)
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Get\+Current\+System\+Encoding()} 
+
+\doxylink{group__SystemEncoding_ga755af3e0e9bc3958baa97104b120bdeb}{Get\+Current\+System\+Encoding\+Code\+Page()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00177}{177}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+

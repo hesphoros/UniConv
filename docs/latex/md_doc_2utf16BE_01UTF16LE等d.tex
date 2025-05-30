@@ -1,0 +1,39 @@
+\chapter{\texorpdfstring{$<$}{<}strong\texorpdfstring{$>$}{>}UTF-\/16\+BE（\+Big Endian）\texorpdfstring{$<$}{<}/strong\texorpdfstring{$>$}{>}}
+\hypertarget{md_doc_2utf16BE_01UTF16LE等d}{}\label{md_doc_2utf16BE_01UTF16LE等d}\index{$<$strong$>$UTF-\/16BE（Big Endian）$<$/strong$>$@{$<$strong$>$UTF-\/16BE（Big Endian）$<$/strong$>$}}
+\label{md_doc_2utf16BE_01UTF16LE等d_autotoc_md34}%
+\Hypertarget{md_doc_2utf16BE_01UTF16LE等d_autotoc_md34}%
+
+
+
+\begin{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}字节顺序\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：高字节在前（如字符 {\ttfamily 中}的 Unicode 编码为 {\ttfamily 0x4\+E2D}，存储为 {\ttfamily 4E 2D}）
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}\+BOM 标记\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：通常不带 BOM，若带则为 {\ttfamily FE FF}（位于文件开头）
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}应用场景\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：适用于需要明确字节顺序的系统或协议
+\end{DoxyItemize}\hypertarget{md_doc_2utf16BE_01UTF16LE等d_autotoc_md35}{}\doxysection{\texorpdfstring{{\bfseries{UTF-\/16\+LE（\+Little Endian）}}}{{\bfseries{UTF-\/16\+LE（\+Little Endian）}}}}\label{md_doc_2utf16BE_01UTF16LE等d_autotoc_md35}
+
+\begin{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}字节顺序\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：低字节在前（如 {\ttfamily 中} 存储为 {\ttfamily 2D 4E}）
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}\+BOM 标记\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：通常不带 BOM，若带则为 {\ttfamily FF FE}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}应用场景\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：常见于 Windows 系统或小端架构的计算机
+\end{DoxyItemize}\hypertarget{md_doc_2utf16BE_01UTF16LE等d_autotoc_md36}{}\doxysection{\texorpdfstring{{\bfseries{UTF-\/16（无后缀）}}}{{\bfseries{UTF-\/16（无后缀）}}}}\label{md_doc_2utf16BE_01UTF16LE等d_autotoc_md36}
+
+\begin{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}字节顺序\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：通过 BOM 标记动态决定\+:
+\begin{DoxyItemize}
+\item {\ttfamily FE FF} 表示大端序（\+UTF-\/16\+BE）
+\item {\ttfamily FF FE} 表示小端序（\+UTF-\/16\+LE）
+\item 若无 BOM，默认按大端序解析
+\end{DoxyItemize}
+
+\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}兼容性\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：需解析 BOM 标记，适用于跨平台场景（如文本文件）
+\end{DoxyItemize}\hypertarget{md_doc_2utf16BE_01UTF16LE等d_autotoc_md37}{}\doxysection{\texorpdfstring{BOM 标记的作用}{BOM 标记的作用}}\label{md_doc_2utf16BE_01UTF16LE等d_autotoc_md37}
+
+\begin{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}功能\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：用于标识字节顺序，避免解码错误
+\begin{DoxyItemize}
+\item 例如，\+UTF-\/16 编码的文件开头可能包含 {\ttfamily FE FF} 或 {\ttfamily FF FE} 来指示后续数据的存储方式
+\end{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}注意事项\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：
+\item UTF-\/16\+BE/\+LE 通常不含 BOM，若强行添加可能导致解析错误
+\item 无 BOM 的 UTF-\/16 数据可能被误判为默认的大端序 
+\end{DoxyItemize}

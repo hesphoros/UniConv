@@ -230,4 +230,3 @@ std::string gbk_result = conv->FromUtf8ToGbk(utf8_text);
 **Version**: 1.0.0.1  
 **License**: MIT License  
 
-This comprehensive documentation ensures the UniConv library is fully documented, maintainable, and accessible to developers at all skill levels.

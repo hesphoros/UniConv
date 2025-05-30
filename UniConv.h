@@ -12,7 +12,7 @@
 *  along with this program. If not, see <http://www.gnu.org/licenses/>.
 *
 *  @file     UniConv.h
-*  @brief    UniConv A c++ library for varaiable encoding conversion
+*  @brief    UniConv A c++ library for variable encoding conversion
 *  @details  Unicode conversion library
 *
 *  @author   hesphoros
@@ -62,7 +62,7 @@
  * - 2025/03/10 v1.0.0.1 - Initial implementation by hesphoros
  */
 
-
+#ifndef __UNICONV_H__
 /** @def __UNICONV_H__
  *  @brief Header guard macro to prevent multiple inclusions
  */
@@ -290,7 +290,9 @@ public:
 		 * @brief Explicit boolean conversion operator
 		 * @return true if the conversion was successful, false otherwise
 		 * @details Allows the result to be used in boolean contexts:
-		 *          if (result) { /* success */ }
+		 *          if (result) { 
+		 *             // success
+		 *           }
 		 */
 		explicit operator bool() const {
 			return IsSuccess();
@@ -299,7 +301,7 @@ public:
 		/**
 		 * @brief Logical NOT operator
 		 * @return true if the conversion failed, false if successful
-		 * @details Allows checking for failure: if (!result) { /* handle error */ }
+		 * @details Allows checking for failure: if (!result) {  handle error }
 		 */
 		bool operator!() const {
 			return !IsSuccess();
@@ -1609,7 +1611,8 @@ public:
 	 *           used on IBM mainframe systems. These are rarely used in
 	 *           modern applications but may be needed for legacy data processing.
 	 *  @{
-	 */	static constexpr const char* ibm_037_encoding = "IBM-037";               /*!< @brief IBM EBCDIC US-Canada */
+	 */
+	static constexpr const char* ibm_037_encoding = "IBM-037";               /*!< @brief IBM EBCDIC US-Canada */
 	static constexpr const char* ibm_273_encoding = "IBM-273";               /*!< @brief IBM EBCDIC Germany */
 	static constexpr const char* ibm_277_encoding = "IBM-277";               /*!< @brief IBM EBCDIC Denmark-Norway */
 	static constexpr const char* ibm_278_encoding = "IBM-278";               /*!< @brief IBM EBCDIC Finland-Sweden */

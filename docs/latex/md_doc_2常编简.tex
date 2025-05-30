@@ -1,0 +1,128 @@
+\chapter{1. 常见编码简介}
+\hypertarget{md_doc_2常编简}{}\label{md_doc_2常编简}\index{1. 常见编码简介@{1. 常见编码简介}}
+\label{md_doc_2常编简_autotoc_md0}%
+\Hypertarget{md_doc_2常编简_autotoc_md0}%
+\hypertarget{md_doc_2常编简_autotoc_md1}{}\doxysubsection{\texorpdfstring{ASCII}{ASCII}}\label{md_doc_2常编简_autotoc_md1}
+
+\begin{DoxyItemize}
+\item 7位编码，表示128个字符（基础英文和控制符）。
+\item 兼容性好，但无法表示非英语字符（如中文）。
+\end{DoxyItemize}\hypertarget{md_doc_2常编简_autotoc_md2}{}\doxysubsection{\texorpdfstring{ISO-\/8859-\/1（\+Latin-\/1）}{ISO-\/8859-\/1（\+Latin-\/1）}}\label{md_doc_2常编简_autotoc_md2}
+
+\begin{DoxyItemize}
+\item 单字节编码，支持西欧语言和符号（共256字符）。
+\item 不能表示中文、日文等东亚字符。
+\end{DoxyItemize}\hypertarget{md_doc_2常编简_autotoc_md3}{}\doxysubsection{\texorpdfstring{GB2312、\+GBK、\+GB18030}{GB2312、\+GBK、\+GB18030}}\label{md_doc_2常编简_autotoc_md3}
+
+\begin{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}\+GB2312\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：中国大陆早期的汉字编码，支持约7000汉字。
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}\+GBK\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：\+GB2312的扩展，支持更多汉字及符号（兼容\+GB2312）。
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}\+GB18030\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：国家标准，支持所有中文字符和\+Unicode扩展，向下兼容\+GBK。
+\end{DoxyItemize}\hypertarget{md_doc_2常编简_autotoc_md4}{}\doxysubsection{\texorpdfstring{BIG5}{BIG5}}\label{md_doc_2常编简_autotoc_md4}
+
+\begin{DoxyItemize}
+\item 繁体中文常用编码，主要用于台湾和香港。
+\end{DoxyItemize}\hypertarget{md_doc_2常编简_autotoc_md5}{}\doxysubsection{\texorpdfstring{Unicode}{Unicode}}\label{md_doc_2常编简_autotoc_md5}
+
+\begin{DoxyItemize}
+\item 全球统一字符集标准，编码每个字符一个唯一编号。
+\end{DoxyItemize}\hypertarget{md_doc_2常编简_autotoc_md6}{}\doxysubsubsection{\texorpdfstring{UTF-\/8}{UTF-\/8}}\label{md_doc_2常编简_autotoc_md6}
+
+\begin{DoxyItemize}
+\item 变长编码（1\texorpdfstring{$\sim$}{\string~}4字节）。
+\item 英文等兼容\+ASCII，中文通常3字节。
+\item 互联网标准，跨平台最推荐。
+\end{DoxyItemize}\hypertarget{md_doc_2常编简_autotoc_md7}{}\doxysubsubsection{\texorpdfstring{UTF-\/16}{UTF-\/16}}\label{md_doc_2常编简_autotoc_md7}
+
+\begin{DoxyItemize}
+\item 变长编码（2或4字节）。
+\item Windows和\+Java内部常用。
+\item 小端（\+LE）与大端（\+BE）区别。
+\end{DoxyItemize}\hypertarget{md_doc_2常编简_autotoc_md8}{}\doxysubsubsection{\texorpdfstring{UTF-\/32}{UTF-\/32}}\label{md_doc_2常编简_autotoc_md8}
+
+\begin{DoxyItemize}
+\item 定长编码（4字节），空间大但处理简单。
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_doc_2常编简_autotoc_md10}{}\doxysection{\texorpdfstring{2. 编码转换的基本原理}{2. 编码转换的基本原理}}\label{md_doc_2常编简_autotoc_md10}
+
+\begin{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}编码转换\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}本质是：将一串特定编码下的字节序列，解释为字符后，再按目标编码重新编码为新的字节序列。
+\item 需明确\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}源编码\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}和\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}目标编码\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}，如“\+GBK 转 UTF-\/8”。
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_doc_2常编简_autotoc_md12}{}\doxysection{\texorpdfstring{3. C++ 使用 iconv 进行编码转换}{3. C++ 使用 iconv 进行编码转换}}\label{md_doc_2常编简_autotoc_md12}
+\hypertarget{md_doc_2常编简_autotoc_md13}{}\doxysubsection{\texorpdfstring{安装（\+Linux）}{安装（\+Linux）}}\label{md_doc_2常编简_autotoc_md13}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{sudo\ apt-\/get\ install\ libiconv-\/hook-\/dev\ \ \ \ \ \ \#\ 或\ libiconv-\/dev，视系统而定}
+
+\end{DoxyCode}
+\hypertarget{md_doc_2常编简_autotoc_md14}{}\doxysubsection{\texorpdfstring{基本用法}{基本用法}}\label{md_doc_2常编简_autotoc_md14}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include\ <\mbox{\hyperlink{iconv_8h}{iconv.h}}>}}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include\ <cstring>}}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{keywordtype}{bool}\ code\_convert(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ from\_charset,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ to\_charset,}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ inbuf,\ \textcolor{keywordtype}{size\_t}\ inlen,}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{char}*\ outbuf,\ \textcolor{keywordtype}{size\_t}\ outlen)\ \{}
+\DoxyCodeLine{\ \ \ \ \mbox{\hyperlink{iconv_8h_a394d3fb485b2577035dd4a8055724273}{iconv\_t}}\ cd\ =\ \mbox{\hyperlink{iconv_8h_abc93f77b3b8b5891765c9f3c483ec013}{iconv\_open}}(to\_charset,\ from\_charset);}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordflow}{if}\ (cd\ ==\ (\mbox{\hyperlink{iconv_8h_a394d3fb485b2577035dd4a8055724273}{iconv\_t}})-\/1)\ \{}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ perror(\textcolor{stringliteral}{"{}iconv\_open"{}});}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\ \ \ \ \}}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordtype}{char}\ **pin\ =\ (\textcolor{keywordtype}{char}**)\&inbuf;}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordtype}{char}\ **pout\ =\ \&outbuf;}
+\DoxyCodeLine{\ \ \ \ memset(outbuf,\ 0,\ outlen);}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordflow}{if}\ (\mbox{\hyperlink{iconv_8h_a44c0f9426dd91c55d783618e535404b7}{iconv}}(cd,\ pin,\ \&inlen,\ pout,\ \&outlen)\ ==\ (\textcolor{keywordtype}{size\_t})-\/1)\ \{}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ perror(\textcolor{stringliteral}{"{}iconv"{}});}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \mbox{\hyperlink{iconv_8h_a0c4ff4bdefbf1576f3e7bab5fbc5ec89}{iconv\_close}}(cd);}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\ \ \ \ \}}
+\DoxyCodeLine{\ \ \ \ \mbox{\hyperlink{iconv_8h_a0c4ff4bdefbf1576f3e7bab5fbc5ec89}{iconv\_close}}(cd);}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+\hypertarget{md_doc_2常编简_autotoc_md15}{}\doxysubsubsection{\texorpdfstring{示例：\+GBK 转 UTF-\/8}{示例：\+GBK 转 UTF-\/8}}\label{md_doc_2常编简_autotoc_md15}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ \mbox{\hyperlink{gbk__str_8cpp_acfa8c4938b7935c7b4aac2e455a364dc}{gbk\_str}}\ =\ \textcolor{stringliteral}{"{}中文字符串"{}};}
+\DoxyCodeLine{\textcolor{keywordtype}{char}\ utf8\_buf[1024];}
+\DoxyCodeLine{\textcolor{keywordflow}{if}\ (code\_convert(\textcolor{stringliteral}{"{}GBK"{}},\ \textcolor{stringliteral}{"{}UTF-\/8"{}},\ \mbox{\hyperlink{gbk__str_8cpp_acfa8c4938b7935c7b4aac2e455a364dc}{gbk\_str}},\ strlen(\mbox{\hyperlink{gbk__str_8cpp_acfa8c4938b7935c7b4aac2e455a364dc}{gbk\_str}}),\ utf8\_buf,\ \textcolor{keyword}{sizeof}(utf8\_buf)))\ \{}
+\DoxyCodeLine{\ \ \ \ std::cout\ <<\ utf8\_buf\ <<\ std::endl;}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+\hypertarget{md_doc_2常编简_autotoc_md16}{}\doxysubsubsection{\texorpdfstring{常见编码名（iconv参数）}{常见编码名（iconv参数）}}\label{md_doc_2常编简_autotoc_md16}
+
+\begin{DoxyItemize}
+\item "{}\+UTF-\/8"{}
+\item "{}\+UTF-\/16\+LE"{} / "{}\+UTF-\/16\+BE"{}
+\item "{}\+GBK"{}
+\item "{}\+GB2312"{}
+\item "{}\+ISO-\/8859-\/1"{}
+\item "{}\+BIG5"{}
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_doc_2常编简_autotoc_md18}{}\doxysection{\texorpdfstring{4. 注意事项}{4. 注意事项}}\label{md_doc_2常编简_autotoc_md18}
+
+\begin{DoxyItemize}
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}内存预留\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：目标缓冲区建议大于源缓冲区（\+UTF-\/8 转 GBK 时尤为如此）。
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}中文字符编码\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：iconv 参数需与实际编码一致，否则会乱码。
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}异常处理\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：建议对 iconv 的返回值进行判断，避免数据丢失。
+\item \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}\+Windows 下\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}：建议用 \href{https://github.com/win-iconv/win-iconv}{\texttt{ iconv for Windows}} 或 ICU 库。
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_doc_2常编简_autotoc_md20}{}\doxysection{\texorpdfstring{5. 参考资料}{5. 参考资料}}\label{md_doc_2常编简_autotoc_md20}
+
+\begin{DoxyItemize}
+\item \href{https://www.ruanyifeng.com/blog/2004/12/unicode.html}{\texttt{ Unicode 简明教程}}
+\item \mbox{[}iconv 官方文档 
+\end{DoxyItemize}

@@ -1,0 +1,38 @@
+\doxysection{Singleton\+\_\+fixed.\+h File Reference}
+\hypertarget{Singleton__fixed_8h}{}\label{Singleton__fixed_8h}\index{Singleton\_fixed.h@{Singleton\_fixed.h}}
+{\ttfamily \#include $<$memory$>$}\newline
+{\ttfamily \#include $<$mutex$>$}\newline
+{\ttfamily \#include $<$iostream$>$}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classSingleton}{Singleton$<$ T $>$}}
+\begin{DoxyCompactList}\small\item\em Thread-\/safe \doxylink{classSingleton}{Singleton} pattern template class. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename T$>$ }\\std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{Singleton__fixed_8h_a9648a644766cf1b179bfa84bddd69ceb}{Singleton$<$ T $>$\+::\+\_\+instance}} = nullptr
+\begin{DoxyCompactList}\small\item\em Static member definition. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{Singleton__fixed_8h_a9648a644766cf1b179bfa84bddd69ceb}\index{Singleton\_fixed.h@{Singleton\_fixed.h}!Singleton$<$ T $>$::\_instance@{Singleton$<$ T $>$::\_instance}}
+\index{Singleton$<$ T $>$::\_instance@{Singleton$<$ T $>$::\_instance}!Singleton\_fixed.h@{Singleton\_fixed.h}}
+\doxysubsubsection{\texorpdfstring{Singleton$<$ T $>$::\_instance}{Singleton< T >::\_instance}}
+{\footnotesize\ttfamily \label{Singleton__fixed_8h_a9648a644766cf1b179bfa84bddd69ceb} 
+template$<$typename T$>$ \\
+std\+::shared\+\_\+ptr$<$T$>$ \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\+\_\+instance = nullptr}
+
+
+
+Static member definition. 
+
+Template static member definition. Each instantiation of the template gets its own static \+\_\+instance variable initialized to nullptr.
+
+\begin{DoxyNote}{Note}
+This definition is required for proper template static member initialization 
+\end{DoxyNote}
+
+
+Definition at line \mbox{\hyperlink{Singleton__fixed_8h_source_l00194}{194}} of file \mbox{\hyperlink{Singleton__fixed_8h_source}{Singleton\+\_\+fixed.\+h}}.
+

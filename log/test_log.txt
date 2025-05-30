@@ -143,3 +143,165 @@ INFO-//>>>2025-05-30 19:12:36 : --- UTF-8 -> GBK ---
 INFO-//>>>2025-05-30 19:12:36 : --- GBK -> UTF-8 ---
 INFO-//>>>2025-05-30 19:12:36 : --- UTF-16LE -> UTF-8 ---
 INFO-//>>>2025-05-30 19:12:36 : --- UTF-16BE -> UTF-8 ---
+INFO-//>>>2025-05-30 21:05:07 : All test files exist, ready to start testing
+INFO-//>>>2025-05-30 21:05:07 : === Starting All Conversion Methods Test ===
+INFO-//>>>2025-05-30 21:05:07 : Test text size from UTF-8 file: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : UTF-8 data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : System encoding: GBK
+INFO-//>>>2025-05-30 21:05:07 : --- Testing UTF-8 <-> Local encoding ---
+INFO-//>>>2025-05-30 21:05:07 : UTF-8 -> Local: b2 e2 ca d4 ce c4 b1 be 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Local -> UTF-8: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Round-trip successful: Yes
+INFO-//>>>2025-05-30 21:05:07 : --- Testing UTF-8 <-> UTF-16LE ---
+INFO-//>>>2025-05-30 21:05:07 : UTF-8 -> UTF-16LE: 4b 6d d5 8b 87 65 2c 67 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 00 
+INFO-//>>>2025-05-30 21:05:07 : UTF-16LE -> UTF-8: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Round-trip successful: Yes
+INFO-//>>>2025-05-30 21:05:07 : --- Testing UTF-8 <-> UTF-16BE ---
+INFO-//>>>2025-05-30 21:05:07 : UTF-8 -> UTF-16BE: 6d 4b 8b d5 65 87 67 2c 00 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 
+INFO-//>>>2025-05-30 21:05:07 : UTF-16BE -> UTF-8: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Round-trip successful: Yes
+INFO-//>>>2025-05-30 21:05:07 : === All Conversion Methods Test Complete ===
+INFO-//>>>2025-05-30 21:05:07 : === Starting Batch File Conversion Tests ===
+INFO-//>>>2025-05-30 21:05:07 : --- UTF-8 -> UTF-16LE ---
+INFO-//>>>2025-05-30 21:05:07 : Input file: testdata/input_utf8.txt
+INFO-//>>>2025-05-30 21:05:07 : Original data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:07 : Clean data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Input data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:07 : Output data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:07 : Output data hex: 4b 6d d5 8b 87 65 2c 67 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 00 
+INFO-//>>>2025-05-30 21:05:07 : Successfully wrote output file: testdata/output/output_utf16le.txt
+INFO-//>>>2025-05-30 21:05:07 : --- UTF-8 -> UTF-16BE ---
+INFO-//>>>2025-05-30 21:05:07 : Input file: testdata/input_utf8.txt
+INFO-//>>>2025-05-30 21:05:07 : Original data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:07 : Clean data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Input data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:07 : Output data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:07 : Output data hex: 6d 4b 8b d5 65 87 67 2c 00 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 
+INFO-//>>>2025-05-30 21:05:07 : Successfully wrote output file: testdata/output/output_utf16be.txt
+INFO-//>>>2025-05-30 21:05:07 : --- UTF-8 -> GBK ---
+INFO-//>>>2025-05-30 21:05:07 : Input file: testdata/input_utf8.txt
+INFO-//>>>2025-05-30 21:05:07 : Original data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:07 : Clean data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Input data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:07 : Output data size: 23 bytes
+INFO-//>>>2025-05-30 21:05:07 : Output data hex: b2 e2 ca d4 ce c4 b1 be 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Successfully wrote output file: testdata/output/output_gbk.txt
+INFO-//>>>2025-05-30 21:05:07 : --- GBK -> UTF-8 ---
+INFO-//>>>2025-05-30 21:05:07 : Input file: testdata/input_gbk.txt
+INFO-//>>>2025-05-30 21:05:07 : Original data size: 23 bytes
+INFO-//>>>2025-05-30 21:05:07 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:07 : Clean data size: 23 bytes
+INFO-//>>>2025-05-30 21:05:07 : Input data hex: b2 e2 ca d4 ce c4 b1 be 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:07 : Output data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Output data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Successfully wrote output file: testdata/output/output_utf8_from_gbk.txt
+INFO-//>>>2025-05-30 21:05:07 : --- UTF-16LE -> UTF-8 ---
+INFO-//>>>2025-05-30 21:05:07 : Input file: testdata/input_utf16le.txt
+INFO-//>>>2025-05-30 21:05:07 : Original data size: 40 bytes
+INFO-//>>>2025-05-30 21:05:07 : Detected encoding: UTF-16LE
+INFO-//>>>2025-05-30 21:05:07 : Clean data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:07 : Input data hex: 4b 6d d5 8b 87 65 2c 67 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 00 
+INFO-//>>>2025-05-30 21:05:07 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:07 : Output data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Output data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Successfully wrote output file: testdata/output/output_utf8_from_utf16le.txt
+INFO-//>>>2025-05-30 21:05:07 : --- UTF-16BE -> UTF-8 ---
+INFO-//>>>2025-05-30 21:05:07 : Input file: testdata/input_utf16be.txt
+INFO-//>>>2025-05-30 21:05:07 : Original data size: 40 bytes
+INFO-//>>>2025-05-30 21:05:07 : Detected encoding: UTF-16BE
+INFO-//>>>2025-05-30 21:05:07 : Clean data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:07 : Input data hex: 6d 4b 8b d5 65 87 67 2c 00 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 
+INFO-//>>>2025-05-30 21:05:07 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:07 : Output data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:07 : Output data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:07 : Successfully wrote output file: testdata/output/output_utf8_from_utf16be.txt
+INFO-//>>>2025-05-30 21:05:07 : === Batch File Conversion Tests Complete ===
+Stop log write thread-//>>>2025-05-30 21:05:07 : ===============================>
+INFO-//>>>2025-05-30 21:05:54 : All test files exist, ready to start testing
+INFO-//>>>2025-05-30 21:05:54 : === Starting All Conversion Methods Test ===
+INFO-//>>>2025-05-30 21:05:54 : Test text size from UTF-8 file: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : UTF-8 data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : System encoding: GBK
+INFO-//>>>2025-05-30 21:05:54 : --- Testing UTF-8 <-> Local encoding ---
+INFO-//>>>2025-05-30 21:05:54 : UTF-8 -> Local: b2 e2 ca d4 ce c4 b1 be 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Local -> UTF-8: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Round-trip successful: Yes
+INFO-//>>>2025-05-30 21:05:54 : --- Testing UTF-8 <-> UTF-16LE ---
+INFO-//>>>2025-05-30 21:05:54 : UTF-8 -> UTF-16LE: 4b 6d d5 8b 87 65 2c 67 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 00 
+INFO-//>>>2025-05-30 21:05:54 : UTF-16LE -> UTF-8: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Round-trip successful: Yes
+INFO-//>>>2025-05-30 21:05:54 : --- Testing UTF-8 <-> UTF-16BE ---
+INFO-//>>>2025-05-30 21:05:54 : UTF-8 -> UTF-16BE: 6d 4b 8b d5 65 87 67 2c 00 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 
+INFO-//>>>2025-05-30 21:05:54 : UTF-16BE -> UTF-8: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Round-trip successful: Yes
+INFO-//>>>2025-05-30 21:05:54 : === All Conversion Methods Test Complete ===
+INFO-//>>>2025-05-30 21:05:54 : === Starting Batch File Conversion Tests ===
+INFO-//>>>2025-05-30 21:05:54 : --- UTF-8 -> UTF-16LE ---
+INFO-//>>>2025-05-30 21:05:54 : Input file: testdata/input_utf8.txt
+INFO-//>>>2025-05-30 21:05:54 : Original data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:54 : Clean data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Input data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:54 : Output data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:54 : Output data hex: 4b 6d d5 8b 87 65 2c 67 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 00 
+INFO-//>>>2025-05-30 21:05:54 : Successfully wrote output file: testdata/output/output_utf16le.txt
+INFO-//>>>2025-05-30 21:05:54 : --- UTF-8 -> UTF-16BE ---
+INFO-//>>>2025-05-30 21:05:54 : Input file: testdata/input_utf8.txt
+INFO-//>>>2025-05-30 21:05:54 : Original data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:54 : Clean data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Input data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:54 : Output data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:54 : Output data hex: 6d 4b 8b d5 65 87 67 2c 00 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 
+INFO-//>>>2025-05-30 21:05:54 : Successfully wrote output file: testdata/output/output_utf16be.txt
+INFO-//>>>2025-05-30 21:05:54 : --- UTF-8 -> GBK ---
+INFO-//>>>2025-05-30 21:05:54 : Input file: testdata/input_utf8.txt
+INFO-//>>>2025-05-30 21:05:54 : Original data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:54 : Clean data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Input data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:54 : Output data size: 23 bytes
+INFO-//>>>2025-05-30 21:05:54 : Output data hex: b2 e2 ca d4 ce c4 b1 be 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Successfully wrote output file: testdata/output/output_gbk.txt
+INFO-//>>>2025-05-30 21:05:54 : --- GBK -> UTF-8 ---
+INFO-//>>>2025-05-30 21:05:54 : Input file: testdata/input_gbk.txt
+INFO-//>>>2025-05-30 21:05:54 : Original data size: 23 bytes
+INFO-//>>>2025-05-30 21:05:54 : Detected encoding: No BOM
+INFO-//>>>2025-05-30 21:05:54 : Clean data size: 23 bytes
+INFO-//>>>2025-05-30 21:05:54 : Input data hex: b2 e2 ca d4 ce c4 b1 be 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:54 : Output data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Output data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Successfully wrote output file: testdata/output/output_utf8_from_gbk.txt
+INFO-//>>>2025-05-30 21:05:54 : --- UTF-16LE -> UTF-8 ---
+INFO-//>>>2025-05-30 21:05:54 : Input file: testdata/input_utf16le.txt
+INFO-//>>>2025-05-30 21:05:54 : Original data size: 40 bytes
+INFO-//>>>2025-05-30 21:05:54 : Detected encoding: UTF-16LE
+INFO-//>>>2025-05-30 21:05:54 : Clean data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:54 : Input data hex: 4b 6d d5 8b 87 65 2c 67 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 00 
+INFO-//>>>2025-05-30 21:05:54 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:54 : Output data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Output data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Successfully wrote output file: testdata/output/output_utf8_from_utf16le.txt
+INFO-//>>>2025-05-30 21:05:54 : --- UTF-16BE -> UTF-8 ---
+INFO-//>>>2025-05-30 21:05:54 : Input file: testdata/input_utf16be.txt
+INFO-//>>>2025-05-30 21:05:54 : Original data size: 40 bytes
+INFO-//>>>2025-05-30 21:05:54 : Detected encoding: UTF-16BE
+INFO-//>>>2025-05-30 21:05:54 : Clean data size: 38 bytes
+INFO-//>>>2025-05-30 21:05:54 : Input data hex: 6d 4b 8b d5 65 87 67 2c 00 48 00 65 00 6c 00 6c 00 6f 00 20 00 57 00 6f 00 72 00 6c 00 64 00 20 00 31 00 32 00 33 
+INFO-//>>>2025-05-30 21:05:54 : Conversion successful!
+INFO-//>>>2025-05-30 21:05:54 : Output data size: 27 bytes
+INFO-//>>>2025-05-30 21:05:54 : Output data hex: e6 b5 8b e8 af 95 e6 96 87 e6 9c ac 48 65 6c 6c 6f 20 57 6f 72 6c 64 20 31 32 33 
+INFO-//>>>2025-05-30 21:05:54 : Successfully wrote output file: testdata/output/output_utf8_from_utf16be.txt
+INFO-//>>>2025-05-30 21:05:54 : === Batch File Conversion Tests Complete ===
+Stop log write thread-//>>>2025-05-30 21:05:54 : ===============================>
