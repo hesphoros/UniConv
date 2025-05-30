@@ -1,12 +1,26 @@
-ï»¿#include "UniConv.h"
+#include "UniConv.h"
 #include "LightLogWriteImpl.h"
+#include <iostream>
 
-#if CPP_STANDARD < CPP_STANDARD
-#include <codecvt>
-#endif
+// ÉùÃ÷ÐÂµÄ²âÊÔº¯Êý
+void RunAllTests();
 
-
-auto gUniConv = UniConv::GetInstance();
-
-
-
+int main() {
+    std::cout << "UniConv ±àÂë×ª»»¿â²âÊÔ³ÌÐò" << std::endl;
+    std::cout << "============================" << std::endl;
+    
+    try {
+        // ÔËÐÐËùÓÐ²âÊÔ
+        RunAllTests();
+        
+        std::cout << "ËùÓÐ²âÊÔÍê³É£¡Çë²é¿´ÈÕÖ¾ÎÄ¼þºÍÊä³öÎÄ¼þ¡£" << std::endl;
+        std::cout << "ÈÕÖ¾ÎÄ¼þ£ºlog/TestNewConvert.log" << std::endl;
+        std::cout << "Êä³öÎÄ¼þ£ºtestdata/output/" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "²âÊÔ¹ý³ÌÖÐ·¢Éú´íÎó£º" << e.what() << std::endl;
+        return 1;
+    }
+    
+    return 0;
+}

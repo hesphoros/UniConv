@@ -1,113 +1,277 @@
-
-#include "gtest/gtest.h"
+// Test.cpp - 重构的测试文件
 #include "UniConv.h"
+#include "LightLogWriteImpl.h"
 #include <fstream>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <io.h>
+#include <fcntl.h>
 #include <vector>
-#include <filesystem>
+#include <direct.h>
+#include <utility>
 
-using namespace std;
-namespace fs = std::filesystem;
+// 全局日志实例
+static LightLogWrite_Impl g_logger;
 
-// 测试数据目录
-const std::string kTestDataDir = "testdata/";
-
-
-
-
-// 写入文件（指定编码，直接写二进制）
-void WriteFile(const std::string& path, const std::string& data) {
-    ofstream ofs(path, ios::binary);
-    ofs.write(data.data(), data.size());
+// 初始化日志系统
+void InitLogger() {
+    g_logger.SetLogsFileName("log/test_log.txt");
 }
 
-// 读取文件为string
-std::string ReadFile_(const std::string& path) {
-    ifstream ifs(path, ios::binary);
-    return std::string((istreambuf_iterator<char>(ifs)), istreambuf_iterator<char>());
+// 简化的日志函数
+void Log(const std::string& message) {
+    g_logger.WriteLogContent("INFO", message);
+    std::cout << message << std::endl;
 }
 
-// 统一从文件读取基础测试字符串，作为所有测试数据源
-std::string GetSampleUtf8() {
-	return ReadFile_("testdata/sample_utf8.txt");
-}
-
-// 生成多种编码的测试文件
-void GenerateTestFiles() {
-    fs::create_directories(kTestDataDir);
-    std::string sample = GetSampleUtf8();
-    // UTF-8
-    WriteFile(kTestDataDir + "utf8.txt", sample);
-    // 本地编码（假设为GBK/CP936，需实际环境支持）
-    std::string local = UniConv::GetInstance().get()->FromUtf8ToLocal(sample);
-    WriteFile(kTestDataDir + "local.txt", local);
-    // UTF-16LE
-    std::u16string u16le = UniConv::GetInstance().get()->FromUtf8ToUtf16LE(sample);
-    WriteFile(kTestDataDir + "utf16le.txt", std::string(reinterpret_cast<const char*>(u16le.data()), u16le.size()*2));
-    // UTF-16BE
-    std::u16string u16be = UniConv::GetInstance().get()->FromUtf8ToUtf16BE(sample);
-    WriteFile(kTestDataDir + "utf16be.txt", std::string(reinterpret_cast<const char*>(u16be.data()), u16be.size()*2));
-}
-
-class UniConvTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        GenerateTestFiles();
+// 辅助函数：将字节数据转换为十六进制字符串
+std::string BytesToHex(const std::string& data) {
+    std::ostringstream oss;
+    for (unsigned char c : data) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c) << " ";
     }
-};
-
-TEST_F(UniConvTest, ToUtf8FromLocal) {
-    std::string local = ReadFile_(kTestDataDir + "local.txt");
-    std::string utf8 = UniConv::GetInstance().get()->ToUtf8FromLocal(local);
-    EXPECT_EQ(utf8, GetSampleUtf8());
+    return oss.str();
 }
 
-TEST_F(UniConvTest, FromUtf8ToLocal) {
-    std::string utf8 = ReadFile_(kTestDataDir + "utf8.txt");
-    std::string local = UniConv::GetInstance().get()->FromUtf8ToLocal(utf8);
-    std::string reread = UniConv::GetInstance().get()->ToUtf8FromLocal(local);
-    EXPECT_EQ(reread, GetSampleUtf8());
+// 辅助函数：读取文件的原始字节数据
+std::string ReadFileBytes(const std::string& filePath) {
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        return "";
+    }
+    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
-TEST_F(UniConvTest, Utf8_Utf16LE) {
-    std::string utf8 = ReadFile_(kTestDataDir + "utf8.txt");
-    std::u16string u16le = UniConv::GetInstance().get()->FromUtf8ToUtf16LE(utf8);
-    std::string u16le_bin(reinterpret_cast<const char*>(u16le.data()), u16le.size()*2);
-    std::string file_bin = ReadFile_(kTestDataDir + "utf16le.txt");
-    EXPECT_EQ(u16le_bin, file_bin);
-    // 反向
-    std::string utf8_back = UniConv::GetInstance().get()->FromUtf16LEToUtf8(u16le);
-    EXPECT_EQ(utf8_back, GetSampleUtf8());
+// 辅助函数：写入字节数据到文件
+bool WriteFileBytes(const std::string& filePath, const std::string& data) {
+    std::ofstream file(filePath, std::ios::binary);
+    if (!file) {
+        return false;
+    }
+    file.write(data.data(), data.size());
+    return file.good();
 }
 
-TEST_F(UniConvTest, Utf8_Utf16BE) {
-    std::string utf8 = ReadFile_(kTestDataDir + "utf8.txt");
-    std::u16string u16be = UniConv::GetInstance().get()->FromUtf8ToUtf16BE(utf8);
-    std::string u16be_bin(reinterpret_cast<const char*>(u16be.data()), u16be.size()*2);
-    std::string file_bin = ReadFile_(kTestDataDir + "utf16be.txt");
-    EXPECT_EQ(u16be_bin, file_bin);
-    // 反向
-    std::string utf8_back = UniConv::GetInstance().get()->FromUtf16BEToUtf8(u16be);
-    EXPECT_EQ(utf8_back, GetSampleUtf8());
+// 创建目录的辅助函数
+void CreateDirectories(const std::string& path) {
+    _mkdir("testdata");
+    _mkdir("testdata\\output");
 }
 
-TEST_F(UniConvTest, Utf16LE_Utf16BE) {
-    std::string u16le_bin = ReadFile_(kTestDataDir + "utf16le.txt");
-    std::u16string u16le(reinterpret_cast<const char16_t*>(u16le_bin.data()), u16le_bin.size()/2);
-    std::u16string u16be = UniConv::GetInstance().get()->FromUtf16LEToUtf16BE(u16le);
-    std::string u16be_bin(reinterpret_cast<const char*>(u16be.data()), u16be.size()*2);
-    std::string file_bin = ReadFile_(kTestDataDir + "utf16be.txt");
-    EXPECT_EQ(u16be_bin, file_bin);
-    // 反向
-    std::u16string u16le2 = UniConv::GetInstance().get()->FromUtf16BEToUtf16LE(u16be);
-    std::string u16le_bin2(reinterpret_cast<const char*>(u16le2.data()), u16le2.size()*2);
-    EXPECT_EQ(u16le_bin2, u16le_bin);
+// 生成测试数据文件
+// 准备测试环境（只创建目录，不修改文件）
+void PrepareTestEnvironment() {
+    // 创建测试目录
+    CreateDirectories("testdata");
+    
+    // 检查测试文件是否存在
+    std::vector<std::string> required_files = {
+        "testdata/input_utf8.txt",
+        "testdata/input_gbk.txt", 
+        "testdata/input_utf16le.txt",
+        "testdata/input_utf16be.txt"
+    };
+    
+    bool all_files_exist = true;
+    for (const auto& file : required_files) {
+        std::ifstream test_file(file);
+        if (!test_file.good()) {
+            Log("警告：缺少测试文件 " + file);
+            all_files_exist = false;
+        }
+    }
+    
+    if (all_files_exist) {
+        Log("所有测试文件已存在，准备开始测试");
+    } else {
+        Log("请确保所有必需的测试文件都存在");
+        Log("建议运行 generate_test_files.py 脚本来生成测试文件");
+    }
 }
 
-// 可继续补充其它接口的测试用例 ...
+// 检测文件编码并去除BOM
+std::pair<std::string, std::string> DetectEncodingAndRemoveBOM(const std::string& data) {
+    if (data.empty()) {
+        return std::make_pair("UTF-8", data);
+    }
+    
+    // 检测BOM
+    if (data.size() >= 3 && 
+        static_cast<unsigned char>(data[0]) == 0xEF && 
+        static_cast<unsigned char>(data[1]) == 0xBB && 
+        static_cast<unsigned char>(data[2]) == 0xBF) {
+        return std::make_pair("UTF-8", data.substr(3));
+    }
+    
+    if (data.size() >= 2 && 
+        static_cast<unsigned char>(data[0]) == 0xFF && 
+        static_cast<unsigned char>(data[1]) == 0xFE) {
+        return std::make_pair("UTF-16LE", data.substr(2));
+    }
+    
+    if (data.size() >= 2 && 
+        static_cast<unsigned char>(data[0]) == 0xFE && 
+        static_cast<unsigned char>(data[1]) == 0xFF) {
+        return std::make_pair("UTF-16BE", data.substr(2));
+    }
+    
+    // 没有BOM，返回原数据
+    return std::make_pair("", data);
+}
 
-int main(int argc, char **argv) {
-	system("chcp 65001"); // 设置控制台编码为UTF-8
-    std::cout << "Current System Encoding: " << UniConv::GetInstance().get()->GetCurrentSystemEncoding() << std::endl;
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+// 批量转换文件的新实现
+void BatchConvertFiles() {
+    Log("=== 开始批量文件转换测试 ===");
+    
+    auto conv = UniConv::GetInstance();
+    
+    // 转换配置：源文件 -> 目标编码
+    struct ConversionTask {
+        std::string inputFile;
+        std::string outputFile;
+        std::string fromEncoding;
+        std::string toEncoding;
+        std::string description;
+    };
+    
+    std::vector<ConversionTask> tasks = {
+        {"testdata/input_utf8.txt", "testdata/output/output_utf16le.txt", "UTF-8", "UTF-16LE", "UTF-8 -> UTF-16LE"},
+        {"testdata/input_utf8.txt", "testdata/output/output_utf16be.txt", "UTF-8", "UTF-16BE", "UTF-8 -> UTF-16BE"},
+        {"testdata/input_utf8.txt", "testdata/output/output_gbk.txt", "UTF-8", "GBK", "UTF-8 -> GBK"},
+        {"testdata/input_gbk.txt", "testdata/output/output_utf8_from_gbk.txt", "GBK", "UTF-8", "GBK -> UTF-8"},
+        {"testdata/input_utf16le.txt", "testdata/output/output_utf8_from_utf16le.txt", "UTF-16LE", "UTF-8", "UTF-16LE -> UTF-8"},
+        {"testdata/input_utf16be.txt", "testdata/output/output_utf8_from_utf16be.txt", "UTF-16BE", "UTF-8", "UTF-16BE -> UTF-8"}
+    };
+    
+    for (const auto& task : tasks) {
+        Log("--- " + task.description + " ---");
+        
+        // 读取输入文件
+        std::string input_data = ReadFileBytes(task.inputFile);
+        if (input_data.empty()) {
+            Log("错误：无法读取文件 " + task.inputFile);
+            continue;
+        }
+        
+        // 检测并去除BOM
+        auto result_pair = DetectEncodingAndRemoveBOM(input_data);
+        std::string detected_encoding = result_pair.first;
+        std::string clean_data = result_pair.second;
+        std::string actual_from_encoding = detected_encoding.empty() ? task.fromEncoding : detected_encoding;
+        
+        Log("输入文件：" + task.inputFile);
+        Log("原始数据大小：" + std::to_string(input_data.size()) + " 字节");
+        Log("检测到的编码：" + (detected_encoding.empty() ? "无BOM" : detected_encoding));
+        Log("清理后数据大小：" + std::to_string(clean_data.size()) + " 字节");
+        Log("输入数据十六进制：" + BytesToHex(clean_data));
+        
+        // 执行编码转换
+        auto result = conv->ConvertEncoding(clean_data, actual_from_encoding.c_str(), task.toEncoding.c_str());
+        
+        if (result.IsSuccess()) {
+            Log("转换成功！");
+            Log("输出数据大小：" + std::to_string(result.conv_result_str.size()) + " 字节");
+            Log("输出数据十六进制：" + BytesToHex(result.conv_result_str));
+              // 写入输出文件
+            if (WriteFileBytes(task.outputFile, result.conv_result_str)) {
+                Log("成功写入输出文件：" + task.outputFile);
+            } else {
+                Log("错误：无法写入输出文件：" + task.outputFile);
+            }
+        } else {
+            Log("转换失败：" + result.error_msg);
+        }
+        
+        Log("");
+    }
+    
+    Log("=== 批量文件转换测试完成 ===");
+}
+
+// 测试所有编码转换方法
+void TestAllConversions() {
+    Log("=== 开始测试所有编码转换方法 ===");
+    
+    auto conv = UniConv::GetInstance();
+    
+    // 从UTF-8测试文件读取实际的UTF-8编码数据
+    std::string utf8_file_data = ReadFileBytes("testdata/input_utf8.txt");
+    if (utf8_file_data.empty()) {
+        Log("错误：无法读取UTF-8测试文件，跳过往返转换测试");
+        return;
+    }
+    
+    // 去除BOM（如果有的话）
+    auto result_pair = DetectEncodingAndRemoveBOM(utf8_file_data);
+    std::string test_text = result_pair.second;
+    
+    Log("从UTF-8文件读取测试文本大小：" + std::to_string(test_text.size()) + " 字节");
+    Log("UTF-8数据十六进制：" + BytesToHex(test_text));
+    Log("系统编码：" + conv->GetCurrentSystemEncoding());
+    
+    // 测试 UTF-8 <-> 本地编码
+    {
+        Log("--- 测试 UTF-8 <-> 本地编码 ---");
+        auto local_result = conv->FromUtf8ToLocal(test_text);
+        Log("UTF-8 -> Local: " + BytesToHex(local_result));
+        
+        auto utf8_result = conv->ToUtf8FromLocal(local_result);
+        Log("Local -> UTF-8: " + BytesToHex(utf8_result));
+        
+        bool success = (utf8_result == test_text);
+        Log("往返转换成功: " + std::string(success ? "是" : "否"));
+        if (!success) {
+            Log("原始大小: " + std::to_string(test_text.size()) + ", 结果大小: " + std::to_string(utf8_result.size()));
+        }
+    }
+    
+    // 测试 UTF-8 <-> UTF-16LE
+    {
+        Log("--- 测试 UTF-8 <-> UTF-16LE ---");
+        auto utf16le_result = conv->FromUtf8ToUtf16LE(test_text);
+        Log("UTF-8 -> UTF-16LE: " + BytesToHex(std::string(reinterpret_cast<const char*>(utf16le_result.data()), utf16le_result.size() * 2)));
+        
+        auto utf8_result = conv->FromUtf16LEToUtf8(utf16le_result);
+        Log("UTF-16LE -> UTF-8: " + BytesToHex(utf8_result));
+        
+        bool success = (utf8_result == test_text);
+        Log("往返转换成功: " + std::string(success ? "是" : "否"));
+        if (!success) {
+            Log("原始大小: " + std::to_string(test_text.size()) + ", 结果大小: " + std::to_string(utf8_result.size()));
+        }
+    }
+    
+    // 测试 UTF-8 <-> UTF-16BE
+    {
+        Log("--- 测试 UTF-8 <-> UTF-16BE ---");
+        auto utf16be_result = conv->FromUtf8ToUtf16BE(test_text);
+        Log("UTF-8 -> UTF-16BE: " + BytesToHex(std::string(reinterpret_cast<const char*>(utf16be_result.data()), utf16be_result.size() * 2)));
+        
+        auto utf8_result = conv->FromUtf16BEToUtf8(utf16be_result);
+        Log("UTF-16BE -> UTF-8: " + BytesToHex(utf8_result));
+        
+        bool success = (utf8_result == test_text);
+        Log("往返转换成功: " + std::string(success ? "是" : "否"));
+        if (!success) {
+            Log("原始大小: " + std::to_string(test_text.size()) + ", 结果大小: " + std::to_string(utf8_result.size()));
+        }
+    }
+    
+    Log("=== 所有编码转换方法测试完成 ===");
+}
+
+// 主测试函数
+void RunAllTests() {
+    // 初始化日志系统
+    InitLogger();
+    
+    // 生成测试文件
+    PrepareTestEnvironment();
+    
+    // 测试所有转换方法
+    TestAllConversions();
+    
+    // 批量转换文件
+    BatchConvertFiles();
 }

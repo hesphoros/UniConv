@@ -30,7 +30,7 @@
 #include "UniConv.h"
 #include "LightLogWriteImpl.h"
 
-// ===================== 通用编码�?换函�? =====================
+// ===================== 通用编码转换函数 =====================
 UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding) {
     IConvResult result;
     
@@ -47,16 +47,17 @@ UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const ch
         return result;
     }
     
-    // 准�?�输入输出缓冲区
+    // 准备输入输出缓冲区
     size_t inbytesleft = input.size();
-    size_t outbytesleft = inbytesleft * 4; // 足�?�大的输出缓冲区
+    size_t outbytesleft = inbytesleft * 4; // 足够大的输出缓冲区
     std::string output(outbytesleft, '\0');
-      char* inbuf = const_cast<char*>(input.data());
+    
+    char* inbuf = const_cast<char*>(input.data());
     char* outbuf = &output[0];
     char* outbuf_start = outbuf;
     
-    // ִ��ת��
-    size_t ret = iconv(cd, const_cast<const char**>(&inbuf), &inbytesleft, &outbuf, &outbytesleft);
+    // 执行转换
+    size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
     
     if (ret == (size_t)-1) {
         result.error_code = errno;
@@ -111,7 +112,7 @@ std::string UniConv::GetEncodingNameByCodePage(std::uint16_t codePage) {
     }
 }
 
-// ===================== UTF-16LE 带长度参数重�? =====================
+// ===================== UTF-16LE 带长度参数重载 =====================
 std::string UniConv::FromUtf16LEToUtf8(const char16_t* input, size_t len) {
     if (!input || len == 0) return "";
     
@@ -128,9 +129,9 @@ std::string UniConv::FromUtf16BEToUtf8(const char16_t* input, size_t len) {
     return result.IsSuccess() ? result.conv_result_str : "";
 }
 
-// ===================== 重构所有编码转换方�? =====================
+// ===================== 重构所有编码转换方法 =====================
 
-// 系统�?地编�? -> UTF-8
+// 系统本地编码 -> UTF-8
 std::string UniConv::ToUtf8FromLocal(const std::string& input) {
     std::string currentEncoding = GetCurrentSystemEncoding();
     auto result = ConvertEncoding(input, currentEncoding.c_str(), "UTF-8");
@@ -142,7 +143,7 @@ std::string UniConv::ToUtf8FromLocal(const char* input) {
     return ToUtf8FromLocal(std::string(input));
 }
 
-// UTF-8 -> 系统�?地编�?
+// UTF-8 -> 系统本地编码
 std::string UniConv::FromUtf8ToLocal(const std::string& input) {
     std::string currentEncoding = GetCurrentSystemEncoding();
     auto result = ConvertEncoding(input, "UTF-8", currentEncoding.c_str());
@@ -212,7 +213,7 @@ std::u16string UniConv::FromUtf8ToUtf16BE(const char* input) {
     return FromUtf8ToUtf16BE(std::string(input));
 }
 
-// 系统�?地编�? -> UTF-16LE
+// 系统本地编码 -> UTF-16LE
 std::u16string UniConv::ToUtf16LEFromLocal(const std::string& input) {
     std::string currentEncoding = GetCurrentSystemEncoding();
     auto result = ConvertEncoding(input, currentEncoding.c_str(), "UTF-16LE");
@@ -228,7 +229,7 @@ std::u16string UniConv::ToUtf16LEFromLocal(const char* input) {
     return ToUtf16LEFromLocal(std::string(input));
 }
 
-// 系统�?地编�? -> UTF-16BE
+// 系统本地编码 -> UTF-16BE
 std::u16string UniConv::ToUtf16BEFromLocal(const std::string& input) {
     std::string currentEncoding = GetCurrentSystemEncoding();
     auto result = ConvertEncoding(input, currentEncoding.c_str(), "UTF-16BE");
@@ -244,22 +245,22 @@ std::u16string UniConv::ToUtf16BEFromLocal(const char* input) {
     return ToUtf16BEFromLocal(std::string(input));
 }
 
-// UTF-16LE -> ϵͳ���ر���
+// UTF-16LE -> 系统本地编码
 std::string UniConv::FromUtf16LEToLocal(const std::u16string& input) {
     if (input.empty()) return "";
     
-    std::string currentEncoding = this->GetCurrentSystemEncoding();
+    std::string currentEncoding = GetCurrentSystemEncoding();
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = this->ConvertEncoding(input_bytes, "UTF-16LE", currentEncoding.c_str());
+    auto result = ConvertEncoding(input_bytes, "UTF-16LE", currentEncoding.c_str());
     return result.IsSuccess() ? result.conv_result_str : "";
 }
 
 std::string UniConv::FromUtf16LEToLocal(const char16_t* input) {
     if (!input) return "";
-    return this->FromUtf16LEToLocal(std::u16string(input));
+    return FromUtf16LEToLocal(std::u16string(input));
 }
 
-// UTF-16BE -> 系统�?地编�?
+// UTF-16BE -> 系统本地编码
 std::string UniConv::FromUtf16BEToLocal(const std::u16string& input) {
     if (input.empty()) return "";
     
@@ -356,7 +357,7 @@ std::wstring UniConv::LocaleToWideString(const std::string& sInput) {
     return LocaleToWideString(sInput.c_str());
 }
 
-// ===================== 错�??处理相关 =====================
+// ===================== 错误处理相关 =====================
 std::string UniConv::GetIconvErrorString(int err_code) {
     static const std::unordered_map<int, std::string> errorMap = {
         {EILSEQ, "Invalid multibyte sequence"},

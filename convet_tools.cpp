@@ -1,34 +1,73 @@
 #include "convert_tools.h"
+#include "UniConv.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-// º¯Êı£º½« UTF-8 ×ª»»Îª std::wstring£¨¼ÙÉèÎª UCS-4£©
+// ç®€åŒ–çš„UTF-8è½¬æ¢ä¸ºstd::wstringï¼ˆä½¿ç”¨UniConvï¼‰
 std::wstring Utf8ConvertsToUcs4(const std::string& utf8str) {
-
-	try {
-		// ´´½¨ std::wstring_convert ¶ÔÏó£¬Ê¹ÓÃ std::codecvt_utf8<wchar_t> ½øĞĞ×ª»»
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		// ½« UTF-8 ×Ö·û´®×ª»»Îª std::wstring
-		return converter.from_bytes(utf8str);
-	}
-	catch (const std::range_error& e) {
-		// Èç¹û×ª»»Ê§°Ü£¨ÀıÈçÊäÈë²»ÊÇÓĞĞ§µÄ UTF-8£©£¬Å×³öÒì³£
-		throw std::runtime_error("Failed to convert UTF-8 to UCS-4: " + std::string(e.what()));
-	}
+    try {
+        auto conv = UniConv::GetInstance();
+        
+        // ä½¿ç”¨ UniConv å°† UTF-8 è½¬æ¢ä¸ºç³»ç»Ÿæœ¬åœ°ç¼–ç ï¼Œç„¶åè½¬æ¢ä¸ºå®½å­—ç¬¦
+        std::string local_str = conv->FromUtf8ToLocal(utf8str);
+        
+        // ä½¿ç”¨ MultiByteToWideChar è½¬æ¢ä¸ºå®½å­—ç¬¦
+#ifdef _WIN32
+        if (local_str.empty()) {
+            return std::wstring();
+        }
+        
+        int wlen = MultiByteToWideChar(CP_ACP, 0, local_str.c_str(), -1, nullptr, 0);
+        if (wlen <= 0) {
+            throw std::runtime_error("Failed to convert to wide string");
+        }
+        
+        std::wstring result(wlen - 1, L'\0'); // -1 å› ä¸º wlen åŒ…å«äº† null terminator
+        MultiByteToWideChar(CP_ACP, 0, local_str.c_str(), -1, &result[0], wlen);
+        return result;
+#else
+        // Linux implementation
+        return std::wstring(utf8str.begin(), utf8str.end());
+#endif
+    }
+    catch (const std::exception& e) {
+        throw std::runtime_error("Failed to convert UTF-8 to UCS-4: " + std::string(e.what()));
+    }
 }
 
 
 
 
 std::string Ucs4ConvertToUtf8(const std::wstring& wstr) {
-	try {
-		// ´´½¨ std::wstring_convert ¶ÔÏó£¬Ê¹ÓÃ std::codecvt_utf8<wchar_t> ½øĞĞ×ª»»
-		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		// ½« std::wstring ×ª»»Îª UTF-8 ±àÂëµÄ std::string
-		return converter.to_bytes(wstr);
-	}
-	catch (const std::range_error& e) {
-		// Èç¹û×ª»»Ê§°Ü£¨ÀıÈçÊäÈë°üº¬ÎŞĞ§µÄ¿í×Ö·û£©£¬Å×³öÒì³£
-		throw std::runtime_error("Failed to convert UCS-4 to UTF-8: " + std::string(e.what()));
-	}
+    try {
+        auto conv = UniConv::GetInstance();
+        
+        // ä½¿ç”¨ WideCharToMultiByte è½¬æ¢ä¸ºå¤šå­—èŠ‚å­—ç¬¦
+#ifdef _WIN32
+        if (wstr.empty()) {
+            return std::string();
+        }
+        
+        int len = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (len <= 0) {
+            throw std::runtime_error("Failed to convert from wide string");
+        }
+        
+        std::string local_str(len - 1, '\0'); // -1 å› ä¸º len åŒ…å«äº† null terminator
+        WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, &local_str[0], len, nullptr, nullptr);
+        
+        // ä½¿ç”¨ UniConv å°†æœ¬åœ°ç¼–ç è½¬æ¢ä¸º UTF-8
+        return conv->ToUtf8FromLocal(local_str);
+#else
+        // Linux implementation
+        std::string result(wstr.begin(), wstr.end());
+        return conv->ToUtf8FromLocal(result);
+#endif
+    }
+    catch (const std::exception& e) {
+        throw std::runtime_error("Failed to convert UCS-4 to UTF-8: " + std::string(e.what()));
+    }
 }
 
 
@@ -38,10 +77,10 @@ std::wstring U16StringToWString(const std::u16string& u16str)
 	std::wstring wstr;
 
 #ifdef _WIN32
-	// Windows Æ½Ì¨£ºwchar_t ÊÇ 2 ×Ö½Ú£¨UTF-16£©£¬Ö±½Ó¿½±´
+	// Windows Æ½Ì¨ï¿½ï¿½wchar_t ï¿½ï¿½ 2 ï¿½Ö½Ú£ï¿½UTF-16ï¿½ï¿½ï¿½ï¿½Ö±ï¿½Ó¿ï¿½ï¿½ï¿½
 	wstr.assign(u16str.begin(), u16str.end());
 #else
-	// Linux Æ½Ì¨£ºwchar_t ÊÇ 4 ×Ö½Ú£¨UTF-32£©£¬ĞèÒª×ª»»
+	// Linux Æ½Ì¨ï¿½ï¿½wchar_t ï¿½ï¿½ 4 ï¿½Ö½Ú£ï¿½UTF-32ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª×ªï¿½ï¿½
 	std::wstring_convert<std::codecvt_utf16<wchar_t, 0x10ffff, std::little_endian>> converter;
 	wstr = converter.from_bytes(
 		reinterpret_cast<const char*>(u16str.data()),

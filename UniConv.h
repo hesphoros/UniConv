@@ -28,7 +28,7 @@
 *  2025/03/10 | 1.0.0.1   | hesphoros      | Create file
 *****************************************************************************/
 
-#pragma execution_character_set("utf-8")
+
 #ifndef __UNICONV_H__
 #define __UNICONV_H__
 
@@ -42,7 +42,6 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
-#include <errno.h>
 #include <string_view>
 #include <cerrno>
 #include <fstream>
@@ -189,7 +188,6 @@ public:
 /***************************************************************************/
 /*========================= Get current encoding ==========================*/
 /***************************************************************************/
-
 	/**
 	 * @brief Get current system encoding.
 	 * @return A string representing the current system encoding.
@@ -197,6 +195,15 @@ public:
 	 * @retval "UTF-16LE" if the system encoding is UTF-16LE.
 	 */
 	std::string          GetCurrentSystemEncoding();
+
+	/**
+	 * @brief Convert between any two encodings using iconv
+	 * @param input Input string data
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @return Conversion result
+	 */
+	IConvResult ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
 
 	/**
 	 * @brief Get current system encoding code page.
@@ -214,33 +221,33 @@ public:
 	static std::string   GetEncodingNameByCodePage(std::uint16_t codePage);
 
 /***************************************************************************/
-/*=================== Locale <-> UTF-8 æ–°å‘½åæ¥å£ =========================*/
+/*=================== Locale <-> UTF-8 ĞÂÃüÃû½Ó¿Ú =========================*/
 /***************************************************************************/
 	/**
-	 * @brief å°†ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„å­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-8å­—ç¬¦ä¸²ã€‚
-	 * @param  input ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„è¾“å…¥å­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-8å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«ÏµÍ³±¾µØ±àÂëµÄ×Ö·û´®×ª»»ÎªUTF-8×Ö·û´®¡£
+	 * @param  input ÏµÍ³±¾µØ±àÂëµÄÊäÈë×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-8×Ö·û´®¡£
 	 */
 	std::string ToUtf8FromLocal(const std::string& input);
 
 	/**
-	 * @brief å°†ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„Cé£æ ¼å­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-8å­—ç¬¦ä¸²ã€‚
-	 * @param  input ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-8å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«ÏµÍ³±¾µØ±àÂëµÄC·ç¸ñ×Ö·û´®×ª»»ÎªUTF-8×Ö·û´®¡£
+	 * @param  input ÏµÍ³±¾µØ±àÂëµÄC×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-8×Ö·û´®¡£
 	 */
 	std::string ToUtf8FromLocal(const char* input);
 
 	/**
-	 * @brief å°†UTF-8å­—ç¬¦ä¸²è½¬æ¢ä¸ºç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-8ç¼–ç çš„è¾“å…¥å­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„ç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-8×Ö·û´®×ª»»ÎªÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
+	 * @param  input UTF-8±àÂëµÄÊäÈë×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
 	 */
 	std::string FromUtf8ToLocal(const std::string& input);
 
 	/**
-	 * @brief å°†UTF-8 Cé£æ ¼å­—ç¬¦ä¸²è½¬æ¢ä¸ºç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-8ç¼–ç çš„Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„ç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-8 C·ç¸ñ×Ö·û´®×ª»»ÎªÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
+	 * @param  input UTF-8±àÂëµÄC×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
 	 */
 	std::string FromUtf8ToLocal(const char* input);
 
@@ -254,9 +261,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„å­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @param  input ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„è¾“å…¥å­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16LEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«ÏµÍ³±¾µØ±àÂëµÄ×Ö·û´®×ª»»ÎªUTF-16LE×Ö·û´®¡£
+	 * @param  input ÏµÍ³±¾µØ±àÂëµÄÊäÈë×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16LE×Ö·û´®¡£
 	 */
 	std::u16string ToUtf16LEFromLocal(const std::string& input);
 
@@ -267,9 +274,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @param  input ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16LEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«ÏµÍ³±¾µØ±àÂëµÄC×Ö·û´®×ª»»ÎªUTF-16LE×Ö·û´®¡£
+	 * @param  input ÏµÍ³±¾µØ±àÂëµÄC×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16LE×Ö·û´®¡£
 	 */
 	std::u16string ToUtf16LEFromLocal(const char* input);
 
@@ -280,9 +287,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„å­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @param  input ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„è¾“å…¥å­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16BEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«ÏµÍ³±¾µØ±àÂëµÄ×Ö·û´®×ª»»ÎªUTF-16BE×Ö·û´®¡£
+	 * @param  input ÏµÍ³±¾µØ±àÂëµÄÊäÈë×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16BE×Ö·û´®¡£
 	 */
 	std::u16string ToUtf16BEFromLocal(const std::string& input);
 
@@ -293,9 +300,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @param  input ç³»ç»Ÿæœ¬åœ°ç¼–ç çš„Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16BEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«ÏµÍ³±¾µØ±àÂëµÄC×Ö·û´®×ª»»ÎªUTF-16BE×Ö·û´®¡£
+	 * @param  input ÏµÍ³±¾µØ±àÂëµÄC×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16BE×Ö·û´®¡£
 	 */
 	std::u16string ToUtf16BEFromLocal(const char* input);
 
@@ -309,9 +316,9 @@ public:
 	 * @retval val std::string
 	 */
 	/**
-	 * @brief å°†UTF-16BEå­—ç¬¦ä¸²è½¬æ¢ä¸ºç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„ç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16BE×Ö·û´®×ª»»ÎªÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
+	 * @param  input UTF-16BE×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
 	 */
 	std::string FromUtf16BEToLocal(const std::u16string& input);
 
@@ -322,9 +329,9 @@ public:
 	 * @retval val std::string
 	 */
 	/**
-	 * @brief å°†UTF-16BE Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16BE Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„ç³»ç»Ÿæœ¬åœ°ç¼–ç å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16BE C×Ö·û´®×ª»»ÎªÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
+	 * @param  input UTF-16BE C×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄÏµÍ³±¾µØ±àÂë×Ö·û´®¡£
 	 */
 	std::string FromUtf16BEToLocal(const char16_t* input);
 
@@ -338,11 +345,13 @@ public:
 	 * @retval val std::string
 	 */
 	/**
-	 * @brief å°†UTF-16LEå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-8å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-8å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16LE×Ö·û´®×ª»»ÎªUTF-8×Ö·û´®¡£
+	 * @param  input UTF-16LE×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-8×Ö·û´®¡£
 	 */
 	std::string FromUtf16LEToUtf8(const std::u16string& input);
+	// ²¹³äÖØÔØ£º´ø³¤¶È²ÎÊı
+	std::string FromUtf16LEToUtf8(const char16_t* input, size_t len);
 
 
 	/**
@@ -352,9 +361,9 @@ public:
 	 * @retval val std::string
 	 */
 	/**
-	 * @brief å°†UTF-16LE Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-8å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16LE Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-8å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16LE C×Ö·û´®×ª»»ÎªUTF-8×Ö·û´®¡£
+	 * @param  input UTF-16LE C×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-8×Ö·û´®¡£
 	 */
 	std::string FromUtf16LEToUtf8(const char16_t* input);
 
@@ -365,11 +374,13 @@ public:
 	 * @retval val std::string
 	 */
 	/**
-	 * @brief å°†UTF-16BEå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-8å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-8å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16BE×Ö·û´®×ª»»ÎªUTF-8×Ö·û´®¡£
+	 * @param  input UTF-16BE×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-8×Ö·û´®¡£
 	 */
 	std::string FromUtf16BEToUtf8(const std::u16string& input);
+	// ²¹³äÖØÔØ£º´ø³¤¶È²ÎÊı
+	std::string FromUtf16BEToUtf8(const char16_t* input, size_t len);
 
 	/**
 	 * @brief Convert a C-style UTF-16BE string to UTF-8.
@@ -378,9 +389,9 @@ public:
 	 * @retval val std::string
 	 */
 	/**
-	 * @brief å°†UTF-16BE Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-8å­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16BE Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-8å­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16BE C×Ö·û´®×ª»»ÎªUTF-8×Ö·û´®¡£
+	 * @param  input UTF-16BE C×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-8×Ö·û´®¡£
 	 */
 	std::string FromUtf16BEToUtf8(const char16_t* input);
 
@@ -394,9 +405,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-8å­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-8å­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16LEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-8×Ö·û´®×ª»»ÎªUTF-16LE×Ö·û´®¡£
+	 * @param  input UTF-8×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16LE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf8ToUtf16LE(const std::string& input);
 
@@ -407,9 +418,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-8 Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-8 Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16LEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-8 C×Ö·û´®×ª»»ÎªUTF-16LE×Ö·û´®¡£
+	 * @param  input UTF-8 C×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16LE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf8ToUtf16LE(const char* input);
 
@@ -420,9 +431,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-8å­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-8å­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16BEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-8×Ö·û´®×ª»»ÎªUTF-16BE×Ö·û´®¡£
+	 * @param  input UTF-8×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16BE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf8ToUtf16BE(const std::string& input);
 
@@ -433,9 +444,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-8 Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-8 Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16BEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-8 C×Ö·û´®×ª»»ÎªUTF-16BE×Ö·û´®¡£
+	 * @param  input UTF-8 C×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16BE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf8ToUtf16BE(const char* input);
 
@@ -451,9 +462,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-16LEå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16BEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16LE×Ö·û´®×ª»»ÎªUTF-16BE×Ö·û´®¡£
+	 * @param  input UTF-16LE×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16BE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf16LEToUtf16BE(const std::u16string& input);
 
@@ -464,9 +475,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-16LE Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16LE Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16BEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16LE C×Ö·û´®×ª»»ÎªUTF-16BE×Ö·û´®¡£
+	 * @param  input UTF-16LE C×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16BE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf16LEToUtf16BE(const char16_t* input);
 
@@ -477,9 +488,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-16BEå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16BEå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16LEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16BE×Ö·û´®×ª»»ÎªUTF-16LE×Ö·û´®¡£
+	 * @param  input UTF-16BE×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16LE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf16BEToUtf16LE(const std::u16string& input);
 
@@ -490,9 +501,9 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief å°†UTF-16BE Cå­—ç¬¦ä¸²è½¬æ¢ä¸ºUTF-16LEå­—ç¬¦ä¸²ã€‚
-	 * @param  input UTF-16BE Cå­—ç¬¦ä¸²ã€‚
-	 * @return è½¬æ¢åçš„UTF-16LEå­—ç¬¦ä¸²ã€‚
+	 * @brief ½«UTF-16BE C×Ö·û´®×ª»»ÎªUTF-16LE×Ö·û´®¡£
+	 * @param  input UTF-16BE C×Ö·û´®¡£
+	 * @return ×ª»»ºóµÄUTF-16LE×Ö·û´®¡£
 	 */
 	std::u16string FromUtf16BEToUtf16LE(const char16_t* input);
 
@@ -534,7 +545,40 @@ public:
 	std::string          WideConvertToLocale(const wchar_t* sInput);
 
 /***************************************************************************/
-/*============================= UTF8 <-> Wide =============================*/
+/*===================== UTF16 <-> Local Encoding =======================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert UTF-16LE string to local encoding.
+	 * @param input UTF-16LE string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string FromUtf16LEToLocal(const std::u16string& input);
+
+	/**
+	 * @brief Convert UTF-16LE C-style string to local encoding.
+	 * @param input UTF-16LE C-style string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string FromUtf16LEToLocal(const char16_t* input);
+
+/***************************************************************************/
+/*======================= Wide String Helpers ===========================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert wide string to local encoding.
+	 * @param sInput Wide string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string WideStringToLocale(const std::wstring& sInput);
+
+	/**
+	 * @brief Convert wide C-style string to local encoding.
+	 * @param sInput Wide C-style string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string WideStringToLocale(const wchar_t* sInput);
+/***************************************************************************/
+/*========================= UTF-8 Wide Conversion ==========================*/
 /***************************************************************************/
 	/**
 	 * @brief Convert a UTF-8 string to a wide string.
@@ -643,21 +687,6 @@ public:
 	 */
 	std::string          WstringConvertToString(const std::wstring& wstr);
 
-private:
-
-	//----------------------------------------------------------------------------------------------------------------------
-	// Private members @{
-	//----------------------------------------------------------------------------------------------------------------------
-	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;				   /*!< Encoding map           */
-	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
-	std::mutex                                                   m_iconvcCacheMutex;		   /*!< Iconv cache mutex      */
-	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;			   /*!< Iconv error messages   */
-	static std::unordered_map<std::string, IconvSharedPtr>       m_iconvDesscriptorCacheMapS;  /*!< Iconv descriptor cache */
-	//----------------------------------------------------------------------------------------------------------------------
-	/// @} ! Private members
-	//----------------------------------------------------------------------------------------------------------------------
-
-private:
 
 	/**
 	 * @brief Convert a string using iconv.
@@ -679,6 +708,24 @@ private:
 	 * @todo finish this method
 	 */
 	IConvResult                         Convert(std::wstring_view in, const char* fromcode, const char* tocode);
+
+private:
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// Private members @{
+	//----------------------------------------------------------------------------------------------------------------------
+	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;				   /*!< Encoding map           */
+	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
+	std::mutex                                                   m_iconvcCacheMutex;		   /*!< Iconv cache mutex      */
+	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;			   /*!< Iconv error messages   */
+	static std::unordered_map<std::string, IconvSharedPtr>       m_iconvDesscriptorCacheMapS;  /*!< Iconv descriptor cache */
+	//----------------------------------------------------------------------------------------------------------------------
+	/// @} ! Private members
+	//----------------------------------------------------------------------------------------------------------------------
+
+private:
+
+
 
 	/**
 	 * @brief Get a human-readable error message for a given iconv error code.

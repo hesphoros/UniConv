@@ -18,6 +18,17 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="convert_tools.h" />
+    <ClInclude Include="LightLogWriteImpl.h" />
+    <ClInclude Include="UniConv.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="convet_tools.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Test.cpp" />
+    <ClCompile Include="UniConv.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -132,18 +143,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClInclude Include="convert_tools.h" />
-    <ClInclude Include="Singleton.h" />
-    <ClInclude Include="UniConv.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="convet_tools.cpp" />
-    <ClCompile Include="LightLogWriteImpl.h" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Test.cpp" />
-    <ClCompile Include="UniConv.cpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
