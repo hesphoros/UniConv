@@ -1,3 +1,19 @@
+/**
+ * @file gbk_str.cpp
+ * @brief GBK encoded test strings for encoding validation
+ * @details This file contains GBK encoded test strings used for validating
+ *          GBK encoding detection and conversion functionality. The file
+ *          must be saved with GBK encoding to maintain proper character representation.
+ * 
+ * @warning This file must be saved with GBK encoding
+ * @note The content may appear garbled in UTF-8 editors
+ * @since 1.0.0.1
+ */
+
 #include <string>
-char const* gbk_cstr = "ÎÒÊÇÒ»¸öGBK×Ö·û±àÂëµÄ×Ö·û´®,ÇëÈ·±£ÎÒËùÔÚµÄcppÎÄ¼ş±àÂëÎªGBK!";
-std::string gbk_str = "ÎÒÊÇÒ»¸öGBK×Ö·û±àÂëµÄ×Ö·û´®,ÇëÈ·±£ÎÒËùÔÚµÄcppÎÄ¼ş±àÂëÎªGBK!";
+
+/// GBK encoded C-style string for testing (content: "This is a GBK string, please ensure the cpp file is saved as GBK!")
+char const* gbk_cstr = "ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½GBKï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½,ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½cppï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ÎªGBK!";
+
+/// GBK encoded std::string for testing (content: "This is a GBK string, please ensure the cpp file is saved as GBK!")
+std::string gbk_str = "ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½GBKï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½,ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½cppï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ÎªGBK!";

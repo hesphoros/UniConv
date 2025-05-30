@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['tcvn_5fencoding_0',['tcvn_encoding',['../UniConv_8h.html#aadd16df6a33dbf52ded50bac3c6f5bdd',1,'UniConv.h']]],
+  ['technical_20implementation_20details_1',['🔧 Technical Implementation Details',['../md_DOCUMENTATION.html#autotoc_md48',1,'']]],
+  ['test_20coverage_20documentation_2',['🧪 Test Coverage Documentation',['../md_DOCUMENTATION.html#autotoc_md50',1,'']]],
+  ['test_20environment_20setup_3',['Test Environment Setup',['../group__TestEnvironmentSetup.html',1,'']]],
+  ['test_20execution_4',['Main Test Execution',['../group__MainTestingNew.html',1,'']]],
+  ['test_20execution_20and_20main_20functions_5',['Test Execution and Main Functions',['../group__TestExecution.html',1,'']]],
+  ['test_20framework_20test_20cpp_20test_5fnew_20cpp_6',['Test Framework (Test.cpp &amp; Test_New.cpp)',['../md_DOCUMENTATION.html#autotoc_md44',1,'']]],
+  ['test_20utilities_7',['Enhanced Test Utilities',['../group__TestUtilitiesNew.html',1,'']]],
+  ['test_20utility_20functions_8',['Test Utility Functions',['../group__TestUtilities.html',1,'']]],
+  ['test_2ecpp_9',['Test.cpp',['../Test_8cpp.html',1,'']]],
+  ['test_5fnew_20cpp_10',['Test Framework (Test.cpp &amp; Test_New.cpp)',['../md_DOCUMENTATION.html#autotoc_md44',1,'']]],
+  ['test_5fnew_2ecpp_11',['Test_New.cpp',['../Test__New_8cpp.html',1,'']]],
+  ['testallconversions_12',['TestAllConversions',['../group__RoundTripConversionTests.html#ga5f3523e51ad829c799be790e65a336db',1,'TestAllConversions():&#160;Test.cpp'],['../group__ConversionTestingNew.html#ga5f3523e51ad829c799be790e65a336db',1,'TestAllConversions():&#160;Test_New.cpp']]],
+  ['testing_13',['Testing',['../group__ConversionTestingNew.html',1,'Comprehensive Conversion Method Testing'],['../group__BatchConversionNew.html',1,'Enhanced Batch Conversion Testing']]],
+  ['tests_14',['Tests',['../group__BatchConversionTests.html',1,'Batch File Conversion Tests'],['../group__RoundTripConversionTests.html',1,'Round-trip Conversion Tests']]],
+  ['tis_5f620_5fencoding_15',['tis_620_encoding',['../UniConv_8h.html#ad149cdbdc65e9fc7a0d704091aefc9d1',1,'UniConv.h']]],
+  ['to_20local_20encoding_20conversion_20functions_16',['UTF-16 to Local Encoding Conversion Functions',['../group__UTF16ToLocaleConversion.html',1,'']]],
+  ['to_20utf_2016_20conversion_20functions_17',['to UTF 16 Conversion Functions',['../group__LocaleToUTF16Conversion.html',1,'Local Encoding to UTF-16 Conversion Functions'],['../group__UTF8ToUTF16Conversion.html',1,'UTF-8 to UTF-16 Conversion Functions']]],
+  ['to_20utf_208_20conversion_20functions_18',['UTF-16 to UTF-8 Conversion Functions',['../group__UTF16ToUTF8Conversion.html',1,'']]],
+  ['todo_20list_19',['Todo List',['../todo.html',1,'']]],
+  ['toutf16befromlocal_20',['ToUtf16BEFromLocal',['../UniConv_8h.html#a246a43b2f01e0e365ea02c9c2a55e5e5',1,'ToUtf16BEFromLocal(const std::string &amp;input):&#160;UniConv.h'],['../UniConv_8h.html#ae2864013602aae685ecfd8e3a49657db',1,'ToUtf16BEFromLocal(const char *input):&#160;UniConv.h']]],
+  ['toutf16lefromlocal_21',['ToUtf16LEFromLocal',['../UniConv_8h.html#a96309e08b8358a465a260f87034c6d92',1,'ToUtf16LEFromLocal(const std::string &amp;input):&#160;UniConv.h'],['../UniConv_8h.html#a927118201671a2d039631e4cc7225f13',1,'ToUtf16LEFromLocal(const char *input):&#160;UniConv.h']]],
+  ['toutf8fromlocal_22',['ToUtf8FromLocal',['../UniConv_8h.html#a6aafe354ca673473fb8f1dad4325bb3d',1,'ToUtf8FromLocal(const std::string &amp;input):&#160;UniConv.h'],['../UniConv_8h.html#a479d28d046103d3b45493b69af84c999',1,'ToUtf8FromLocal(const char *input):&#160;UniConv.h']]],
+  ['trip_20conversion_20tests_23',['Round-trip Conversion Tests',['../group__RoundTripConversionTests.html',1,'']]]
+];

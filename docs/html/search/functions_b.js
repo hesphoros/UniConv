@@ -1,0 +1,7 @@
+var searchData=
+[
+  ['setlastingslogs_0',['SetLastingsLogs',['../classLightLogWrite__Impl.html#a50eb334550138ff18989612a23f35798',1,'LightLogWrite_Impl::SetLastingsLogs(const std::wstring &amp;sFilePath, const std::wstring &amp;sBaseName)'],['../classLightLogWrite__Impl.html#a3ff8b3accce1246594a7d49c77481d36',1,'LightLogWrite_Impl::SetLastingsLogs(const std::u16string &amp;sFilePath, const std::u16string &amp;sBaseName)'],['../classLightLogWrite__Impl.html#a0a4eb862ad5a0adb6bc3a8d586ae21c1',1,'LightLogWrite_Impl::SetLastingsLogs(const std::string &amp;sFilePath, const std::string &amp;sBaseName)']]],
+  ['setlogsfilename_1',['SetLogsFileName',['../classLightLogWrite__Impl.html#ad1c8eb28c6d9aa1af77f540b7c855917',1,'LightLogWrite_Impl::SetLogsFileName(const std::wstring &amp;sFilename)'],['../classLightLogWrite__Impl.html#a5c2f5a970ffcbe9731dfdf97976d3e5a',1,'LightLogWrite_Impl::SetLogsFileName(const std::string &amp;sFilename)'],['../classLightLogWrite__Impl.html#ab62c4420c4c8180d9b6d3151b1785d8f',1,'LightLogWrite_Impl::SetLogsFileName(const std::u16string &amp;sFilename)']]],
+  ['singleton_2',['Singleton',['../classSingleton.html#adb1b554fec7ae6065fe0e09111f3581f',1,'Singleton::Singleton()=default'],['../classSingleton.html#aa9a95a6156926f1f153bd2dd9d8d79d6',1,'Singleton::Singleton(const Singleton&lt; T &gt; &amp;)=delete']]],
+  ['stringconverttowstring_3',['StringConvertToWstring',['../UniConv_8h.html#ad6bab7852bf54d92b94f7c398105b595',1,'UniConv.h']]]
+];

@@ -1,0 +1,26 @@
+var searchData=
+[
+  ['eilseq_0',['EILSEQ',['../iconv_8h.html#ac6c071293826a4e66a717bb38db7794d',1,'iconv.h']]],
+  ['encoding_1',['default encoding',['../md_README.html#autotoc_md74',1,'']]],
+  ['encoding_20conversion_20functions_2',['Encoding Conversion Functions',['../group__LocaleConversion.html',1,'Local Encoding Conversion Functions'],['../group__UTF16ToLocaleConversion.html',1,'UTF-16 to Local Encoding Conversion Functions']]],
+  ['encoding_20detection_20and_20conversion_3',['System Encoding Detection and Conversion',['../group__SystemEncoding.html',1,'']]],
+  ['encoding_20support_20documentation_4',['📚 Encoding Support Documentation',['../md_DOCUMENTATION.html#autotoc_md49',1,'']]],
+  ['encoding_20to_20utf_2016_20conversion_20functions_5',['Local Encoding to UTF-16 Conversion Functions',['../group__LocaleToUTF16Conversion.html',1,'']]],
+  ['encodinginfo_6',['EncodingInfo',['../structEncodingInfo.html',1,'EncodingInfo'],['../structUniConv_1_1EncodingInfo.html',1,'UniConv::EncodingInfo']]],
+  ['endian）_20strong_7',['Endian） strong',['../md_doc_2utf16BE_01UTF16LE等.html',1,'&lt;strong&gt;UTF-16BE（Big Endian）&lt;/strong&gt;'],['../md_doc_2utf16BE_01UTF16LE等.html#autotoc_md35',1,'&lt;strong&gt;UTF-16LE（Little Endian）&lt;/strong&gt;']]],
+  ['endianness_20conversion_20functions_8',['UTF-16 Endianness Conversion Functions',['../group__UTF16EndiannessConversion.html',1,'']]],
+  ['enhanced_20batch_20conversion_20testing_9',['Enhanced Batch Conversion Testing',['../group__BatchConversionNew.html',1,'']]],
+  ['enhanced_20test_20utilities_10',['Enhanced Test Utilities',['../group__TestUtilitiesNew.html',1,'']]],
+  ['environment_20setup_11',['Test Environment Setup',['../group__TestEnvironmentSetup.html',1,'']]],
+  ['error_20handling_20and_20diagnostics_12',['Error Handling and Diagnostics',['../group__ErrorHandling.html',1,'']]],
+  ['error_5fcode_13',['error_code',['../structUniConv_1_1IConvResult.html#aba22472ed917747cea938ba87ed38f10',1,'UniConv::IConvResult::error_code'],['../structIConvResult.html#a0e8c12fe0f7fe2e811d08c52e310d6ca',1,'IConvResult::error_code'],['../UniConv_8h.html#a7d16b1c68c87cec009d972e79abfba78',1,'error_code:&#160;UniConv.h']]],
+  ['error_5fmsg_14',['error_msg',['../structUniConv_1_1IConvResult.html#a9f1a62bb5422b541dd8a44e28828afa5',1,'UniConv::IConvResult::error_msg'],['../structIConvResult.html#a02b56266f2f9eba3a9606d60e18b28d3',1,'IConvResult::error_msg'],['../UniConv_8h.html#ace0d044631da205139feca9936d836db',1,'error_msg:&#160;UniConv.h']]],
+  ['errro_20code_15',['errro code',['../md_doc_2unicode.html#autotoc_md32',1,'']]],
+  ['euc_5fcn_5fencoding_16',['euc_cn_encoding',['../UniConv_8h.html#a08f08aeb372897caecba931ebf4d492e',1,'UniConv.h']]],
+  ['euc_5fjp_5fencoding_17',['euc_jp_encoding',['../UniConv_8h.html#a8c7b03b5e127daa29e17dcf588611d86',1,'UniConv.h']]],
+  ['euc_5fkr_5fencoding_18',['euc_kr_encoding',['../UniConv_8h.html#a61d371e272cd7a400ff8cef7b561f603',1,'UniConv.h']]],
+  ['euc_5ftw_5fencoding_19',['euc_tw_encoding',['../UniConv_8h.html#a13e7ff236c87ad12ea44c37a5178139f',1,'UniConv.h']]],
+  ['execution_20',['Main Test Execution',['../group__MainTestingNew.html',1,'']]],
+  ['execution_20and_20main_20functions_21',['Test Execution and Main Functions',['../group__TestExecution.html',1,'']]],
+  ['extra_5finfo_22',['extra_info',['../structUniConv_1_1EncodingInfo.html#aee90a9152f6b76a92453206c7b56072f',1,'UniConv::EncodingInfo::extra_info'],['../structEncodingInfo.html#aca6f6480d06fd4dbb2a06cb2beb7ae11',1,'EncodingInfo::extra_info']]]
+];

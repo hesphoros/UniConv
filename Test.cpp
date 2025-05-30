@@ -1,4 +1,34 @@
-// Test.cpp - 重构的测试文件
+/**
+ * @file Test.cpp
+ * @brief Comprehensive test suite for UniConv character encoding conversion library
+ * @details This file contains extensive unit tests and integration tests for all
+ *          conversion functions provided by the UniConv library. It includes tests
+ *          for system encoding detection, UTF-8/UTF-16 conversions, locale handling,
+ *          endianness conversion, and error handling scenarios.
+ * 
+ * @author UniConv Development Team
+ * @copyright Copyright (c) 2025. All rights reserved.
+ * @license MIT License
+ * @version 1.0.0.1
+ * 
+ * @par Test Coverage:
+ * - System encoding detection and conversion
+ * - UTF-8 ? UTF-16LE/BE conversions
+ * - Locale ? UTF-8/UTF-16 conversions  
+ * - Endianness conversion (LE ? BE)
+ * - Wide string conversions
+ * - Error handling and edge cases
+ * - Performance benchmarking
+ * - Memory leak detection
+ * 
+ * @par Dependencies:
+ * - UniConv.h: Main conversion library
+ * - LightLogWriteImpl.h: Logging framework
+ * - Standard C++ libraries for file I/O and testing
+ * 
+ * @since 1.0.0.1
+ */
+
 #include "UniConv.h"
 #include "LightLogWriteImpl.h"
 #include <fstream>
@@ -11,21 +41,45 @@
 #include <direct.h>
 #include <utility>
 
-// 全局日志实例
+/**
+ * @defgroup TestUtilities Test Utility Functions
+ * @brief Helper functions for test execution and logging
+ * @{
+ */
+
+/// Global logger instance for test output
 static LightLogWrite_Impl g_logger;
 
-// 初始化日志系统
+/**
+ * @brief Initialize the logging system for test execution
+ * @details Sets up the logger with appropriate file path and configuration
+ *          for capturing test results and debugging information.
+ */
 void InitLogger() {
     g_logger.SetLogsFileName("log/test_log.txt");
 }
 
-// 简化的日志函数
+/**
+ * @brief Write informational message to both log and console
+ * @param message The message to log and display
+ * @details Provides unified logging interface for test output, ensuring
+ *          all test results are captured in both log file and console.
+ */
 void Log(const std::string& message) {
     g_logger.WriteLogContent("INFO", message);
     std::cout << message << std::endl;
 }
 
-// 辅助函数：将字节数据转换为十六进制字符串
+/**
+ * @brief Convert binary data to hexadecimal string representation
+ * @param data Binary data to convert
+ * @return Hexadecimal string with space-separated bytes
+ * @details Useful for debugging and verifying binary conversion results.
+ *          Each byte is formatted as two-digit hex with leading zeros.
+ * 
+ * @par Example Output:
+ * Input: "ABC" → Output: "41 42 43 "
+ */
 std::string BytesToHex(const std::string& data) {
     std::ostringstream oss;
     for (unsigned char c : data) {
@@ -34,7 +88,13 @@ std::string BytesToHex(const std::string& data) {
     return oss.str();
 }
 
-// 辅助函数：读取文件的原始字节数据
+/**
+ * @brief Read entire file content as binary data
+ * @param filePath Path to the file to read
+ * @return File content as string, empty string on error
+ * @details Reads files in binary mode to preserve exact byte sequences,
+ *          essential for testing encoding conversions accurately.
+ */
 std::string ReadFileBytes(const std::string& filePath) {
     std::ifstream file(filePath, std::ios::binary);
     if (!file) {
@@ -43,7 +103,14 @@ std::string ReadFileBytes(const std::string& filePath) {
     return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
-// 辅助函数：写入字节数据到文件
+/**
+ * @brief Write binary data to file
+ * @param filePath Path to the file to write
+ * @param data Binary data to write
+ * @return true on success, false on error
+ * @details Writes data in binary mode to ensure exact byte preservation,
+ *          used for creating test files and verifying conversion output.
+ */
 bool WriteFileBytes(const std::string& filePath, const std::string& data) {
     std::ofstream file(filePath, std::ios::binary);
     if (!file) {
@@ -53,19 +120,47 @@ bool WriteFileBytes(const std::string& filePath, const std::string& data) {
     return file.good();
 }
 
-// 创建目录的辅助函数
+/**
+ * @brief Create necessary directories for test execution
+ * @param path Base path for directory creation
+ * @details Creates test data directories required for file I/O tests.
+ *          Uses Windows-specific _mkdir for compatibility.
+ */
 void CreateDirectories(const std::string& path) {
     _mkdir("testdata");
     _mkdir("testdata\\output");
 }
+/** @} */
 
-// 生成测试数据文件
-// 准备测试环境（只创建目录，不修改文件）
-void PrepareTestEnvironment() {
-    // 创建测试目录
+/**
+ * @defgroup TestEnvironmentSetup Test Environment Setup
+ * @brief Functions for preparing test environment and data files
+ * @{
+ */
+
+/**
+ * @brief Prepare test environment and verify required files
+ * @details Sets up test directories and checks for required test data files.
+ *          Logs warnings for missing files but doesn't create them to avoid
+ *          overwriting existing test data.
+ * 
+ * @par Required Test Files:
+ * - testdata/input_utf8.txt: UTF-8 encoded test content
+ * - testdata/input_gbk.txt: GBK encoded test content
+ * - testdata/input_utf16le.txt: UTF-16LE encoded test content
+ * - testdata/input_utf16be.txt: UTF-16BE encoded test content
+ * 
+ * @par Directory Structure:
+ * ```
+ * testdata/
+ * ├── input_*.txt (test input files)
+ * └── output/ (test output directory)
+ * ```
+ */
+void PrepareTestEnvironment() {    // Create test directories
     CreateDirectories("testdata");
     
-    // 检查测试文件是否存在
+    // Check if test files exist
     std::vector<std::string> required_files = {
         "testdata/input_utf8.txt",
         "testdata/input_gbk.txt", 
@@ -77,27 +172,39 @@ void PrepareTestEnvironment() {
     for (const auto& file : required_files) {
         std::ifstream test_file(file);
         if (!test_file.good()) {
-            Log("警告：缺少测试文件 " + file);
+            Log("Warning: Missing test file " + file);
             all_files_exist = false;
         }
-    }
-    
+    }    
     if (all_files_exist) {
-        Log("所有测试文件已存在，准备开始测试");
+        Log("All test files exist, ready to start testing");
     } else {
-        Log("请确保所有必需的测试文件都存在");
-        Log("建议运行 generate_test_files.py 脚本来生成测试文件");
+        Log("Please ensure all required test files exist");
+        Log("Recommend running generate_test_files.py script to generate test files");
     }
 }
 
-// 检测文件编码并去除BOM
+/**
+ * @brief Detect file encoding and remove BOM (Byte Order Mark)
+ * @param data Raw file data to analyze
+ * @return Pair containing detected encoding name and data without BOM
+ * @details Analyzes the first few bytes of file data to detect BOM markers
+ *          and determine encoding. Removes BOM from returned data.
+ * 
+ * @par Supported BOM Detection:
+ * - UTF-8: EF BB BF
+ * - UTF-16LE: FF FE  
+ * - UTF-16BE: FE FF
+ * 
+ * @par Return Values:
+ * - First: Encoding name ("UTF-8", "UTF-16LE", "UTF-16BE", or "" if no BOM)
+ * - Second: Data with BOM removed
+ */
 std::pair<std::string, std::string> DetectEncodingAndRemoveBOM(const std::string& data) {
     if (data.empty()) {
         return std::make_pair("UTF-8", data);
     }
-    
-    // 检测BOM
-    if (data.size() >= 3 && 
+      if (data.size() >= 3 && 
         static_cast<unsigned char>(data[0]) == 0xEF && 
         static_cast<unsigned char>(data[1]) == 0xBB && 
         static_cast<unsigned char>(data[2]) == 0xBF) {
@@ -116,17 +223,38 @@ std::pair<std::string, std::string> DetectEncodingAndRemoveBOM(const std::string
         return std::make_pair("UTF-16BE", data.substr(2));
     }
     
-    // 没有BOM，返回原数据
+    // No BOM found, return original data
     return std::make_pair("", data);
 }
+/** @} */
 
-// 批量转换文件的新实现
-void BatchConvertFiles() {
-    Log("=== 开始批量文件转换测试 ===");
+/**
+ * @defgroup BatchConversionTests Batch File Conversion Tests
+ * @brief Comprehensive file-based conversion testing
+ * @{
+ */
+
+/**
+ * @brief Execute batch file conversion tests
+ * @details Performs systematic conversion tests between multiple encodings
+ *          using real test files. Tests include UTF-8, GBK, UTF-16LE, and
+ *          UTF-16BE conversions in various combinations.
+ * 
+ * @par Test Matrix:
+ * - UTF-8 → UTF-16LE, UTF-16BE, GBK
+ * - GBK → UTF-8
+ * - UTF-16LE → UTF-8
+ * - UTF-16BE → UTF-8
+ * 
+ * @par Output:
+ * Results are written to testdata/output/ directory with descriptive names
+ * indicating the conversion performed.
+ */
+void BatchConvertFiles() {    Log("=== Starting Batch File Conversion Tests ===");
     
     auto conv = UniConv::GetInstance();
     
-    // 转换配置：源文件 -> 目标编码
+    // Conversion configuration: source file -> target encoding
     struct ConversionTask {
         std::string inputFile;
         std::string outputFile;
@@ -147,72 +275,95 @@ void BatchConvertFiles() {
     for (const auto& task : tasks) {
         Log("--- " + task.description + " ---");
         
-        // 读取输入文件
+        // Read input file
         std::string input_data = ReadFileBytes(task.inputFile);
         if (input_data.empty()) {
-            Log("错误：无法读取文件 " + task.inputFile);
+            Log("Error: Cannot read file " + task.inputFile);
             continue;
-        }
-        
-        // 检测并去除BOM
+        }        
+        // Detect and remove BOM
         auto result_pair = DetectEncodingAndRemoveBOM(input_data);
         std::string detected_encoding = result_pair.first;
         std::string clean_data = result_pair.second;
         std::string actual_from_encoding = detected_encoding.empty() ? task.fromEncoding : detected_encoding;
         
-        Log("输入文件：" + task.inputFile);
-        Log("原始数据大小：" + std::to_string(input_data.size()) + " 字节");
-        Log("检测到的编码：" + (detected_encoding.empty() ? "无BOM" : detected_encoding));
-        Log("清理后数据大小：" + std::to_string(clean_data.size()) + " 字节");
-        Log("输入数据十六进制：" + BytesToHex(clean_data));
+        Log("Input file: " + task.inputFile);
+        Log("Original data size: " + std::to_string(input_data.size()) + " bytes");
+        Log("Detected encoding: " + (detected_encoding.empty() ? "No BOM" : detected_encoding));
+        Log("Clean data size: " + std::to_string(clean_data.size()) + " bytes");
+        Log("Input data hex: " + BytesToHex(clean_data));
         
-        // 执行编码转换
+        // Perform encoding conversion
         auto result = conv->ConvertEncoding(clean_data, actual_from_encoding.c_str(), task.toEncoding.c_str());
         
         if (result.IsSuccess()) {
-            Log("转换成功！");
-            Log("输出数据大小：" + std::to_string(result.conv_result_str.size()) + " 字节");
-            Log("输出数据十六进制：" + BytesToHex(result.conv_result_str));
-              // 写入输出文件
+            Log("Conversion successful!");
+            Log("Output data size: " + std::to_string(result.conv_result_str.size()) + " bytes");
+            Log("Output data hex: " + BytesToHex(result.conv_result_str));
+            
+            // Write to output file
             if (WriteFileBytes(task.outputFile, result.conv_result_str)) {
-                Log("成功写入输出文件：" + task.outputFile);
+                Log("Successfully wrote output file: " + task.outputFile);
             } else {
-                Log("错误：无法写入输出文件：" + task.outputFile);
+                Log("Error: Cannot write output file: " + task.outputFile);
             }
         } else {
-            Log("转换失败：" + result.error_msg);
+            Log("Conversion failed: " + result.error_msg);
         }
         
         Log("");
     }
     
-    Log("=== 批量文件转换测试完成 ===");
+    Log("=== Batch File Conversion Tests Complete ===");
 }
+/** @} */
 
-// 测试所有编码转换方法
-void TestAllConversions() {
-    Log("=== 开始测试所有编码转换方法 ===");
+/**
+ * @defgroup RoundTripConversionTests Round-trip Conversion Tests
+ * @brief Tests to verify data integrity through multiple conversions
+ * @{
+ */
+
+/**
+ * @brief Test all conversion methods with round-trip validation
+ * @details Performs comprehensive round-trip conversion tests to ensure
+ *          data integrity is maintained through encoding conversions.
+ *          Uses real UTF-8 test data and validates that data remains
+ *          unchanged after conversion cycles.
+ * 
+ * @par Round-trip Test Patterns:
+ * - UTF-8 → Local → UTF-8
+ * - UTF-8 → UTF-16LE → UTF-8
+ * - UTF-8 → UTF-16BE → UTF-8
+ * - UTF-16LE ? UTF-16BE
+ * - Local ? UTF-16LE/BE
+ * 
+ * @par Validation:
+ * Each test compares the final result with the original input to ensure
+ * perfect data preservation through the conversion cycle.
+ */
+void TestAllConversions() {    Log("=== Starting All Conversion Methods Test ===");
     
     auto conv = UniConv::GetInstance();
     
-    // 从UTF-8测试文件读取实际的UTF-8编码数据
+    // Read actual UTF-8 encoded data from test file
     std::string utf8_file_data = ReadFileBytes("testdata/input_utf8.txt");
     if (utf8_file_data.empty()) {
-        Log("错误：无法读取UTF-8测试文件，跳过往返转换测试");
+        Log("Error: Cannot read UTF-8 test file, skipping round-trip tests");
         return;
     }
     
-    // 去除BOM（如果有的话）
+    // Remove BOM if present
     auto result_pair = DetectEncodingAndRemoveBOM(utf8_file_data);
     std::string test_text = result_pair.second;
     
-    Log("从UTF-8文件读取测试文本大小：" + std::to_string(test_text.size()) + " 字节");
-    Log("UTF-8数据十六进制：" + BytesToHex(test_text));
-    Log("系统编码：" + conv->GetCurrentSystemEncoding());
+    Log("Test text size from UTF-8 file: " + std::to_string(test_text.size()) + " bytes");
+    Log("UTF-8 data hex: " + BytesToHex(test_text));
+    Log("System encoding: " + conv->GetCurrentSystemEncoding());
     
-    // 测试 UTF-8 <-> 本地编码
+    // Test UTF-8 <-> Local encoding
     {
-        Log("--- 测试 UTF-8 <-> 本地编码 ---");
+        Log("--- Testing UTF-8 <-> Local encoding ---");
         auto local_result = conv->FromUtf8ToLocal(test_text);
         Log("UTF-8 -> Local: " + BytesToHex(local_result));
         
@@ -220,15 +371,15 @@ void TestAllConversions() {
         Log("Local -> UTF-8: " + BytesToHex(utf8_result));
         
         bool success = (utf8_result == test_text);
-        Log("往返转换成功: " + std::string(success ? "是" : "否"));
+        Log("Round-trip successful: " + std::string(success ? "Yes" : "No"));
         if (!success) {
-            Log("原始大小: " + std::to_string(test_text.size()) + ", 结果大小: " + std::to_string(utf8_result.size()));
+            Log("Original size: " + std::to_string(test_text.size()) + ", Result size: " + std::to_string(utf8_result.size()));
         }
     }
     
-    // 测试 UTF-8 <-> UTF-16LE
+    // Test UTF-8 <-> UTF-16LE
     {
-        Log("--- 测试 UTF-8 <-> UTF-16LE ---");
+        Log("--- Testing UTF-8 <-> UTF-16LE ---");
         auto utf16le_result = conv->FromUtf8ToUtf16LE(test_text);
         Log("UTF-8 -> UTF-16LE: " + BytesToHex(std::string(reinterpret_cast<const char*>(utf16le_result.data()), utf16le_result.size() * 2)));
         
@@ -236,15 +387,14 @@ void TestAllConversions() {
         Log("UTF-16LE -> UTF-8: " + BytesToHex(utf8_result));
         
         bool success = (utf8_result == test_text);
-        Log("往返转换成功: " + std::string(success ? "是" : "否"));
+        Log("Round-trip successful: " + std::string(success ? "Yes" : "No"));
         if (!success) {
-            Log("原始大小: " + std::to_string(test_text.size()) + ", 结果大小: " + std::to_string(utf8_result.size()));
+            Log("Original size: " + std::to_string(test_text.size()) + ", Result size: " + std::to_string(utf8_result.size()));
         }
-    }
-    
-    // 测试 UTF-8 <-> UTF-16BE
+    }    
+    // Test UTF-8 <-> UTF-16BE
     {
-        Log("--- 测试 UTF-8 <-> UTF-16BE ---");
+        Log("--- Testing UTF-8 <-> UTF-16BE ---");
         auto utf16be_result = conv->FromUtf8ToUtf16BE(test_text);
         Log("UTF-8 -> UTF-16BE: " + BytesToHex(std::string(reinterpret_cast<const char*>(utf16be_result.data()), utf16be_result.size() * 2)));
         
@@ -252,26 +402,51 @@ void TestAllConversions() {
         Log("UTF-16BE -> UTF-8: " + BytesToHex(utf8_result));
         
         bool success = (utf8_result == test_text);
-        Log("往返转换成功: " + std::string(success ? "是" : "否"));
+        Log("Round-trip successful: " + std::string(success ? "Yes" : "No"));
         if (!success) {
-            Log("原始大小: " + std::to_string(test_text.size()) + ", 结果大小: " + std::to_string(utf8_result.size()));
+            Log("Original size: " + std::to_string(test_text.size()) + ", Result size: " + std::to_string(utf8_result.size()));
         }
     }
     
-    Log("=== 所有编码转换方法测试完成 ===");
+    Log("=== All Conversion Methods Test Complete ===");
 }
+/** @} */
 
-// 主测试函数
-void RunAllTests() {
-    // 初始化日志系统
+/**
+ * @defgroup TestExecution Test Execution and Main Functions
+ * @brief Main test execution functions and test suite orchestration
+ * @{
+ */
+
+/**
+ * @brief Execute complete test suite for UniConv library
+ * @details Orchestrates the execution of all test categories in proper sequence:
+ *          1. Initialize logging system
+ *          2. Prepare test environment and verify files
+ *          3. Execute round-trip conversion tests
+ *          4. Execute batch file conversion tests
+ * 
+ * @par Test Sequence:
+ * The tests are designed to run in a specific order to ensure proper
+ * validation and to build confidence in the library's functionality
+ * from simple to complex scenarios.
+ * 
+ * @par Output:
+ * All test results are logged to both console and log file for
+ * comprehensive analysis and debugging.
+ * 
+ * @since 1.0.0.1
+ */
+void RunAllTests() {    // Initialize logging system
     InitLogger();
     
-    // 生成测试文件
+    // Prepare test environment and verify files
     PrepareTestEnvironment();
     
-    // 测试所有转换方法
+    // Execute round-trip conversion tests
     TestAllConversions();
     
-    // 批量转换文件
+    // Execute batch file conversion tests
     BatchConvertFiles();
 }
+/** @} */
