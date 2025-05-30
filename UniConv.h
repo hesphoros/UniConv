@@ -214,43 +214,35 @@ public:
 	static std::string   GetEncodingNameByCodePage(std::uint16_t codePage);
 
 /***************************************************************************/
-/*======================= Locale convert to UTF-8 =========================*/
+/*=================== Locale <-> UTF-8 新命名接口 =========================*/
 /***************************************************************************/
 	/**
-	 * @brief Convert a string from one encoding to another.
-	 * @param  sInput The input string to be converted.
-	 * @return The converted string.
-	 * @return val std::string
+	 * @brief 将系统本地编码的字符串转换为UTF-8字符串。
+	 * @param  input 系统本地编码的输入字符串。
+	 * @return 转换后的UTF-8字符串。
 	 */
-	std::string          LocaleConvertToUtf8(const std::string& sInput);
-	/**
-	 * @brief Convert a C-style string from one encoding to another.
-	 * @param  sInput The input C-style string to be converted.
-	 * @return The converted string.
-	 * @return val std::string
-	 */
-	std::string          LocaleConvertToUtf8(const char* sInput);
-
-
-/***************************************************************************/
-/*======================= UTF-8 Convert to locale =========================*/
-/***************************************************************************/
-	/**
-	 * @brief Convert a UTF-8 encoded string to the current locale encoding.
-	 * @param  sInput The UTF-8 encoded string to be converted.
-	 * @return The converted string in the current locale encoding.
-	 * @retval val std::string
-	 */
-	std::string          Utf8ConvertToLocale(const std::string& sInput);
+	std::string ToUtf8FromLocal(const std::string& input);
 
 	/**
-	 * @brief Convert a C-style UTF-8 string to the current locale encoding.
-	 * @param  sInput The C-style UTF-8 string to be converted.
-	 * @return The converted string in the current locale encoding.
-	 * @retval val std::string
-	 * @note .c_str() to get the C-style string.
+	 * @brief 将系统本地编码的C风格字符串转换为UTF-8字符串。
+	 * @param  input 系统本地编码的C字符串。
+	 * @return 转换后的UTF-8字符串。
 	 */
-	std::string          Utf8ConvertToLocale(const char* sInput);
+	std::string ToUtf8FromLocal(const char* input);
+
+	/**
+	 * @brief 将UTF-8字符串转换为系统本地编码字符串。
+	 * @param  input UTF-8编码的输入字符串。
+	 * @return 转换后的系统本地编码字符串。
+	 */
+	std::string FromUtf8ToLocal(const std::string& input);
+
+	/**
+	 * @brief 将UTF-8 C风格字符串转换为系统本地编码字符串。
+	 * @param  input UTF-8编码的C字符串。
+	 * @return 转换后的系统本地编码字符串。
+	 */
+	std::string FromUtf8ToLocal(const char* input);
 
 /***************************************************************************/
 /*=================== Locale convert to UTF-16 (LE BE) ====================*/
@@ -261,7 +253,12 @@ public:
 	 * @return The converted string in UTF-16LE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       LocaleConvertToUtf16LE(const std::string& sInput);
+	/**
+	 * @brief 将系统本地编码的字符串转换为UTF-16LE字符串。
+	 * @param  input 系统本地编码的输入字符串。
+	 * @return 转换后的UTF-16LE字符串。
+	 */
+	std::u16string ToUtf16LEFromLocal(const std::string& input);
 
 	/**
 	 * @brief Convert a C-style string from the current locale encoding to UTF-16LE.
@@ -269,7 +266,12 @@ public:
 	 * @return The converted string in UTF-16LE encoding.
 	 * @retval val std::u16string
 	 */
-    std::u16string       LocaleConvertToUtf16LE(const char* sInput);
+	/**
+	 * @brief 将系统本地编码的C字符串转换为UTF-16LE字符串。
+	 * @param  input 系统本地编码的C字符串。
+	 * @return 转换后的UTF-16LE字符串。
+	 */
+	std::u16string ToUtf16LEFromLocal(const char* input);
 
 	/**
 	 * @brief Convert a string from the current locale encoding to UTF-16BE.
@@ -277,7 +279,12 @@ public:
 	 * @return The converted string in UTF-16BE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       LocaleConvertToUtf16BE(const std::string& sInput);
+	/**
+	 * @brief 将系统本地编码的字符串转换为UTF-16BE字符串。
+	 * @param  input 系统本地编码的输入字符串。
+	 * @return 转换后的UTF-16BE字符串。
+	 */
+	std::u16string ToUtf16BEFromLocal(const std::string& input);
 
 	/**
 	 * @brief Convert a C-style string from the current locale encoding to UTF-16BE.
@@ -285,7 +292,12 @@ public:
 	 * @return The converted string in UTF-16BE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       LocaleConvertToUtf16BE(const char* sInput);
+	/**
+	 * @brief 将系统本地编码的C字符串转换为UTF-16BE字符串。
+	 * @param  input 系统本地编码的C字符串。
+	 * @return 转换后的UTF-16BE字符串。
+	 */
+	std::u16string ToUtf16BEFromLocal(const char* input);
 
 /***************************************************************************/
 /*========================== UTF-16 BE To Locale ==========================*/
@@ -296,7 +308,12 @@ public:
 	 * @return The converted string in the current locale encoding.
 	 * @retval val std::string
 	 */
-	std::string          Utf16BEConvertToLocale(const std::u16string& sInput);
+	/**
+	 * @brief 将UTF-16BE字符串转换为系统本地编码字符串。
+	 * @param  input UTF-16BE字符串。
+	 * @return 转换后的系统本地编码字符串。
+	 */
+	std::string FromUtf16BEToLocal(const std::u16string& input);
 
 	/**
 	 * @brief Convert a C-style UTF-16BE string to the current locale encoding.
@@ -304,7 +321,12 @@ public:
 	 * @return The converted string in the current locale encoding.
 	 * @retval val std::string
 	 */
-	std::string          Utf16BEConvertToLocale(const char16_t* sInput);
+	/**
+	 * @brief 将UTF-16BE C字符串转换为系统本地编码字符串。
+	 * @param  input UTF-16BE C字符串。
+	 * @return 转换后的系统本地编码字符串。
+	 */
+	std::string FromUtf16BEToLocal(const char16_t* input);
 
 /***************************************************************************/
 /*======================== UTF-16 (LE BE) To UTF-8 ========================*/
@@ -315,7 +337,12 @@ public:
 	 * @return The converted string in UTF-8 encoding.
 	 * @retval val std::string
 	 */
-	std::string          Utf16LEConvertToUtf8(const std::u16string& sInput);
+	/**
+	 * @brief 将UTF-16LE字符串转换为UTF-8字符串。
+	 * @param  input UTF-16LE字符串。
+	 * @return 转换后的UTF-8字符串。
+	 */
+	std::string FromUtf16LEToUtf8(const std::u16string& input);
 
 
 	/**
@@ -324,7 +351,12 @@ public:
 	 * @return The converted string in UTF-8 encoding.
 	 * @retval val std::string
 	 */
-	std::string          Utf16LEConvertToUtf8(const char16_t* sInput);
+	/**
+	 * @brief 将UTF-16LE C字符串转换为UTF-8字符串。
+	 * @param  input UTF-16LE C字符串。
+	 * @return 转换后的UTF-8字符串。
+	 */
+	std::string FromUtf16LEToUtf8(const char16_t* input);
 
 	/**
 	 * @brief Convert a UTF-16BE string to UTF-8.
@@ -332,7 +364,12 @@ public:
 	 * @return The converted string in UTF-8 encoding.
 	 * @retval val std::string
 	 */
-	std::string          Utf16BEConvertToUtf8(const std::u16string& sInput);
+	/**
+	 * @brief 将UTF-16BE字符串转换为UTF-8字符串。
+	 * @param  input UTF-16BE字符串。
+	 * @return 转换后的UTF-8字符串。
+	 */
+	std::string FromUtf16BEToUtf8(const std::u16string& input);
 
 	/**
 	 * @brief Convert a C-style UTF-16BE string to UTF-8.
@@ -340,7 +377,12 @@ public:
 	 * @return The converted string in UTF-8 encoding.
 	 * @retval val std::string
 	 */
-	std::string          Utf16BEConvertToUtf8(const char16_t* sInput);
+	/**
+	 * @brief 将UTF-16BE C字符串转换为UTF-8字符串。
+	 * @param  input UTF-16BE C字符串。
+	 * @return 转换后的UTF-8字符串。
+	 */
+	std::string FromUtf16BEToUtf8(const char16_t* input);
 
 /***************************************************************************/
 /*========================== UTF-8 To UTF16(LE BE) ========================*/
@@ -351,7 +393,12 @@ public:
 	 * @return The converted string in UTF-16LE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf8ConvertToUtf16LE(const std::string& sInput);
+	/**
+	 * @brief 将UTF-8字符串转换为UTF-16LE字符串。
+	 * @param  input UTF-8字符串。
+	 * @return 转换后的UTF-16LE字符串。
+	 */
+	std::u16string FromUtf8ToUtf16LE(const std::string& input);
 
 	/**
 	 * @brief Convert a C-style UTF-8 string to UTF-16LE.
@@ -359,7 +406,12 @@ public:
 	 * @return The converted string in UTF-16LE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf8ConvertToUtf16LE(const char* sInput);
+	/**
+	 * @brief 将UTF-8 C字符串转换为UTF-16LE字符串。
+	 * @param  input UTF-8 C字符串。
+	 * @return 转换后的UTF-16LE字符串。
+	 */
+	std::u16string FromUtf8ToUtf16LE(const char* input);
 
 	/**
 	 * @brief Convert a UTF-8 string to UTF-16BE.
@@ -367,7 +419,12 @@ public:
 	 * @return The converted string in UTF-16BE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf8ConvertToUtf16BE(const std::string& sInput);
+	/**
+	 * @brief 将UTF-8字符串转换为UTF-16BE字符串。
+	 * @param  input UTF-8字符串。
+	 * @return 转换后的UTF-16BE字符串。
+	 */
+	std::u16string FromUtf8ToUtf16BE(const std::string& input);
 
 	/**
 	 * @brief Convert a C-style UTF-8 string to UTF-16BE.
@@ -375,7 +432,12 @@ public:
 	 * @return The converted string in UTF-16BE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf8ConvertToUtf16BE(const char* sInput);
+	/**
+	 * @brief 将UTF-8 C字符串转换为UTF-16BE字符串。
+	 * @param  input UTF-8 C字符串。
+	 * @return 转换后的UTF-16BE字符串。
+	 */
+	std::u16string FromUtf8ToUtf16BE(const char* input);
 
 
 /***************************************************************************/
@@ -388,7 +450,12 @@ public:
 	 * @return The converted string in UTF-16BE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf16LEConvertToUtf16BE(const std::u16string& sInput);
+	/**
+	 * @brief 将UTF-16LE字符串转换为UTF-16BE字符串。
+	 * @param  input UTF-16LE字符串。
+	 * @return 转换后的UTF-16BE字符串。
+	 */
+	std::u16string FromUtf16LEToUtf16BE(const std::u16string& input);
 
 	/**
 	 * @brief Convert a C-style UTF-16LE string to UTF-16BE.
@@ -396,7 +463,12 @@ public:
 	 * @return The converted string in UTF-16BE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf16LEConvertToUtf16BE(const char16_t* sInput);
+	/**
+	 * @brief 将UTF-16LE C字符串转换为UTF-16BE字符串。
+	 * @param  input UTF-16LE C字符串。
+	 * @return 转换后的UTF-16BE字符串。
+	 */
+	std::u16string FromUtf16LEToUtf16BE(const char16_t* input);
 
 	/**
 	 * @brief Convert a UTF-16BE string to UTF-16LE.
@@ -404,7 +476,12 @@ public:
 	 * @return The converted string in UTF-16LE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf16BEConvertToUtf16LE(const std::u16string& sInput);
+	/**
+	 * @brief 将UTF-16BE字符串转换为UTF-16LE字符串。
+	 * @param  input UTF-16BE字符串。
+	 * @return 转换后的UTF-16LE字符串。
+	 */
+	std::u16string FromUtf16BEToUtf16LE(const std::u16string& input);
 
 	/**
 	 * @brief Convert a C-style UTF-16BE string to UTF-16LE.
@@ -412,7 +489,12 @@ public:
 	 * @return The converted string in UTF-16LE encoding.
 	 * @retval val std::u16string
 	 */
-	std::u16string       Utf16BEConvertToUtf16LE(const char16_t* sInput);
+	/**
+	 * @brief 将UTF-16BE C字符串转换为UTF-16LE字符串。
+	 * @param  input UTF-16BE C字符串。
+	 * @return 转换后的UTF-16LE字符串。
+	 */
+	std::u16string FromUtf16BEToUtf16LE(const char16_t* input);
 
 
 /***************************************************************************/
