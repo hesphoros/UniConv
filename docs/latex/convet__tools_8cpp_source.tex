@@ -1,0 +1,94 @@
+\doxysection{convet\+\_\+tools.\+cpp}
+\hypertarget{convet__tools_8cpp_source}{}\label{convet__tools_8cpp_source}\mbox{\hyperlink{convet__tools_8cpp}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00001}00001\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00025}00025\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00026}00026\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{convert__tools_8h}{convert\_tools.h}}"{}}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00027}00027\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{UniConv_8h}{UniConv.h}}"{}}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00028}00028\ \textcolor{preprocessor}{\#ifdef\ \_WIN32}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00029}00029\ \textcolor{preprocessor}{\#include\ <windows.h>}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00030}00030\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00037}00037\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00077}\mbox{\hyperlink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{00077}}\ std::wstring\ \mbox{\hyperlink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{Utf8ConvertsToUcs4}}(\textcolor{keyword}{const}\ std::string\&\ utf8str)\ \{\ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00078}00078\ \ \ \ \ \ \ \ \ \textcolor{keyword}{auto}\ conv\ =\ \mbox{\hyperlink{classSingleton_afd2f572f321da30e9d331002c92f3956}{UniConv::GetInstance}}();}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00079}00079\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00080}00080\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Use\ UniConv\ to\ convert\ UTF-\/8\ to\ system\ locale,\ then\ convert\ to\ wide\ characters}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00081}00081\ \ \ \ \ \ \ \ \ std::string\ local\_str\ =\ conv-\/>FromUtf8ToLocal(utf8str);}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00082}00082\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00083}00083\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Use\ MultiByteToWideChar\ to\ convert\ to\ wide\ characters}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00084}00084\ \textcolor{preprocessor}{\#ifdef\ \_WIN32}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00085}00085\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (local\_str.empty())\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00086}00086\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ std::wstring();}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00087}00087\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00088}00088\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00089}00089\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ wlen\ =\ MultiByteToWideChar(CP\_ACP,\ 0,\ local\_str.c\_str(),\ -\/1,\ \textcolor{keyword}{nullptr},\ 0);}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00090}00090\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (wlen\ <=\ 0)\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00091}00091\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{throw}\ std::runtime\_error(\textcolor{stringliteral}{"{}Failed\ to\ convert\ to\ wide\ string"{}});}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00092}00092\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00093}00093\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00094}00094\ \ \ \ \ \ \ \ \ std::wstring\ result(wlen\ -\/\ 1,\ L\textcolor{charliteral}{'\(\backslash\)0'});\ \textcolor{comment}{//\ -\/1\ because\ wlen\ includes\ null\ terminator}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00095}00095\ \ \ \ \ \ \ \ \ MultiByteToWideChar(CP\_ACP,\ 0,\ local\_str.c\_str(),\ -\/1,\ \&result[0],\ wlen);}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00096}00096\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ result;}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00097}00097\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00098}00098\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Linux\ implementation\ -\/\ direct\ UTF-\/8\ to\ wide\ string}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00099}00099\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ std::wstring(utf8str.begin(),\ utf8str.end());}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00100}00100\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00101}00101\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00102}00102\ \ \ \ \ \textcolor{keywordflow}{catch}\ (\textcolor{keyword}{const}\ std::exception\&\ e)\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00103}00103\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{throw}\ std::runtime\_error(\textcolor{stringliteral}{"{}Failed\ to\ convert\ UTF-\/8\ to\ UCS-\/4:\ "{}}\ +\ std::string(e.what()));}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00104}00104\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00105}00105\ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00106}00106\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00147}\mbox{\hyperlink{group__ConversionUtilities_gab40d2f0c075fbb11477c216d44a5d548}{00147}}\ std::string\ \mbox{\hyperlink{group__ConversionUtilities_gab40d2f0c075fbb11477c216d44a5d548}{Ucs4ConvertToUtf8}}(\textcolor{keyword}{const}\ std::wstring\&\ wstr)\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00148}00148\ \ \ \ \ \textcolor{keywordflow}{try}\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00149}00149\ \ \ \ \ \ \ \ \ \textcolor{keyword}{auto}\ conv\ =\ \mbox{\hyperlink{classSingleton_afd2f572f321da30e9d331002c92f3956}{UniConv::GetInstance}}();}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00150}00150\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00151}00151\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ 使用\ WideCharToMultiByte\ 转换为多字节字符}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00152}00152\ \textcolor{preprocessor}{\#ifdef\ \_WIN32}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00153}00153\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (wstr.empty())\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00154}00154\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ std::string();}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00155}00155\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00156}00156\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00157}00157\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ len\ =\ WideCharToMultiByte(CP\_ACP,\ 0,\ wstr.c\_str(),\ -\/1,\ \textcolor{keyword}{nullptr},\ 0,\ \textcolor{keyword}{nullptr},\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00158}00158\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (len\ <=\ 0)\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00159}00159\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{throw}\ std::runtime\_error(\textcolor{stringliteral}{"{}Failed\ to\ convert\ from\ wide\ string"{}});}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00160}00160\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00161}00161\ \ \ \ \ \ \ \ \ \ \ std::string\ local\_str(len\ -\/\ 1,\ \textcolor{charliteral}{'\(\backslash\)0'});\ \textcolor{comment}{//\ -\/1\ because\ len\ includes\ null\ terminator}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00162}00162\ \ \ \ \ \ \ \ \ WideCharToMultiByte(CP\_ACP,\ 0,\ wstr.c\_str(),\ -\/1,\ \&local\_str[0],\ len,\ \textcolor{keyword}{nullptr},\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00163}00163\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00164}00164\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Use\ UniConv\ to\ convert\ local\ encoding\ to\ UTF-\/8}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00165}00165\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ conv-\/>ToUtf8FromLocal(local\_str);}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00166}00166\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00167}00167\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Linux\ implementation\ -\/\ convert\ wide\ string\ to\ local\ string\ then\ to\ UTF-\/8}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00168}00168\ \ \ \ \ \ \ \ \ std::string\ result(wstr.begin(),\ wstr.end());}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00169}00169\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ conv-\/>ToUtf8FromLocal(result);}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00170}00170\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00171}00171\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00172}00172\ \ \ \ \ \textcolor{keywordflow}{catch}\ (\textcolor{keyword}{const}\ std::exception\&\ e)\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00173}00173\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{throw}\ std::runtime\_error(\textcolor{stringliteral}{"{}Failed\ to\ convert\ UCS-\/4\ to\ UTF-\/8:\ "{}}\ +\ std::string(e.what()));}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00174}00174\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00175}00175\ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00176}00176\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00177}00177\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00230}\mbox{\hyperlink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{00230}}\ std::wstring\ \mbox{\hyperlink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{U16StringToWString}}(\textcolor{keyword}{const}\ std::u16string\&\ u16str)}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00231}00231\ \{}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00232}00232\ \ \ \ \ std::wstring\ wstr;}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00233}00233\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00234}00234\ \textcolor{preprocessor}{\#ifdef\ \_WIN32}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00235}00235\ \ \ \ \ \textcolor{comment}{//\ Windows\ platform:\ wchar\_t\ is\ 2\ bytes\ (UTF-\/16),\ direct\ copy}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00236}00236\ \ \ \ \ wstr.assign(u16str.begin(),\ u16str.end());}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00237}00237\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00238}00238\ \ \ \ \ \textcolor{comment}{//\ Linux\ platform:\ wchar\_t\ is\ 4\ bytes\ (UTF-\/32),\ conversion\ required}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00239}00239\ \ \ \ \ std::wstring\_convert<std::codecvt\_utf16<wchar\_t,\ 0x10ffff,\ std::little\_endian>>\ converter;}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00240}00240\ \ \ \ \ wstr\ =\ converter.from\_bytes(}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00241}00241\ \ \ \ \ \ \ \ \ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }\textcolor{keywordtype}{char}*\textcolor{keyword}{>}(u16str.data()),}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00242}00242\ \ \ \ \ \ \ \ \ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }\textcolor{keywordtype}{char}*\textcolor{keyword}{>}(u16str.data()\ +\ u16str.size())}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00243}00243\ \ \ \ \ );}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00244}00244\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00245}00245\ }
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00246}00246\ \ \ \ \ \textcolor{keywordflow}{return}\ wstr;}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00247}00247\ \}}
+\DoxyCodeLine{\Hypertarget{convet__tools_8cpp_source_l00248}00248\ \ \textcolor{comment}{//\ end\ of\ ConversionUtilities\ group}}
+
+\end{DoxyCode}

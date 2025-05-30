@@ -1,0 +1,207 @@
+\doxysection{Uni\+Conv\+::IConv\+Result Struct Reference}
+\hypertarget{structUniConv_1_1IConvResult}{}\label{structUniConv_1_1IConvResult}\index{UniConv::IConvResult@{UniConv::IConvResult}}
+
+
+Result structure for encoding conversion operations.  
+
+
+
+
+{\ttfamily \#include $<$Uni\+Conv.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \mbox{\hyperlink{structUniConv_1_1IConvResult_a4fe4f4eaf42f38b7107ce04f8e110a0e}{Is\+Success}} () const
+\begin{DoxyCompactList}\small\item\em Check if the conversion operation was successful. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{structUniConv_1_1IConvResult_a47f4bf13f1aea504905ed94290abe292}{operator bool}} () const
+\begin{DoxyCompactList}\small\item\em Explicit boolean conversion operator. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{structUniConv_1_1IConvResult_afaae7d29593571bcf78ad2d65c8991a1}{operator!}} () const
+\begin{DoxyCompactList}\small\item\em Logical NOT operator. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{structUniConv_1_1IConvResult_a7e32383fa72537f66e1b66421d37774a}{operator==}} (int code) const
+\begin{DoxyCompactList}\small\item\em Equality comparison with error code. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{structUniConv_1_1IConvResult_a91ba0dbd3561bef56e85ca8eff4e4c54}{operator!=}} (int code) const
+\begin{DoxyCompactList}\small\item\em Inequality comparison with error code. \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structUniConv_1_1IConvResult_ad5973d6312670cac288194f528e9be25}{c\+\_\+str}} () const
+\begin{DoxyCompactList}\small\item\em Get C-\/style string representation. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{structUniConv_1_1IConvResult_a646bb72dd0201865ca2c56d824ab7601}{conv\+\_\+result\+\_\+str}}
+\item 
+int \mbox{\hyperlink{structUniConv_1_1IConvResult_aba22472ed917747cea938ba87ed38f10}{error\+\_\+code}} = 0
+\item 
+std\+::string \mbox{\hyperlink{structUniConv_1_1IConvResult_a9f1a62bb5422b541dd8a44e28828afa5}{error\+\_\+msg}} = \{NULL\}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Result structure for encoding conversion operations. 
+
+This structure encapsulates the result of an encoding conversion operation, including the converted string, error information, and convenience methods for status checking.
+
+\begin{DoxyParagraph}{Usage Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{IConvResult\ result\ =\ conv-\/>ConvertEncoding(\textcolor{stringliteral}{"{}test"{}},\ \textcolor{stringliteral}{"{}UTF-\/8"{}},\ \textcolor{stringliteral}{"{}GBK"{}});}
+\DoxyCodeLine{\textcolor{keywordflow}{if}\ (result.IsSuccess())\ \{}
+\DoxyCodeLine{\ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Result:\ "{}}\ <<\ result.conv\_result\_str\ <<\ std::endl;}
+\DoxyCodeLine{\}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{\ \ \ \ std::cerr\ <<\ \textcolor{stringliteral}{"{}Error\ "{}}\ <<\ result.error\_code\ <<\ \textcolor{stringliteral}{"{}:\ "{}}\ <<\ result.error\_msg\ <<\ std::endl;}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+ 
+\end{DoxyParagraph}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00274}{274}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{structUniConv_1_1IConvResult_ad5973d6312670cac288194f528e9be25}\index{UniConv::IConvResult@{UniConv::IConvResult}!c\_str@{c\_str}}
+\index{c\_str@{c\_str}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{c\_str()}{c\_str()}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_ad5973d6312670cac288194f528e9be25} 
+const char \texorpdfstring{$\ast$}{*} Uni\+Conv\+::\+IConv\+Result\+::c\+\_\+str (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Get C-\/style string representation. 
+
+\begin{DoxyReturn}{Returns}
+Pointer to converted string if successful, error message if failed
+\end{DoxyReturn}
+Returns conv\+\_\+result\+\_\+str.\+c\+\_\+str() on success, error\+\_\+msg.\+data() on failure. Useful for C API compatibility. 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00336}{336}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+\Hypertarget{structUniConv_1_1IConvResult_a4fe4f4eaf42f38b7107ce04f8e110a0e}\index{UniConv::IConvResult@{UniConv::IConvResult}!IsSuccess@{IsSuccess}}
+\index{IsSuccess@{IsSuccess}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{IsSuccess()}{IsSuccess()}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_a4fe4f4eaf42f38b7107ce04f8e110a0e} 
+bool Uni\+Conv\+::\+IConv\+Result\+::\+Is\+Success (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Check if the conversion operation was successful. 
+
+\begin{DoxyReturn}{Returns}
+true if the conversion succeeded (error\+\_\+code == 0), false otherwise
+\end{DoxyReturn}
+This is the primary method to check conversion status. A successful conversion has error\+\_\+code equal to 0. 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00285}{285}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+\Hypertarget{structUniConv_1_1IConvResult_a47f4bf13f1aea504905ed94290abe292}\index{UniConv::IConvResult@{UniConv::IConvResult}!operator bool@{operator bool}}
+\index{operator bool@{operator bool}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{operator bool()}{operator bool()}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_a47f4bf13f1aea504905ed94290abe292} 
+Uni\+Conv\+::\+IConv\+Result\+::operator bool (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [explicit]}}
+
+
+
+Explicit boolean conversion operator. 
+
+\begin{DoxyReturn}{Returns}
+true if the conversion was successful, false otherwise
+\end{DoxyReturn}
+Allows the result to be used in boolean contexts\+: if (result) \{ // success \} 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00297}{297}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+\Hypertarget{structUniConv_1_1IConvResult_afaae7d29593571bcf78ad2d65c8991a1}\index{UniConv::IConvResult@{UniConv::IConvResult}!operator"!@{operator"!}}
+\index{operator"!@{operator"!}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{operator"!()}{operator!()}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_afaae7d29593571bcf78ad2d65c8991a1} 
+bool Uni\+Conv\+::\+IConv\+Result\+::operator! (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Logical NOT operator. 
+
+\begin{DoxyReturn}{Returns}
+true if the conversion failed, false if successful
+\end{DoxyReturn}
+Allows checking for failure\+: if (!result) \{ handle error \} 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00306}{306}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+\Hypertarget{structUniConv_1_1IConvResult_a91ba0dbd3561bef56e85ca8eff4e4c54}\index{UniConv::IConvResult@{UniConv::IConvResult}!operator"!=@{operator"!=}}
+\index{operator"!=@{operator"!=}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{operator"!=()}{operator!=()}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_a91ba0dbd3561bef56e85ca8eff4e4c54} 
+bool \mbox{\hyperlink{structUniConv_1_1IConvResult_afaae7d29593571bcf78ad2d65c8991a1}{Uni\+Conv\+::\+IConv\+Result\+::operator!}}= (\begin{DoxyParamCaption}\item[{int}]{code}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Inequality comparison with error code. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em code} & The error code to compare with \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if the result\textquotesingle{}s error\+\_\+code does not equal the given code
+\end{DoxyReturn}
+Useful for filtering out specific error conditions 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00326}{326}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+\Hypertarget{structUniConv_1_1IConvResult_a7e32383fa72537f66e1b66421d37774a}\index{UniConv::IConvResult@{UniConv::IConvResult}!operator==@{operator==}}
+\index{operator==@{operator==}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{operator==()}{operator==()}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_a7e32383fa72537f66e1b66421d37774a} 
+bool Uni\+Conv\+::\+IConv\+Result\+::operator== (\begin{DoxyParamCaption}\item[{int}]{code}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Equality comparison with error code. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em code} & The error code to compare with \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if the result\textquotesingle{}s error\+\_\+code equals the given code
+\end{DoxyReturn}
+Useful for checking specific error conditions 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00316}{316}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structUniConv_1_1IConvResult_a646bb72dd0201865ca2c56d824ab7601}\index{UniConv::IConvResult@{UniConv::IConvResult}!conv\_result\_str@{conv\_result\_str}}
+\index{conv\_result\_str@{conv\_result\_str}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{conv\_result\_str}{conv\_result\_str}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_a646bb72dd0201865ca2c56d824ab7601} 
+std\+::string Uni\+Conv\+::\+IConv\+Result\+::conv\+\_\+result\+\_\+str}
+
+The successfully converted string data 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00275}{275}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+\Hypertarget{structUniConv_1_1IConvResult_aba22472ed917747cea938ba87ed38f10}\index{UniConv::IConvResult@{UniConv::IConvResult}!error\_code@{error\_code}}
+\index{error\_code@{error\_code}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{error\_code}{error\_code}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_aba22472ed917747cea938ba87ed38f10} 
+int Uni\+Conv\+::\+IConv\+Result\+::error\+\_\+code = 0}
+
+Error code (0 = success, non-\/zero = error) 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00276}{276}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+
+\Hypertarget{structUniConv_1_1IConvResult_a9f1a62bb5422b541dd8a44e28828afa5}\index{UniConv::IConvResult@{UniConv::IConvResult}!error\_msg@{error\_msg}}
+\index{error\_msg@{error\_msg}!UniConv::IConvResult@{UniConv::IConvResult}}
+\doxysubsubsection{\texorpdfstring{error\_msg}{error\_msg}}
+{\footnotesize\ttfamily \label{structUniConv_1_1IConvResult_a9f1a62bb5422b541dd8a44e28828afa5} 
+std\+::string Uni\+Conv\+::\+IConv\+Result\+::error\+\_\+msg = \{NULL\}}
+
+Human-\/readable error description 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00277}{277}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+

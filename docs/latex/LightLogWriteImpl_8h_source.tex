@@ -1,0 +1,192 @@
+\doxysection{Light\+Log\+Write\+Impl.\+h}
+\hypertarget{LightLogWriteImpl_8h_source}{}\label{LightLogWriteImpl_8h_source}\mbox{\hyperlink{LightLogWriteImpl_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00001}00001\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00032}00032\ \textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00033}00033\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00034}00034\ \textcolor{preprocessor}{\#include\ <chrono>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00035}00035\ \textcolor{preprocessor}{\#include\ <mutex>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00036}00036\ \textcolor{preprocessor}{\#include\ <fstream>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00037}00037\ \textcolor{preprocessor}{\#include\ <queue>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00038}00038\ \textcolor{preprocessor}{\#include\ <thread>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00039}00039\ \textcolor{preprocessor}{\#include\ <condition\_variable>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00040}00040\ \textcolor{preprocessor}{\#include\ <atomic>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00041}00041\ \textcolor{preprocessor}{\#include\ <locale>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00042}00042\ \textcolor{preprocessor}{\#include\ <codecvt>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00043}00043\ \textcolor{preprocessor}{\#include\ <ostream>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00044}00044\ \textcolor{preprocessor}{\#include\ <sstream>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00045}00045\ \textcolor{preprocessor}{\#include\ <iomanip>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00046}00046\ \textcolor{preprocessor}{\#include\ <filesystem>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00047}00047\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00048}00048\ \textcolor{preprocessor}{\#include\ <stdexcept>}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00049}00049\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{convert__tools_8h}{convert\_tools.h}}"{}}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00050}00050\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00051}00051\ \textcolor{comment}{//TODO\ :\ Integrate\ with\ custom\ UniConv\ library}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00052}00052\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00058}\mbox{\hyperlink{structLightLogWrite__Info}{00058}}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structLightLogWrite__Info}{LightLogWrite\_Info}}\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00059}\mbox{\hyperlink{structLightLogWrite__Info_a606bdf5ee3989038f72fb512d8e46fa2}{00059}}\ \ \ \ \ std::wstring\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{structLightLogWrite__Info_a606bdf5ee3989038f72fb512d8e46fa2}{sLogTagNameVal}};\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00060}\mbox{\hyperlink{structLightLogWrite__Info_aa6eab03fe23d2e9d3dcc2b15caeb609b}{00060}}\ \ \ \ \ std::wstring\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{structLightLogWrite__Info_aa6eab03fe23d2e9d3dcc2b15caeb609b}{sLogContentVal}};\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00061}00061\ \};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00062}00062\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00096}\mbox{\hyperlink{classLightLogWrite__Impl}{00096}}\ \textcolor{keyword}{class\ }\mbox{\hyperlink{classLightLogWrite__Impl_ab494ce683ce058c703525aeaa629ee44}{LightLogWrite\_Impl}}\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00097}00097\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00109}\mbox{\hyperlink{classLightLogWrite__Impl_ab494ce683ce058c703525aeaa629ee44}{00109}}\ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_ab494ce683ce058c703525aeaa629ee44}{LightLogWrite\_Impl}}()\ :\ \mbox{\hyperlink{group__LoggingMembers_ga48e38499120eff9e85f0e7a2c441f8ee}{bIsStopLogging}}\{\ false\ \},\ \mbox{\hyperlink{group__LoggingMembers_gafb18948ce0ffa0c4ef5456e01f76b1ca}{bHasLogLasting}}\{\ false\ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00110}00110\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00111}00111\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00112}00112\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga81eab5f5dede399b678e67c4cca431ad}{sWritedThreads}}\ =\ std::thread(\&\mbox{\hyperlink{group__LoggingInternals_ga18d59709020cd8077bf6a6978f698119}{LightLogWrite\_Impl::RunWriteThread}},\ \textcolor{keyword}{this});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00113}00113\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00114}00114\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00126}\mbox{\hyperlink{classLightLogWrite__Impl_a84db3483eda51e6f439193ac99dbc842}{00126}}\ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_a84db3483eda51e6f439193ac99dbc842}{\string~LightLogWrite\_Impl}}()\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00127}00127\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingInternals_ga5432b6bdffcbc2dc2a04201cc65a4d49}{CloseLogStream}}();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00128}00128\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00129}00129\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00146}\mbox{\hyperlink{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}{00146}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}{SetLogsFileName}}(\textcolor{keyword}{const}\ std::wstring\&\ sFilename)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00147}00147\ \ \ \ \ \ \ \ \ std::lock\_guard<std::mutex>\ sWriteLock(\mbox{\hyperlink{group__LoggingMembers_ga2c8bfb133ddc406e15c473da0bc5ccb9}{pLogWriteMutex}});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00148}00148\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}.is\_open())\ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}.close();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00149}00149\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingInternals_ga8a38717ee1428cf2f33542e7c4ec7a61}{ChecksDirectory}}(sFilename);\ \textcolor{comment}{//\ Ensure\ directory\ exists}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00150}00150\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}.open(sFilename,\ std::ios::app);\ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00151}00151\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00161}\mbox{\hyperlink{classLightLogWrite__Impl_a5c2f5a970ffcbe9731dfdf97976d3e5a}{00161}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_a5c2f5a970ffcbe9731dfdf97976d3e5a}{SetLogsFileName}}(\textcolor{keyword}{const}\ std::string\&\ sFilename)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00162}00162\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}{SetLogsFileName}}(\mbox{\hyperlink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{Utf8ConvertsToUcs4}}(sFilename));}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00163}00163\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00164}00164\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00174}\mbox{\hyperlink{classLightLogWrite__Impl_ab62c4420c4c8180d9b6d3151b1785d8f}{00174}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_ab62c4420c4c8180d9b6d3151b1785d8f}{SetLogsFileName}}(\textcolor{keyword}{const}\ std::u16string\&\ sFilename)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00175}00175\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}{SetLogsFileName}}(\mbox{\hyperlink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{U16StringToWString}}(sFilename));}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00176}00176\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00177}00177\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00198}\mbox{\hyperlink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{00198}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{SetLastingsLogs}}(\textcolor{keyword}{const}\ std::wstring\&\ sFilePath,\ \textcolor{keyword}{const}\ std::wstring\&\ sBaseName)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00199}00199\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga651c8384959547880cca6b5f3c05bfbc}{sLogLastingDir}}\ =\ sFilePath;}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00200}00200\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga84821ee32a6c7ff8ee67b39a403191fd}{sLogsBasedName}}\ =\ sBaseName;}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00201}00201\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_gafb18948ce0ffa0c4ef5456e01f76b1ca}{bHasLogLasting}}\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00202}00202\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingInternals_gaef370bc38f695c58da5493be555c69c6}{CreateLogsFile}}();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00203}00203\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00204}00204\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00213}\mbox{\hyperlink{classLightLogWrite__Impl_a3ff8b3accce1246594a7d49c77481d36}{00213}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_a3ff8b3accce1246594a7d49c77481d36}{SetLastingsLogs}}(\textcolor{keyword}{const}\ std::u16string\&\ sFilePath,\ \textcolor{keyword}{const}\ std::u16string\&\ sBaseName)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00214}00214\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{SetLastingsLogs}}(\mbox{\hyperlink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{U16StringToWString}}(sFilePath),\ \mbox{\hyperlink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{U16StringToWString}}(sBaseName));}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00215}00215\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00216}00216\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00225}\mbox{\hyperlink{classLightLogWrite__Impl_a0a4eb862ad5a0adb6bc3a8d586ae21c1}{00225}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_a0a4eb862ad5a0adb6bc3a8d586ae21c1}{SetLastingsLogs}}(\textcolor{keyword}{const}\ std::string\&\ sFilePath,\ \textcolor{keyword}{const}\ std::string\&\ sBaseName)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00226}00226\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{SetLastingsLogs}}(\mbox{\hyperlink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{Utf8ConvertsToUcs4}}(sFilePath),\ \mbox{\hyperlink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{Utf8ConvertsToUcs4}}(sBaseName));}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00227}00227\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00228}00228\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00246}\mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{00246}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{WriteLogContent}}(\textcolor{keyword}{const}\ std::wstring\&\ sTypeVal,\ \textcolor{keyword}{const}\ std::wstring\&\ sMessage)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00247}00247\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00248}00248\ \ \ \ \ \ \ \ \ \ \ \ \ std::lock\_guard<std::mutex>\ sWriteLock(\mbox{\hyperlink{group__LoggingMembers_ga2c8bfb133ddc406e15c473da0bc5ccb9}{pLogWriteMutex}});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00249}00249\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{pLogWriteQueue}}.push(\{\ sTypeVal,\ sMessage\ \});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00250}00250\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00251}00251\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga503630be81ed28258549859809be1b83}{pWritedCondVar}}.notify\_one();\ \textcolor{comment}{//\ Notify\ writer\ thread}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00252}00252\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00253}00253\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00262}\mbox{\hyperlink{classLightLogWrite__Impl_a79cf08fb3d3d31b815e839882e3e472c}{00262}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_a79cf08fb3d3d31b815e839882e3e472c}{WriteLogContent}}(\textcolor{keyword}{const}\ std::string\&\ sTypeVal,\ \textcolor{keyword}{const}\ std::string\&\ sMessage)}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00263}00263\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00264}00264\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{WriteLogContent}}(\mbox{\hyperlink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{Utf8ConvertsToUcs4}}(sTypeVal),\ \mbox{\hyperlink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{Utf8ConvertsToUcs4}}(sMessage));}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00265}00265\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00266}00266\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00275}\mbox{\hyperlink{classLightLogWrite__Impl_a6793412c489d963072d3deeb398b2246}{00275}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{classLightLogWrite__Impl_a6793412c489d963072d3deeb398b2246}{WriteLogContent}}(\textcolor{keyword}{const}\ std::u16string\&\ sTypeVal,\ \textcolor{keyword}{const}\ std::u16string\&\ sMessage)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00276}00276\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{WriteLogContent}}(\mbox{\hyperlink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{U16StringToWString}}(sTypeVal),\ \mbox{\hyperlink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{U16StringToWString}}(sMessage));}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00277}00277\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00278}00278\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00284}00284\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00303}\mbox{\hyperlink{group__LoggingInternals_ga3c612177e101789279c2f5155513118c}{00303}}\ \ \ \ \ std::wstring\ \mbox{\hyperlink{group__LoggingInternals_ga3c612177e101789279c2f5155513118c}{BuildLogFileOut}}()\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00304}00304\ \ \ \ \ \ \ \ \ std::tm\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ sTmPartsInfo\ =\ \mbox{\hyperlink{group__LoggingInternals_gafc1b5135df1b50d3712db40ff74adfb7}{GetCurrsTimerTm}}();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00305}00305\ \ \ \ \ \ \ \ \ std::wostringstream\ \ \ \ \ sWosStrStream;}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00306}00306\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00307}00307\ \ \ \ \ \ \ \ \ sWosStrStream\ <<\ std::put\_time(\&sTmPartsInfo,\ L\textcolor{stringliteral}{"{}\%Y\_\%m\_\%d"{}})\ <<\ (sTmPartsInfo.tm\_hour\ >\ 12\ ?\ L\textcolor{stringliteral}{"{}\_AM"{}}\ :\ L\textcolor{stringliteral}{"{}\_PM"{}})\ <<\ L\textcolor{stringliteral}{"{}.log"{}};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00308}00308\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00309}00309\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f7397326b856a105c090627c5d7f6f9}{bLastingTmTags}}\ =\ (sTmPartsInfo.tm\_hour\ >\ 12);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00310}00310\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00311}00311\ \ \ \ \ \ \ \ \ std::filesystem::path\ \ \ sLotOutPaths\ =\ \mbox{\hyperlink{group__LoggingMembers_ga651c8384959547880cca6b5f3c05bfbc}{sLogLastingDir}};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00312}00312\ \ \ \ \ \ \ \ \ std::filesystem::path\ \ \ sLogOutFiles\ =\ sLotOutPaths\ /\ (\mbox{\hyperlink{group__LoggingMembers_ga84821ee32a6c7ff8ee67b39a403191fd}{sLogsBasedName}}\ +\ sWosStrStream.str());}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00313}00313\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00314}00314\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sLogOutFiles.wstring();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00315}00315\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00316}00316\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00333}\mbox{\hyperlink{group__LoggingInternals_ga5432b6bdffcbc2dc2a04201cc65a4d49}{00333}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__LoggingInternals_ga5432b6bdffcbc2dc2a04201cc65a4d49}{CloseLogStream}}()}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00334}00334\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00335}00335\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga48e38499120eff9e85f0e7a2c441f8ee}{bIsStopLogging}}\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00336}00336\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga503630be81ed28258549859809be1b83}{pWritedCondVar}}.notify\_all();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00337}00337\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{WriteLogContent}}(L\textcolor{stringliteral}{"{}Stop\ log\ write\ thread"{}},\ L\textcolor{stringliteral}{"{}===============================>"{}});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00338}00338\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\mbox{\hyperlink{group__LoggingMembers_ga81eab5f5dede399b678e67c4cca431ad}{sWritedThreads}}.joinable())\ \mbox{\hyperlink{group__LoggingMembers_ga81eab5f5dede399b678e67c4cca431ad}{sWritedThreads}}.join();\ \textcolor{comment}{//\ Wait\ for\ thread\ to\ complete}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00339}00339\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00340}00340\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00356}\mbox{\hyperlink{group__LoggingInternals_gaef370bc38f695c58da5493be555c69c6}{00356}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__LoggingInternals_gaef370bc38f695c58da5493be555c69c6}{CreateLogsFile}}()}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00357}00357\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00358}00358\ \ \ \ \ \ \ \ \ std::wstring\ \ sOutFileName\ =\ \mbox{\hyperlink{group__LoggingInternals_ga3c612177e101789279c2f5155513118c}{BuildLogFileOut}}();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00359}00359\ \ \ \ \ \ \ \ \ std::lock\_guard<std::mutex>\ sLock(\mbox{\hyperlink{group__LoggingMembers_ga2c8bfb133ddc406e15c473da0bc5ccb9}{pLogWriteMutex}});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00360}00360\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingInternals_ga8a38717ee1428cf2f33542e7c4ec7a61}{ChecksDirectory}}(sOutFileName);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00361}00361\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}.close();\ \ \ \textcolor{comment}{//\ Close\ previous\ file\ stream}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00362}00362\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}.open(sOutFileName,\ std::ios::app);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00363}00363\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00364}00364\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00386}\mbox{\hyperlink{group__LoggingInternals_ga18d59709020cd8077bf6a6978f698119}{00386}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__LoggingInternals_ga18d59709020cd8077bf6a6978f698119}{RunWriteThread}}()\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00387}00387\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{while}\ (\textcolor{keyword}{true})\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00388}00388\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\mbox{\hyperlink{group__LoggingMembers_gafb18948ce0ffa0c4ef5456e01f76b1ca}{bHasLogLasting}})}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00389}00389\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\mbox{\hyperlink{group__LoggingMembers_ga4f7397326b856a105c090627c5d7f6f9}{bLastingTmTags}}\ !=\ (\mbox{\hyperlink{group__LoggingInternals_gafc1b5135df1b50d3712db40ff74adfb7}{GetCurrsTimerTm}}().tm\_hour\ >\ 12))}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00390}00390\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingInternals_gaef370bc38f695c58da5493be555c69c6}{CreateLogsFile}}();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00391}00391\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{structLightLogWrite__Info}{LightLogWrite\_Info}}\ sLogMessageInf;}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00392}00392\ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00393}00393\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{auto}\ sLock\ =\ std::unique\_lock<std::mutex>(\mbox{\hyperlink{group__LoggingMembers_ga2c8bfb133ddc406e15c473da0bc5ccb9}{pLogWriteMutex}});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00394}00394\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga503630be81ed28258549859809be1b83}{pWritedCondVar}}.wait(sLock,\ [\textcolor{keyword}{this}]\ \{\textcolor{keywordflow}{return}\ !\mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{pLogWriteQueue}}.empty()\ ||\ \mbox{\hyperlink{group__LoggingMembers_ga48e38499120eff9e85f0e7a2c441f8ee}{bIsStopLogging}};\ \});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00395}00395\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\mbox{\hyperlink{group__LoggingMembers_ga48e38499120eff9e85f0e7a2c441f8ee}{bIsStopLogging}}\ \&\&\ \mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{pLogWriteQueue}}.empty())\ \textcolor{keywordflow}{break};\ \textcolor{comment}{//\ Exit\ if\ stop\ flag\ is\ true\ and\ queue\ is\ empty}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00396}00396\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (!\mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{pLogWriteQueue}}.empty())\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00397}00397\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ sLogMessageInf\ =\ \mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{pLogWriteQueue}}.front();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00398}00398\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{pLogWriteQueue}}.pop();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00399}00399\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::cerr\ <<\ \textcolor{stringliteral}{"{}pop:"{}}\ <<\ \mbox{\hyperlink{group__ConversionUtilities_gab40d2f0c075fbb11477c216d44a5d548}{Ucs4ConvertToUtf8}}(sLogMessageInf.\mbox{\hyperlink{structLightLogWrite__Info_aa6eab03fe23d2e9d3dcc2b15caeb609b}{sLogContentVal}})\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00400}00400\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00401}00401\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00402}00402\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (!sLogMessageInf.\mbox{\hyperlink{structLightLogWrite__Info_aa6eab03fe23d2e9d3dcc2b15caeb609b}{sLogContentVal}}.empty()\ \&\&\ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}.is\_open())}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00403}00403\ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00404}00404\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}\ <<\ sLogMessageInf.\mbox{\hyperlink{structLightLogWrite__Info_a606bdf5ee3989038f72fb512d8e46fa2}{sLogTagNameVal}}\ <<\ L\textcolor{stringliteral}{"{}-\///>>>"{}}\ <<\ \mbox{\hyperlink{group__LoggingInternals_ga8c5588b019435d5cc831b7996f099d30}{GetCurrentTimer}}()\ <<\ \textcolor{stringliteral}{"{}\ :\ "{}}\ <<\ sLogMessageInf.\mbox{\hyperlink{structLightLogWrite__Info_aa6eab03fe23d2e9d3dcc2b15caeb609b}{sLogContentVal}}\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00405}00405\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00406}00406\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00407}00407\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}}.close();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00408}00408\ \ \ \ \ \ \ \ \ std::cerr\ <<\ \textcolor{stringliteral}{"{}Log\ write\ thread\ Exit\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00409}00409\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00410}00410\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00422}\mbox{\hyperlink{group__LoggingInternals_ga8a38717ee1428cf2f33542e7c4ec7a61}{00422}}\ \ \ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{group__LoggingInternals_ga8a38717ee1428cf2f33542e7c4ec7a61}{ChecksDirectory}}(\textcolor{keyword}{const}\ std::wstring\&\ sFilename)\ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00423}00423\ \ \ \ \ \ \ \ \ std::filesystem::path\ sFullFileName(sFilename);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00424}00424\ \ \ \ \ \ \ \ \ std::filesystem::path\ sOutFilesPath\ =\ sFullFileName.parent\_path();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00425}00425\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (!sOutFilesPath.empty()\ \&\&\ !std::filesystem::exists(sOutFilesPath))}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00426}00426\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00427}00427\ \ \ \ \ \ \ \ \ \ \ \ \ std::filesystem::create\_directories(sOutFilesPath);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00428}00428\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00429}00429\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00430}00430\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00442}\mbox{\hyperlink{group__LoggingInternals_ga8c5588b019435d5cc831b7996f099d30}{00442}}\ \ \ \ \ std::wstring\ \mbox{\hyperlink{group__LoggingInternals_ga8c5588b019435d5cc831b7996f099d30}{GetCurrentTimer}}()\textcolor{keyword}{\ const\ }\{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00443}00443\ \ \ \ \ \ \ \ \ std::tm\ \ \ \ \ \ \ \ \ \ \ \ \ \ sTmPartsInfo\ =\ \mbox{\hyperlink{group__LoggingInternals_gafc1b5135df1b50d3712db40ff74adfb7}{GetCurrsTimerTm}}();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00444}00444\ \ \ \ \ \ \ \ \ std::wostringstream\ \ sWosStrStream;}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00445}00445\ \ \ \ \ \ \ \ \ sWosStrStream\ <<\ std::put\_time(\&sTmPartsInfo,\ L\textcolor{stringliteral}{"{}\%Y-\/\%m-\/\%d\ \%H:\%M:\%S"{}});}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00446}00446\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \ sWosStrStream.str();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00447}00447\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00448}00448\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00462}\mbox{\hyperlink{group__LoggingInternals_gafc1b5135df1b50d3712db40ff74adfb7}{00462}}\ \ \ \ \ std::tm\ \mbox{\hyperlink{group__LoggingInternals_gafc1b5135df1b50d3712db40ff74adfb7}{GetCurrsTimerTm}}()\textcolor{keyword}{\ const\ }\{}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00463}00463\ \ \ \ \ \ \ \ \ \textcolor{keyword}{auto}\ \ \ \ \ \ \ \ sCurrentTime\ =\ std::chrono::system\_clock::now();}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00464}00464\ \ \ \ \ \ \ \ \ std::time\_t\ sCurrTimerTm\ =\ std::chrono::system\_clock::to\_time\_t(sCurrentTime);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00465}00465\ \ \ \ \ \ \ \ \ std::tm\ \ \ \ \ sCurrTmDatas;}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00466}00466\ \textcolor{preprocessor}{\#ifdef\ \_WIN32}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00467}00467\ \ \ \ \ \ \ \ \ localtime\_s(\&sCurrTmDatas,\ \&sCurrTimerTm);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00468}00468\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00469}00469\ \ \ \ \ \ \ \ \ localtime\_r(\&sCurrTmDatas,\ \&sCurrTimerTm);}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00470}00470\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00471}00471\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sCurrTmDatas;}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00472}00472\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00473}00473\ \ \textcolor{comment}{//\ end\ of\ LoggingInternals\ group}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00475}00475\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00476}00476\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00482}00482\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00483}\mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{00483}}\ \ \ \ \ std::wofstream\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{pLogFileStream}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00484}\mbox{\hyperlink{group__LoggingMembers_ga2c8bfb133ddc406e15c473da0bc5ccb9}{00484}}\ \ \ \ \ std::mutex\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga2c8bfb133ddc406e15c473da0bc5ccb9}{pLogWriteMutex}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00485}\mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{00485}}\ \ \ \ \ std::queue<LightLogWrite\_Info>\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{pLogWriteQueue}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00486}\mbox{\hyperlink{group__LoggingMembers_ga503630be81ed28258549859809be1b83}{00486}}\ \ \ \ \ std::condition\_variable\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga503630be81ed28258549859809be1b83}{pWritedCondVar}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00487}00487\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00488}\mbox{\hyperlink{group__LoggingMembers_ga81eab5f5dede399b678e67c4cca431ad}{00488}}\ \ \ \ \ std::thread\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga81eab5f5dede399b678e67c4cca431ad}{sWritedThreads}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00489}\mbox{\hyperlink{group__LoggingMembers_ga48e38499120eff9e85f0e7a2c441f8ee}{00489}}\ \ \ \ \ std::atomic<bool>\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga48e38499120eff9e85f0e7a2c441f8ee}{bIsStopLogging}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00490}\mbox{\hyperlink{group__LoggingMembers_ga651c8384959547880cca6b5f3c05bfbc}{00490}}\ \ \ \ \ std::wstring\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga651c8384959547880cca6b5f3c05bfbc}{sLogLastingDir}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00491}\mbox{\hyperlink{group__LoggingMembers_ga84821ee32a6c7ff8ee67b39a403191fd}{00491}}\ \ \ \ \ std::wstring\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga84821ee32a6c7ff8ee67b39a403191fd}{sLogsBasedName}};\ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00492}\mbox{\hyperlink{group__LoggingMembers_gafb18948ce0ffa0c4ef5456e01f76b1ca}{00492}}\ \ \ \ \ std::atomic<bool>\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_gafb18948ce0ffa0c4ef5456e01f76b1ca}{bHasLogLasting}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00493}\mbox{\hyperlink{group__LoggingMembers_ga4f7397326b856a105c090627c5d7f6f9}{00493}}\ \ \ \ \ std::atomic<bool>\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{group__LoggingMembers_ga4f7397326b856a105c090627c5d7f6f9}{bLastingTmTags}};\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00494}00494\ \ \textcolor{comment}{//\ end\ of\ LoggingMembers\ group}}
+\DoxyCodeLine{\Hypertarget{LightLogWriteImpl_8h_source_l00496}00496\ \};}
+
+\end{DoxyCode}

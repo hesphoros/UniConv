@@ -1,0 +1,387 @@
+\doxysection{Singleton\texorpdfstring{$<$}{<} T \texorpdfstring{$>$}{>} Class Template Reference}
+\hypertarget{classSingleton}{}\label{classSingleton}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+
+
+Thread-\/safe \doxylink{classSingleton}{Singleton} pattern template class.  
+
+
+
+
+{\ttfamily \#include $<$Singleton.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{classSingleton_acf69f79cee59b93faec037914ae3d8f4}{Print\+Address}} ()
+\begin{DoxyCompactList}\small\item\em Print instance memory address for debugging. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classSingleton_ac6e7af82cba33f561bd64e5e0243e7f8}{\texorpdfstring{$\sim$}{\string~}\+Singleton}} ()
+\begin{DoxyCompactList}\small\item\em Virtual destructor. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classSingleton_acf69f79cee59b93faec037914ae3d8f4}{Print\+Address}} ()
+\begin{DoxyCompactList}\small\item\em Print instance memory address for debugging. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classSingleton_ac6e7af82cba33f561bd64e5e0243e7f8}{\texorpdfstring{$\sim$}{\string~}\+Singleton}} ()
+\begin{DoxyCompactList}\small\item\em Virtual destructor. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{classSingleton_afd2f572f321da30e9d331002c92f3956}{Get\+Instance}} ()
+\begin{DoxyCompactList}\small\item\em Get the singleton instance. \end{DoxyCompactList}\item 
+static std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{classSingleton_afd2f572f321da30e9d331002c92f3956}{Get\+Instance}} ()
+\begin{DoxyCompactList}\small\item\em Get the singleton instance. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classSingleton_adb1b554fec7ae6065fe0e09111f3581f}{Singleton}} ()=default
+\begin{DoxyCompactList}\small\item\em Default constructor (protected) \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classSingleton_aa9a95a6156926f1f153bd2dd9d8d79d6}{Singleton}} (const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&)=delete
+\begin{DoxyCompactList}\small\item\em Deleted copy constructor. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classSingleton}{Singleton}} \& \mbox{\hyperlink{classSingleton_af35d041d078bfd87b2cd1e054a7a9e7c}{operator=}} (const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&st)=delete
+\begin{DoxyCompactList}\small\item\em Deleted assignment operator. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classSingleton_adb1b554fec7ae6065fe0e09111f3581f}{Singleton}} ()=default
+\begin{DoxyCompactList}\small\item\em Default constructor (protected) \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classSingleton_aa9a95a6156926f1f153bd2dd9d8d79d6}{Singleton}} (const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&)=delete
+\begin{DoxyCompactList}\small\item\em Deleted copy constructor. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classSingleton}{Singleton}} \& \mbox{\hyperlink{classSingleton_af35d041d078bfd87b2cd1e054a7a9e7c}{operator=}} (const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&st)=delete
+\begin{DoxyCompactList}\small\item\em Deleted assignment operator. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{classSingleton_a7cc493315f293d94595c948777182222}{\+\_\+instance}}
+\begin{DoxyCompactList}\small\item\em Static instance holder. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$\newline
+class Singleton$<$ T $>$}
+Thread-\/safe \doxylink{classSingleton}{Singleton} pattern template class. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & The type to be made singleton\\
+\hline
+\end{DoxyTemplParams}
+Template class that implements the \doxylink{classSingleton}{Singleton} pattern with thread-\/safe lazy initialization. Classes inheriting from this template become singletons with guaranteed single instance creation.
+
+\begin{DoxyParagraph}{Design Pattern\+:}
+
+\begin{DoxyItemize}
+\item {\bfseries{Lazy Initialization}}\+: Instance created only when first requested
+\item {\bfseries{Thread Safety}}\+: Uses std\+::call\+\_\+once for initialization
+\item {\bfseries{RAII Compliance}}\+: Automatic memory management via std\+::shared\+\_\+ptr
+\item {\bfseries{Non-\/\+Copyable}}\+: Copy constructor and assignment operator deleted
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Memory Management\+:}
+
+\begin{DoxyItemize}
+\item Uses std\+::shared\+\_\+ptr for automatic memory management
+\item Instance automatically destroyed when program ends
+\item No manual cleanup required
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Thread Safety Guarantees\+:}
+
+\begin{DoxyItemize}
+\item \doxylink{classSingleton_afd2f572f321da30e9d331002c92f3956}{Get\+Instance()} is thread-\/safe for initialization
+\item Multiple threads can safely call \doxylink{classSingleton_afd2f572f321da30e9d331002c92f3956}{Get\+Instance()} concurrently
+\item Exactly one instance is guaranteed to be created
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyWarning}{Warning}
+Derived classes should\+:
+\begin{DoxyItemize}
+\item Make constructor private/protected
+\item Declare \doxylink{classSingleton}{Singleton$<$\+T$>$} as friend class
+\item Not provide public copy/move constructors
+\end{DoxyItemize}
+\end{DoxyWarning}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition at line \mbox{\hyperlink{Singleton_8h_source_l00083}{83}} of file \mbox{\hyperlink{Singleton_8h_source}{Singleton.\+h}}.
+
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classSingleton_adb1b554fec7ae6065fe0e09111f3581f}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!Singleton@{Singleton}}
+\index{Singleton@{Singleton}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{Singleton()}{Singleton()}\hspace{0.1cm}{\footnotesize\ttfamily [1/4]}}
+{\footnotesize\ttfamily \label{classSingleton_adb1b554fec7ae6065fe0e09111f3581f} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\mbox{\hyperlink{classSingleton}{\+::\+Singleton}} (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}, {\ttfamily [default]}}
+
+
+
+Default constructor (protected) 
+
+Protected to prevent direct instantiation while allowing derived classes to use default construction. \Hypertarget{classSingleton_aa9a95a6156926f1f153bd2dd9d8d79d6}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!Singleton@{Singleton}}
+\index{Singleton@{Singleton}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{Singleton()}{Singleton()}\hspace{0.1cm}{\footnotesize\ttfamily [2/4]}}
+{\footnotesize\ttfamily \label{classSingleton_aa9a95a6156926f1f153bd2dd9d8d79d6} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\mbox{\hyperlink{classSingleton}{\+::\+Singleton}} (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&}]{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}, {\ttfamily [delete]}}
+
+
+
+Deleted copy constructor. 
+
+Prevents copying of singleton instances to maintain single instance guarantee. \Hypertarget{classSingleton_ac6e7af82cba33f561bd64e5e0243e7f8}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!````~Singleton@{\texorpdfstring{$\sim$}{\string~}Singleton}}
+\index{````~Singleton@{\texorpdfstring{$\sim$}{\string~}Singleton}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{\texorpdfstring{$\sim$}{\string~}Singleton()}{\string~Singleton()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classSingleton_ac6e7af82cba33f561bd64e5e0243e7f8} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\texorpdfstring{$\sim$}{\string~}\mbox{\hyperlink{classSingleton}{Singleton}} (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Virtual destructor. 
+
+Virtual destructor to ensure proper cleanup of derived classes. Commented out destructor message to avoid noise in normal operation.
+
+\begin{DoxyNote}{Note}
+Automatic cleanup is handled by std\+::shared\+\_\+ptr 
+\end{DoxyNote}
+
+
+Definition at line \mbox{\hyperlink{Singleton_8h_source_l00180}{180}} of file \mbox{\hyperlink{Singleton_8h_source}{Singleton.\+h}}.
+
+\Hypertarget{classSingleton_adb1b554fec7ae6065fe0e09111f3581f}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!Singleton@{Singleton}}
+\index{Singleton@{Singleton}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{Singleton()}{Singleton()}\hspace{0.1cm}{\footnotesize\ttfamily [3/4]}}
+{\footnotesize\ttfamily \label{classSingleton_adb1b554fec7ae6065fe0e09111f3581f} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\mbox{\hyperlink{classSingleton}{\+::\+Singleton}} (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}, {\ttfamily [default]}}
+
+
+
+Default constructor (protected) 
+
+Protected to prevent direct instantiation while allowing derived classes to use default construction. \Hypertarget{classSingleton_aa9a95a6156926f1f153bd2dd9d8d79d6}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!Singleton@{Singleton}}
+\index{Singleton@{Singleton}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{Singleton()}{Singleton()}\hspace{0.1cm}{\footnotesize\ttfamily [4/4]}}
+{\footnotesize\ttfamily \label{classSingleton_aa9a95a6156926f1f153bd2dd9d8d79d6} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\mbox{\hyperlink{classSingleton}{\+::\+Singleton}} (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&}]{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}, {\ttfamily [delete]}}
+
+
+
+Deleted copy constructor. 
+
+Prevents copying of singleton instances to maintain single instance guarantee. \Hypertarget{classSingleton_ac6e7af82cba33f561bd64e5e0243e7f8}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!````~Singleton@{\texorpdfstring{$\sim$}{\string~}Singleton}}
+\index{````~Singleton@{\texorpdfstring{$\sim$}{\string~}Singleton}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{\texorpdfstring{$\sim$}{\string~}Singleton()}{\string~Singleton()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classSingleton_ac6e7af82cba33f561bd64e5e0243e7f8} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\texorpdfstring{$\sim$}{\string~}\mbox{\hyperlink{classSingleton}{Singleton}} (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Virtual destructor. 
+
+Virtual destructor to ensure proper cleanup of derived classes. Commented out destructor message to avoid noise in normal operation.
+
+\begin{DoxyNote}{Note}
+Automatic cleanup is handled by std\+::shared\+\_\+ptr 
+\end{DoxyNote}
+
+
+Definition at line \mbox{\hyperlink{Singleton__fixed_8h_source_l00180}{180}} of file \mbox{\hyperlink{Singleton__fixed_8h_source}{Singleton\+\_\+fixed.\+h}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classSingleton_afd2f572f321da30e9d331002c92f3956}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!GetInstance@{GetInstance}}
+\index{GetInstance@{GetInstance}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{GetInstance()}{GetInstance()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classSingleton_afd2f572f321da30e9d331002c92f3956} 
+template$<$typename T$>$ \\
+static std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\+Get\+Instance (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+
+
+Get the singleton instance. 
+
+\begin{DoxyReturn}{Returns}
+std\+::shared\+\_\+ptr$<$\+T$>$ Shared pointer to the singleton instance
+\end{DoxyReturn}
+Thread-\/safe method to obtain the singleton instance. Uses std\+::call\+\_\+once to ensure exactly one instance is created even in multi-\/threaded environments.
+
+\begin{DoxyParagraph}{Thread Safety\+:}
+
+\begin{DoxyItemize}
+\item Uses std\+::once\+\_\+flag and std\+::call\+\_\+once for initialization
+\item Safe to call from multiple threads concurrently
+\item Guaranteed to return the same instance across all calls
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Lazy Initialization\+:}
+Instance is created only on first call to this method. Subsequent calls return the already-\/created instance.
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Memory Management\+:}
+Returns std\+::shared\+\_\+ptr allowing safe sharing across multiple owners.
+\end{DoxyParagraph}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ Thread-\/safe\ usage\ example}}
+\DoxyCodeLine{\textcolor{keyword}{auto}\ instance1\ =\ MyClass::GetInstance();}
+\DoxyCodeLine{\textcolor{keyword}{auto}\ instance2\ =\ MyClass::GetInstance();}
+\DoxyCodeLine{\textcolor{comment}{//\ instance1\ and\ instance2\ point\ to\ the\ same\ object}}
+\DoxyCodeLine{assert(instance1.get()\ ==\ instance2.get());}
+
+\end{DoxyCode}
+
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition at line \mbox{\hyperlink{Singleton_8h_source_l00144}{144}} of file \mbox{\hyperlink{Singleton_8h_source}{Singleton.\+h}}.
+
+\Hypertarget{classSingleton_afd2f572f321da30e9d331002c92f3956}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!GetInstance@{GetInstance}}
+\index{GetInstance@{GetInstance}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{GetInstance()}{GetInstance()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classSingleton_afd2f572f321da30e9d331002c92f3956} 
+template$<$typename T$>$ \\
+static std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\+Get\+Instance (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+
+
+Get the singleton instance. 
+
+\begin{DoxyReturn}{Returns}
+std\+::shared\+\_\+ptr$<$\+T$>$ Shared pointer to the singleton instance
+\end{DoxyReturn}
+Thread-\/safe method to obtain the singleton instance. Uses std\+::call\+\_\+once to ensure exactly one instance is created even in multi-\/threaded environments.
+
+\begin{DoxyParagraph}{Thread Safety\+:}
+
+\begin{DoxyItemize}
+\item Uses std\+::once\+\_\+flag and std\+::call\+\_\+once for initialization
+\item Safe to call from multiple threads concurrently
+\item Guaranteed to return the same instance across all calls
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Lazy Initialization\+:}
+Instance is created only on first call to this method. Subsequent calls return the already-\/created instance.
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Memory Management\+:}
+Returns std\+::shared\+\_\+ptr allowing safe sharing across multiple owners.
+\end{DoxyParagraph}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ Thread-\/safe\ usage\ example}}
+\DoxyCodeLine{\textcolor{keyword}{auto}\ instance1\ =\ MyClass::GetInstance();}
+\DoxyCodeLine{\textcolor{keyword}{auto}\ instance2\ =\ MyClass::GetInstance();}
+\DoxyCodeLine{\textcolor{comment}{//\ instance1\ and\ instance2\ point\ to\ the\ same\ object}}
+\DoxyCodeLine{assert(instance1.get()\ ==\ instance2.get());}
+
+\end{DoxyCode}
+
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition at line \mbox{\hyperlink{Singleton__fixed_8h_source_l00144}{144}} of file \mbox{\hyperlink{Singleton__fixed_8h_source}{Singleton\+\_\+fixed.\+h}}.
+
+\Hypertarget{classSingleton_af35d041d078bfd87b2cd1e054a7a9e7c}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!operator=@{operator=}}
+\index{operator=@{operator=}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classSingleton_af35d041d078bfd87b2cd1e054a7a9e7c} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}} \& \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::operator= (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&}]{st}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}, {\ttfamily [delete]}}
+
+
+
+Deleted assignment operator. 
+
+Prevents assignment of singleton instances to maintain single instance guarantee. \Hypertarget{classSingleton_af35d041d078bfd87b2cd1e054a7a9e7c}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!operator=@{operator=}}
+\index{operator=@{operator=}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{operator=()}{operator=()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classSingleton_af35d041d078bfd87b2cd1e054a7a9e7c} 
+template$<$typename T$>$ \\
+\mbox{\hyperlink{classSingleton}{Singleton}} \& \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::operator= (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$ \&}]{st}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}, {\ttfamily [delete]}}
+
+
+
+Deleted assignment operator. 
+
+Prevents assignment of singleton instances to maintain single instance guarantee. \Hypertarget{classSingleton_acf69f79cee59b93faec037914ae3d8f4}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!PrintAddress@{PrintAddress}}
+\index{PrintAddress@{PrintAddress}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{PrintAddress()}{PrintAddress()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classSingleton_acf69f79cee59b93faec037914ae3d8f4} 
+template$<$typename T$>$ \\
+void \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\+Print\+Address (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Print instance memory address for debugging. 
+
+Utility method that prints the raw pointer address of the singleton instance to std\+::cout. Useful for debugging and verifying singleton behavior.
+
+\begin{DoxyParagraph}{Usage\+:}
+Call this method to verify that all \doxylink{classSingleton_afd2f572f321da30e9d331002c92f3956}{Get\+Instance()} calls return pointers to the same memory address.
+\end{DoxyParagraph}
+\begin{DoxyNote}{Note}
+This method is primarily for debugging purposes 
+\end{DoxyNote}
+\begin{DoxyWarning}{Warning}
+Ensure \+\_\+instance is not null before calling this method
+\end{DoxyWarning}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition at line \mbox{\hyperlink{Singleton_8h_source_l00168}{168}} of file \mbox{\hyperlink{Singleton_8h_source}{Singleton.\+h}}.
+
+\Hypertarget{classSingleton_acf69f79cee59b93faec037914ae3d8f4}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!PrintAddress@{PrintAddress}}
+\index{PrintAddress@{PrintAddress}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{PrintAddress()}{PrintAddress()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classSingleton_acf69f79cee59b93faec037914ae3d8f4} 
+template$<$typename T$>$ \\
+void \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\+Print\+Address (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Print instance memory address for debugging. 
+
+Utility method that prints the raw pointer address of the singleton instance to std\+::cout. Useful for debugging and verifying singleton behavior.
+
+\begin{DoxyParagraph}{Usage\+:}
+Call this method to verify that all \doxylink{classSingleton_afd2f572f321da30e9d331002c92f3956}{Get\+Instance()} calls return pointers to the same memory address.
+\end{DoxyParagraph}
+\begin{DoxyNote}{Note}
+This method is primarily for debugging purposes 
+\end{DoxyNote}
+\begin{DoxyWarning}{Warning}
+Ensure \+\_\+instance is not null before calling this method
+\end{DoxyWarning}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition at line \mbox{\hyperlink{Singleton__fixed_8h_source_l00168}{168}} of file \mbox{\hyperlink{Singleton__fixed_8h_source}{Singleton\+\_\+fixed.\+h}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\Hypertarget{classSingleton_a7cc493315f293d94595c948777182222}\index{Singleton$<$ T $>$@{Singleton$<$ T $>$}!\_instance@{\_instance}}
+\index{\_instance@{\_instance}!Singleton$<$ T $>$@{Singleton$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{\_instance}{\_instance}}
+{\footnotesize\ttfamily \label{classSingleton_a7cc493315f293d94595c948777182222} 
+template$<$typename T$>$ \\
+static std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\+\_\+instance\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [protected]}}
+
+
+
+Static instance holder. 
+
+Shared pointer that holds the single instance of type T. Initialized to nullptr and created lazily in \doxylink{classSingleton_afd2f572f321da30e9d331002c92f3956}{Get\+Instance()}. 
+
+Definition at line \mbox{\hyperlink{Singleton_8h_source_l00112}{112}} of file \mbox{\hyperlink{Singleton_8h_source}{Singleton.\+h}}.
+

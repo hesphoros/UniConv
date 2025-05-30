@@ -1,0 +1,243 @@
+\doxysection{UTF-\/16 Endianness Conversion Functions}
+\hypertarget{group__UTF16EndiannessConversion}{}\label{group__UTF16EndiannessConversion}\index{UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}}
+
+
+Functions for converting between UTF-\/16\+LE and UTF-\/16\+BE.  
+
+
+\doxysubsubsection*{UTF-\/16 Endianness Conversion}
+Functions for converting between UTF-\/16\+LE and UTF-\/16\+BE \begin{DoxyCompactItemize}
+\item 
+std\+::u16string \mbox{\hyperlink{group__UTF16EndiannessConversion_ga2c5ebe7c66a0f1097708d54acaf0638b}{Uni\+Conv\+::\+From\+Utf16\+LETo\+Utf16\+BE}} (const std\+::u16string \&input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+LE string to UTF-\/16\+BE. \end{DoxyCompactList}\item 
+std\+::u16string \mbox{\hyperlink{group__UTF16EndiannessConversion_ga3154014e8e3b95be3bd654c61e02679b}{Uni\+Conv\+::\+From\+Utf16\+LETo\+Utf16\+BE}} (const char16\+\_\+t \texorpdfstring{$\ast$}{*}input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+LE C-\/style string to UTF-\/16\+BE. \end{DoxyCompactList}\item 
+std\+::u16string \mbox{\hyperlink{group__UTF16EndiannessConversion_ga56f0d324ec8aa292126856d6ae446629}{Uni\+Conv\+::\+From\+Utf16\+BETo\+Utf16\+LE}} (const std\+::u16string \&input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+BE string to UTF-\/16\+LE. \end{DoxyCompactList}\item 
+std\+::u16string \mbox{\hyperlink{group__UTF16EndiannessConversion_gafe64f312282831c8f7ded3eaf26f9a63}{Uni\+Conv\+::\+From\+Utf16\+BETo\+Utf16\+LE}} (const char16\+\_\+t \texorpdfstring{$\ast$}{*}input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+BE C-\/style string to UTF-\/16\+LE. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for converting between UTF-\/16\+LE and UTF-\/16\+BE. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__UTF16EndiannessConversion_gafe64f312282831c8f7ded3eaf26f9a63}\index{UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}!FromUtf16BEToUtf16LE@{FromUtf16BEToUtf16LE}}
+\index{FromUtf16BEToUtf16LE@{FromUtf16BEToUtf16LE}!UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16BEToUtf16LE()}{FromUtf16BEToUtf16LE()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__UTF16EndiannessConversion_gafe64f312282831c8f7ded3eaf26f9a63} 
+std\+::u16string Uni\+Conv\+::\+From\+Utf16\+BETo\+Utf16\+LE (\begin{DoxyParamCaption}\item[{const char16\+\_\+t \texorpdfstring{$\ast$}{*}}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+BE C-\/style string to UTF-\/16\+LE. 
+
+Convert null-\/terminated UTF-\/16\+BE string to UTF-\/16\+LE.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+BE C-\/style string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+LE encoded string (std\+::u16string)
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style char16\+\_\+t strings. Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga56f0d324ec8aa292126856d6ae446629}{From\+Utf16\+BETo\+Utf16\+LE(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Null-\/terminated UTF-\/16\+BE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+LE encoded string, empty string on error or null input
+\end{DoxyReturn}
+Convenience overload for null-\/terminated UTF-\/16\+BE strings. Automatically calculates string length by finding null terminator.
+
+\begin{DoxyParagraph}{Implementation Note\+:}
+Manual length calculation ensures proper handling of embedded nulls and provides safety for unknown-\/length input buffers.
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga56f0d324ec8aa292126856d6ae446629}{From\+Utf16\+BETo\+Utf16\+LE(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00815}{815}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__UTF16EndiannessConversion_ga56f0d324ec8aa292126856d6ae446629}\index{UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}!FromUtf16BEToUtf16LE@{FromUtf16BEToUtf16LE}}
+\index{FromUtf16BEToUtf16LE@{FromUtf16BEToUtf16LE}!UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16BEToUtf16LE()}{FromUtf16BEToUtf16LE()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__UTF16EndiannessConversion_ga56f0d324ec8aa292126856d6ae446629} 
+std\+::u16string Uni\+Conv\+::\+From\+Utf16\+BETo\+Utf16\+LE (\begin{DoxyParamCaption}\item[{const std\+::u16string \&}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+BE string to UTF-\/16\+LE. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+BE string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+LE encoded string (std\+::u16string)
+\end{DoxyReturn}
+This function converts between UTF-\/16 endianness formats. The text content remains the same, but the byte order changes from big-\/endian to little-\/endian.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga2c5ebe7c66a0f1097708d54acaf0638b}{From\+Utf16\+LETo\+Utf16\+BE()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+BE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+LE encoded string, empty string on error
+\end{DoxyReturn}
+Converts between UTF-\/16 big-\/endian and little-\/endian formats. This is the reverse operation of From\+Utf16\+LETo\+Utf16\+BE.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga2c5ebe7c66a0f1097708d54acaf0638b}{From\+Utf16\+LETo\+Utf16\+BE()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00788}{788}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__UTF16EndiannessConversion_ga3154014e8e3b95be3bd654c61e02679b}\index{UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}!FromUtf16LEToUtf16BE@{FromUtf16LEToUtf16BE}}
+\index{FromUtf16LEToUtf16BE@{FromUtf16LEToUtf16BE}!UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16LEToUtf16BE()}{FromUtf16LEToUtf16BE()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__UTF16EndiannessConversion_ga3154014e8e3b95be3bd654c61e02679b} 
+std\+::u16string Uni\+Conv\+::\+From\+Utf16\+LETo\+Utf16\+BE (\begin{DoxyParamCaption}\item[{const char16\+\_\+t \texorpdfstring{$\ast$}{*}}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+LE C-\/style string to UTF-\/16\+BE. 
+
+Convert null-\/terminated UTF-\/16\+LE string to UTF-\/16\+BE.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+LE C-\/style string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+BE encoded string (std\+::u16string)
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style char16\+\_\+t strings. Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga2c5ebe7c66a0f1097708d54acaf0638b}{From\+Utf16\+LETo\+Utf16\+BE(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Null-\/terminated UTF-\/16\+LE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+BE encoded string, empty string on error or null input
+\end{DoxyReturn}
+Convenience overload for null-\/terminated UTF-\/16\+LE strings.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga2c5ebe7c66a0f1097708d54acaf0638b}{From\+Utf16\+LETo\+Utf16\+BE(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00772}{772}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__UTF16EndiannessConversion_ga2c5ebe7c66a0f1097708d54acaf0638b}\index{UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}!FromUtf16LEToUtf16BE@{FromUtf16LEToUtf16BE}}
+\index{FromUtf16LEToUtf16BE@{FromUtf16LEToUtf16BE}!UTF-\/16 Endianness Conversion Functions@{UTF-\/16 Endianness Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16LEToUtf16BE()}{FromUtf16LEToUtf16BE()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__UTF16EndiannessConversion_ga2c5ebe7c66a0f1097708d54acaf0638b} 
+std\+::u16string Uni\+Conv\+::\+From\+Utf16\+LETo\+Utf16\+BE (\begin{DoxyParamCaption}\item[{const std\+::u16string \&}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+LE string to UTF-\/16\+BE. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+LE string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+BE encoded string (std\+::u16string)
+\end{DoxyReturn}
+This function converts between UTF-\/16 endianness formats. The text content remains the same, but the byte order changes from little-\/endian to big-\/endian.
+
+\begin{DoxyParagraph}{Technical Details\+:}
+
+\begin{DoxyItemize}
+\item Swaps byte order of each 16-\/bit code unit
+\item Preserves Unicode code points and text meaning
+\item Handles surrogate pairs correctly
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga56f0d324ec8aa292126856d6ae446629}{From\+Utf16\+BETo\+Utf16\+LE()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/16\+LE encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/16\+BE encoded string, empty string on error
+\end{DoxyReturn}
+Converts between UTF-\/16 little-\/endian and big-\/endian formats. This is essential for cross-\/platform data exchange where different systems use different byte ordering.
+
+\begin{DoxyParagraph}{Technical Details\+:}
+
+\begin{DoxyItemize}
+\item Performs byte order conversion without changing Unicode content
+\item Handles surrogate pairs correctly
+\item Preserves all Unicode code points
+\item Uses efficient iconv-\/based conversion
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Use Cases\+:}
+
+\begin{DoxyItemize}
+\item Network protocol data exchange
+\item Cross-\/platform file format conversion
+\item Java/C\# interoperability
+\item Database migration between different endianness systems
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16EndiannessConversion_ga56f0d324ec8aa292126856d6ae446629}{From\+Utf16\+BETo\+Utf16\+LE()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00750}{750}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+

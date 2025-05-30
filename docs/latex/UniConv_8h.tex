@@ -1,0 +1,53 @@
+\doxysection{Uni\+Conv.\+h File Reference}
+\hypertarget{UniConv_8h}{}\label{UniConv_8h}\index{UniConv.h@{UniConv.h}}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classUniConv}{Uni\+Conv}}
+\begin{DoxyCompactList}\small\item\em Universal character encoding conversion library. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structUniConv_1_1IconvDeleter}{Uni\+Conv\+::\+Iconv\+Deleter}}
+\begin{DoxyCompactList}\small\item\em Custom deleter for iconv\+\_\+t resource management. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structUniConv_1_1EncodingInfo}{Uni\+Conv\+::\+Encoding\+Info}}
+\begin{DoxyCompactList}\small\item\em Structure to hold detailed encoding information. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structUniConv_1_1IConvResult}{Uni\+Conv\+::\+IConv\+Result}}
+\begin{DoxyCompactList}\small\item\em Result structure for encoding conversion operations. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+constexpr std\+::string\+\_\+view \mbox{\hyperlink{UniConv_8h_a74300f4bf2f0d4968e827c992547f5cf}{current\+\_\+cpp\+\_\+standard}} ()
+\begin{DoxyCompactList}\small\item\em Compile-\/time assertion to ensure minimum C++11 support. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{UniConv_8h_a74300f4bf2f0d4968e827c992547f5cf}\index{UniConv.h@{UniConv.h}!current\_cpp\_standard@{current\_cpp\_standard}}
+\index{current\_cpp\_standard@{current\_cpp\_standard}!UniConv.h@{UniConv.h}}
+\doxysubsubsection{\texorpdfstring{current\_cpp\_standard()}{current\_cpp\_standard()}}
+{\footnotesize\ttfamily \label{UniConv_8h_a74300f4bf2f0d4968e827c992547f5cf} 
+std\+::string\+\_\+view current\+\_\+cpp\+\_\+standard (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [constexpr]}}
+
+
+
+Compile-\/time assertion to ensure minimum C++11 support. 
+
+This static assertion ensures that the code is compiled with at least C++11 standard, which is required for proper functionality.
+
+Get the current C++ standard version as a string \begin{DoxyReturn}{Returns}
+A string\+\_\+view representing the current C++ standard version 
+\end{DoxyReturn}
+
+\begin{DoxyRetVals}{Return values}
+{\em C++20 or later} & if the standard is C++20 or later \\
+\hline
+{\em C++17} & if the standard is C++17 \\
+\hline
+{\em C++14} & if the standard is C++14 \\
+\hline
+{\em C++11} & if the standard is C++11 \\
+\hline
+{\em C++03 or earlier} & if the standard is older than C++11\\
+\hline
+\end{DoxyRetVals}
+This constexpr function provides compile-\/time detection of the C++ standard version being used. It can be useful for conditional compilation and feature detection. 
+
+Definition at line \mbox{\hyperlink{UniConv_8h_source_l00149}{149}} of file \mbox{\hyperlink{UniConv_8h_source}{Uni\+Conv.\+h}}.
+

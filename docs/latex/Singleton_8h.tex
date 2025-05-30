@@ -1,0 +1,100 @@
+\doxysection{Singleton.\+h File Reference}
+\hypertarget{Singleton_8h}{}\label{Singleton_8h}\index{Singleton.h@{Singleton.h}}
+
+
+Thread-\/safe \doxylink{classSingleton}{Singleton} pattern template implementation.  
+
+
+{\ttfamily \#include $<$memory$>$}\newline
+{\ttfamily \#include $<$mutex$>$}\newline
+{\ttfamily \#include $<$iostream$>$}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classSingleton}{Singleton$<$ T $>$}}
+\begin{DoxyCompactList}\small\item\em Thread-\/safe \doxylink{classSingleton}{Singleton} pattern template class. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename T$>$ }\\std\+::shared\+\_\+ptr$<$ T $>$ \mbox{\hyperlink{Singleton_8h_a9648a644766cf1b179bfa84bddd69ceb}{Singleton$<$ T $>$\+::\+\_\+instance}} = nullptr
+\begin{DoxyCompactList}\small\item\em Static member definition. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Thread-\/safe \doxylink{classSingleton}{Singleton} pattern template implementation. 
+
+This file provides a thread-\/safe, modern C++ implementation of the \doxylink{classSingleton}{Singleton} pattern using std\+::shared\+\_\+ptr and std\+::call\+\_\+once for guaranteed thread safety and lazy initialization.
+
+\begin{DoxyAuthor}{Author}
+\doxylink{classUniConv}{Uni\+Conv} Development Team 
+\end{DoxyAuthor}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2025. All rights reserved. @license MIT License 
+\end{DoxyCopyright}
+\begin{DoxyVersion}{Version}
+1.\+0.\+0.\+1
+\end{DoxyVersion}
+\begin{DoxyParagraph}{Key Features\+:}
+
+\begin{DoxyItemize}
+\item Thread-\/safe lazy initialization using std\+::call\+\_\+once
+\item RAII-\/compliant using std\+::shared\+\_\+ptr
+\item Move-\/only semantics (no copy constructor/assignment)
+\item Template-\/based for type safety
+\item Memory-\/safe automatic cleanup
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Usage Pattern\+:}
+Inherit from \doxylink{classSingleton}{Singleton$<$\+Your\+Class$>$} to make Your\+Class a singleton. Access the instance using Your\+Class\+::\+Get\+Instance().
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Thread Safety\+:}
+Uses std\+::call\+\_\+once with std\+::once\+\_\+flag to ensure exactly one instance is created even in multi-\/threaded environments.
+\end{DoxyParagraph}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ Example\ usage}}
+\DoxyCodeLine{\textcolor{keyword}{class\ }MyClass\ :\ \textcolor{keyword}{public}\ \mbox{\hyperlink{classSingleton}{Singleton}}<MyClass>\ \{}
+\DoxyCodeLine{\ \ \ \ \textcolor{keyword}{friend}\ \textcolor{keyword}{class\ }Singleton<MyClass>;\ \textcolor{comment}{//\ Allow\ Singleton\ access\ to\ constructor}}
+\DoxyCodeLine{\textcolor{keyword}{private}:}
+\DoxyCodeLine{\ \ \ \ MyClass()\ =\ \textcolor{keywordflow}{default};\ \textcolor{comment}{//\ Private\ constructor}}
+\DoxyCodeLine{\textcolor{keyword}{public}:}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordtype}{void}\ DoSomething()\ \{\ \}}
+\DoxyCodeLine{\};}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{comment}{//\ Usage}}
+\DoxyCodeLine{\textcolor{keyword}{auto}\ instance\ =\ MyClass::GetInstance();}
+\DoxyCodeLine{instance-\/>DoSomething();}
+
+\end{DoxyCode}
+
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition in file \mbox{\hyperlink{Singleton_8h_source}{Singleton.\+h}}.
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{Singleton_8h_a9648a644766cf1b179bfa84bddd69ceb}\index{Singleton.h@{Singleton.h}!Singleton$<$ T $>$::\_instance@{Singleton$<$ T $>$::\_instance}}
+\index{Singleton$<$ T $>$::\_instance@{Singleton$<$ T $>$::\_instance}!Singleton.h@{Singleton.h}}
+\doxysubsubsection{\texorpdfstring{Singleton$<$ T $>$::\_instance}{Singleton< T >::\_instance}}
+{\footnotesize\ttfamily \label{Singleton_8h_a9648a644766cf1b179bfa84bddd69ceb} 
+template$<$typename T$>$ \\
+std\+::shared\+\_\+ptr$<$T$>$ \mbox{\hyperlink{classSingleton}{Singleton}}$<$ T $>$\+::\+\_\+instance = nullptr}
+
+
+
+Static member definition. 
+
+Template static member definition. Each instantiation of the template gets its own static \+\_\+instance variable initialized to nullptr.
+
+\begin{DoxyNote}{Note}
+This definition is required for proper template static member initialization 
+\end{DoxyNote}
+
+
+Definition at line \mbox{\hyperlink{Singleton_8h_source_l00194}{194}} of file \mbox{\hyperlink{Singleton_8h_source}{Singleton.\+h}}.
+

@@ -1,0 +1,336 @@
+\doxysection{Wide String Conversion Functions}
+\hypertarget{group__WideStringConversion}{}\label{group__WideStringConversion}\index{Wide String Conversion Functions@{Wide String Conversion Functions}}
+
+
+Functions for converting between wide strings and locale encodings.  
+
+
+\doxysubsubsection*{Wide String Conversion Functions}
+Functions for converting between narrow and wide strings
+
+Wide strings (std\+::wstring) use platform-\/specific wide characters\+:
+\begin{DoxyItemize}
+\item Windows\+: 16-\/bit wchar\+\_\+t (UTF-\/16)
+\item Linux\+: 32-\/bit wchar\+\_\+t (UTF-\/32) 
+\end{DoxyItemize}\begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{group__WideStringConversion_ga1df39668c62d89cbf812305934318b81}{Uni\+Conv\+::\+Wide\+String\+To\+Locale}} (const std\+::wstring \&s\+Input)
+\begin{DoxyCompactList}\small\item\em Convert wide string to locale-\/encoded string (alias) \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__WideStringConversion_ga27b3b2e6144204dbc0f1943e78ed0e8f}{Uni\+Conv\+::\+Wide\+String\+To\+Locale}} (const wchar\+\_\+t \texorpdfstring{$\ast$}{*}s\+Input)
+\begin{DoxyCompactList}\small\item\em Convert wide C-\/string to locale-\/encoded string (alias) \end{DoxyCompactList}\item 
+std\+::wstring \mbox{\hyperlink{group__WideStringConversion_ga960f9910bab168fed3e63bdd702625e3}{Uni\+Conv\+::\+Locale\+To\+Wide\+String}} (const char \texorpdfstring{$\ast$}{*}s\+Input)
+\begin{DoxyCompactList}\small\item\em Convert locale-\/encoded C-\/string to wide string. \end{DoxyCompactList}\item 
+std\+::wstring \mbox{\hyperlink{group__WideStringConversion_ga9c800f2e33a787208675c689a7e5f9a2}{Uni\+Conv\+::\+Locale\+To\+Wide\+String}} (const std\+::string \&s\+Input)
+\begin{DoxyCompactList}\small\item\em Convert locale-\/encoded string to wide string. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13}{Uni\+Conv\+::\+Wide\+Convert\+To\+Locale}} (const std\+::wstring \&s\+Input)
+\begin{DoxyCompactList}\small\item\em Convert wide string to locale-\/encoded string. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__WideStringConversion_ga95148941b4ee9d6ef97eb0a350174c5c}{Uni\+Conv\+::\+Wide\+Convert\+To\+Locale}} (const wchar\+\_\+t \texorpdfstring{$\ast$}{*}s\+Input)
+\begin{DoxyCompactList}\small\item\em Convert wide C-\/string to locale-\/encoded string. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for converting between wide strings and locale encodings. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__WideStringConversion_ga960f9910bab168fed3e63bdd702625e3}\index{Wide String Conversion Functions@{Wide String Conversion Functions}!LocaleToWideString@{LocaleToWideString}}
+\index{LocaleToWideString@{LocaleToWideString}!Wide String Conversion Functions@{Wide String Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{LocaleToWideString()}{LocaleToWideString()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__WideStringConversion_ga960f9910bab168fed3e63bdd702625e3} 
+std\+::wstring Uni\+Conv\+::\+Locale\+To\+Wide\+String (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{s\+Input}{}\end{DoxyParamCaption})}
+
+
+
+Convert locale-\/encoded C-\/string to wide string. 
+
+Convert system locale encoded C-\/string to wide string.
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Input C-\/style string in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Wide string (std\+::wstring) representation
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style strings. Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga9c800f2e33a787208675c689a7e5f9a2}{Locale\+To\+Wide\+String(const std\+::string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & C-\/string in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Wide string, empty string on error or null input
+\end{DoxyReturn}
+Converts a system locale encoded string to wide string format. This is the reverse operation of Wide\+String\+To\+Locale.
+
+\begin{DoxyParagraph}{Platform Implementation\+:}
+
+\begin{DoxyItemize}
+\item Windows\+: Uses Multi\+Byte\+To\+Wide\+Char() with CP\+\_\+\+ACP
+\item Unix/\+Linux\+: Uses std\+::codecvt\+\_\+byname with system locale
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Use Cases\+:}
+
+\begin{DoxyItemize}
+\item Converting legacy API results to Unicode
+\item File path handling on Windows
+\item Console input/output processing
+\item Integration with wide string APIs
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga1df39668c62d89cbf812305934318b81}{Wide\+String\+To\+Locale()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00910}{910}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__WideStringConversion_ga9c800f2e33a787208675c689a7e5f9a2}\index{Wide String Conversion Functions@{Wide String Conversion Functions}!LocaleToWideString@{LocaleToWideString}}
+\index{LocaleToWideString@{LocaleToWideString}!Wide String Conversion Functions@{Wide String Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{LocaleToWideString()}{LocaleToWideString()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__WideStringConversion_ga9c800f2e33a787208675c689a7e5f9a2} 
+std\+::wstring Uni\+Conv\+::\+Locale\+To\+Wide\+String (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{s\+Input}{}\end{DoxyParamCaption})}
+
+
+
+Convert locale-\/encoded string to wide string. 
+
+Convert system locale encoded string to wide string.
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Input string in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Wide string (std\+::wstring) representation
+\end{DoxyReturn}
+This function converts a system locale encoded string to a wide string using the platform\textquotesingle{}s native wide character encoding. On Windows, this typically results in UTF-\/16 encoded wide strings.
+
+\begin{DoxyParagraph}{Platform Differences\+:}
+
+\begin{DoxyItemize}
+\item Windows\+: wchar\+\_\+t is 16-\/bit, uses UTF-\/16 encoding
+\item Linux\+: wchar\+\_\+t is 32-\/bit, uses UTF-\/32 encoding
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{std::string\ local\_text\ =\ \textcolor{stringliteral}{"{}Hello\ World"{}};}
+\DoxyCodeLine{std::wstring\ wide\_text\ =\ conv-\/>LocaleToWideString(local\_text);}
+
+\end{DoxyCode}
+
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13}{Wide\+Convert\+To\+Locale()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & String in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Wide string, empty string on error
+\end{DoxyReturn}
+Convenience overload that delegates to the C-\/string version.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga960f9910bab168fed3e63bdd702625e3}{Locale\+To\+Wide\+String(const char\texorpdfstring{$\ast$}{*})} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00937}{937}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13}\index{Wide String Conversion Functions@{Wide String Conversion Functions}!WideConvertToLocale@{WideConvertToLocale}}
+\index{WideConvertToLocale@{WideConvertToLocale}!Wide String Conversion Functions@{Wide String Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{WideConvertToLocale()}{WideConvertToLocale()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13} 
+std\+::string Uni\+Conv\+::\+Wide\+Convert\+To\+Locale (\begin{DoxyParamCaption}\item[{const std\+::wstring \&}]{s\+Input}{}\end{DoxyParamCaption})}
+
+
+
+Convert wide string to locale-\/encoded string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Wide string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+This function converts a wide string back to the system\textquotesingle{}s locale encoding. Useful for preparing text for APIs that expect narrow character strings.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga9c800f2e33a787208675c689a7e5f9a2}{Locale\+To\+Wide\+String()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\Hypertarget{group__WideStringConversion_ga95148941b4ee9d6ef97eb0a350174c5c}\index{Wide String Conversion Functions@{Wide String Conversion Functions}!WideConvertToLocale@{WideConvertToLocale}}
+\index{WideConvertToLocale@{WideConvertToLocale}!Wide String Conversion Functions@{Wide String Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{WideConvertToLocale()}{WideConvertToLocale()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__WideStringConversion_ga95148941b4ee9d6ef97eb0a350174c5c} 
+std\+::string Uni\+Conv\+::\+Wide\+Convert\+To\+Locale (\begin{DoxyParamCaption}\item[{const wchar\+\_\+t \texorpdfstring{$\ast$}{*}}]{s\+Input}{}\end{DoxyParamCaption})}
+
+
+
+Convert wide C-\/string to locale-\/encoded string. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Wide C-\/style string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style wide strings. Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13}{Wide\+Convert\+To\+Locale(const std\+::wstring\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\Hypertarget{group__WideStringConversion_ga1df39668c62d89cbf812305934318b81}\index{Wide String Conversion Functions@{Wide String Conversion Functions}!WideStringToLocale@{WideStringToLocale}}
+\index{WideStringToLocale@{WideStringToLocale}!Wide String Conversion Functions@{Wide String Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{WideStringToLocale()}{WideStringToLocale()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__WideStringConversion_ga1df39668c62d89cbf812305934318b81} 
+std\+::string Uni\+Conv\+::\+Wide\+String\+To\+Locale (\begin{DoxyParamCaption}\item[{const std\+::wstring \&}]{s\+Input}{}\end{DoxyParamCaption})}
+
+
+
+Convert wide string to locale-\/encoded string (alias) 
+
+Convert wide string to system locale encoding.
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Wide string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+Alternative function name for \doxylink{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13}{Wide\+Convert\+To\+Locale()}. Provides consistent naming with other conversion functions.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13}{Wide\+Convert\+To\+Locale()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Wide string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error
+\end{DoxyReturn}
+Converts a wide string (std\+::wstring) to the current system\textquotesingle{}s default character encoding. On Windows, this uses the active code page (ACP). On Unix-\/like systems, this uses locale-\/specific conversion.
+
+\begin{DoxyParagraph}{Platform Implementation\+:}
+
+\begin{DoxyItemize}
+\item Windows\+: Uses Wide\+Char\+To\+Multi\+Byte() with CP\+\_\+\+ACP
+\item Unix/\+Linux\+: Uses std\+::codecvt\+\_\+byname with system locale
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Technical Details\+:}
+
+\begin{DoxyItemize}
+\item Wide string size depends on platform (16-\/bit on Windows, 32-\/bit on most Unix)
+\item Handles locale-\/specific character mappings
+\item May lose characters not representable in target encoding
+\end{DoxyItemize}
+\end{DoxyParagraph}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ Example:\ Convert\ wide\ string\ to\ locale}}
+\DoxyCodeLine{std::wstring\ wide\_text\ =\ L\textcolor{stringliteral}{"{}Hello\  ¿ΩÁ"{}};}
+\DoxyCodeLine{std::string\ locale\_text\ =\ \mbox{\hyperlink{group__WideStringConversion_ga1df39668c62d89cbf812305934318b81}{UniConv::WideStringToLocale}}(wide\_text);}
+
+\end{DoxyCode}
+
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga9c800f2e33a787208675c689a7e5f9a2}{Locale\+To\+Wide\+String()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00857}{857}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__WideStringConversion_ga27b3b2e6144204dbc0f1943e78ed0e8f}\index{Wide String Conversion Functions@{Wide String Conversion Functions}!WideStringToLocale@{WideStringToLocale}}
+\index{WideStringToLocale@{WideStringToLocale}!Wide String Conversion Functions@{Wide String Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{WideStringToLocale()}{WideStringToLocale()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__WideStringConversion_ga27b3b2e6144204dbc0f1943e78ed0e8f} 
+std\+::string Uni\+Conv\+::\+Wide\+String\+To\+Locale (\begin{DoxyParamCaption}\item[{const wchar\+\_\+t \texorpdfstring{$\ast$}{*}}]{s\+Input}{}\end{DoxyParamCaption})}
+
+
+
+Convert wide C-\/string to locale-\/encoded string (alias) 
+
+Convert null-\/terminated wide string to system locale encoding.
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Wide C-\/style string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding
+\end{DoxyReturn}
+Alternative function name for \doxylink{group__WideStringConversion_ga5150035bf9ffccd7415f6cce6915cd13}{Wide\+Convert\+To\+Locale()}. Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga95148941b4ee9d6ef97eb0a350174c5c}{Wide\+Convert\+To\+Locale(const wchar\+\_\+t\texorpdfstring{$\ast$}{*})} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Input} & Null-\/terminated wide string to convert \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error or null input
+\end{DoxyReturn}
+Convenience overload for null-\/terminated wide strings.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__WideStringConversion_ga1df39668c62d89cbf812305934318b81}{Wide\+String\+To\+Locale(const std\+::wstring\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00884}{884}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
