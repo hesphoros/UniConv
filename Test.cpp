@@ -1,6 +1,9 @@
-// Test.cpp - 重构的测试文件
+#if _MSC_VER >= 1600 
+#pragma execution_character_set("utf-8")
+#endif
+
 #include "UniConv.h"
-#include "LightLogWriteImpl.h"
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -12,16 +15,11 @@
 #include <utility>
 
 // 全局日志实例
-static LightLogWrite_Impl g_logger;
 
-// 初始化日志系统
-void InitLogger() {
-    g_logger.SetLogsFileName("log/test_log.txt");
-}
 
 // 简化的日志函数
 void Log(const std::string& message) {
-    g_logger.WriteLogContent("INFO", message);
+    glogger.WriteLogContent("INFO", message);
     std::cout << message << std::endl;
 }
 
@@ -127,6 +125,9 @@ std::pair<std::string, std::string> DetectEncodingAndRemoveBOM(const std::string
 
 // 批量转换文件的新实现
 void BatchConvertFiles() {
+	system("chcp 65001"); // 设置控制台编码为UTF-8
+	system("cls"); // 清屏
+
     Log("=== 开始批量文件转换测试 ===");
     
     auto conv = UniConv::GetInstance();
@@ -239,8 +240,6 @@ void TestAllConversions() {
 
 // 主测试函数
 void RunAllTests() {
-    // 初始化日志系统
-    InitLogger();
     
     // 生成测试文件
     GenerateTestFiles();

@@ -19,15 +19,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="convert_tools.h" />
-    <ClInclude Include="LightLogWriteImpl.h" />
+    <ClInclude Include="common.h" />
+    <ClInclude Include="LightLogWriteImpl.hpp" />
+    <ClInclude Include="Singleton.h" />
     <ClInclude Include="UniConv.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="convet_tools.cpp" />
+    <ClCompile Include="common.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Test.cpp" />
     <ClCompile Include="UniConv.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="encodings.inc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

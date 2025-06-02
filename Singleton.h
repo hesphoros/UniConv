@@ -18,10 +18,9 @@ public:
 			_instance = std::shared_ptr<T>(new T);
 			});
 
-		return _instance;
-	}
+		return _instance;	}
 	void PrintAddress() {
-		//获取他的裸指针
+		//Get its raw pointer
 		std::cout << _instance.get() << std::endl;
 	}
 	~Singleton() {

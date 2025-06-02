@@ -1,26 +1,39 @@
-# gen_testdata.py
 import codecs
+import locale
 
-text = "你好，世界！编码测试。\nHello, world! Encoding test.\n"
+# 精简多语言和符号测试数据
+test_texts = {
+    "cn": "你好\n",
+    "en": "Hello\n",
+    "emoji": "😀😂👍\n",
+    "jp": "こんにちは\n",
+    "special": "★♣♦\n",
+}
+
+def write_file(filename, content, encoding):
+    with open(filename, "w", encoding=encoding, errors="replace") as f:
+        f.write(content)
 
 # UTF-8
-with open("input_utf8.txt", "w", encoding="utf-8") as f:
-    f.write(text)
+write_file("input_utf8_cn.txt", test_texts["cn"], "utf-8")
+write_file("input_utf8_en.txt", test_texts["en"], "utf-8")
+write_file("input_utf8_emoji.txt", test_texts["emoji"], "utf-8")
+write_file("input_utf8_jp.txt", test_texts["jp"], "utf-8")
+write_file("input_utf8_special.txt", test_texts["special"], "utf-8")
 
 # GBK
-with open("input_gbk.txt", "w", encoding="gbk") as f:
-    f.write(text)
+write_file("input_gbk_cn.txt", test_texts["cn"], "gbk")
+write_file("input_gbk_en.txt", test_texts["en"], "gbk")
 
-# local（假如你的系统本地编码为GB2312/GBK，和GBK一致，否则可用locale.getpreferredencoding()）
-with open("input_local.txt", "w", encoding="gbk") as f:
-    f.write(text)
+# UTF-16LE（无BOM）
+with codecs.open("input_utf16le_cn.txt", "w", encoding="utf-16le") as f:
+    f.write(test_texts["cn"])
+with codecs.open("input_utf16le_en.txt", "w", encoding="utf-16le") as f:
+    f.write(test_texts["en"])
 
-# UTF-16LE 无BOM
-with codecs.open("input_utf16le.txt", "w", encoding="utf-16le") as f:
-    f.write(text)
+# 本地编码
+local_enc = locale.getpreferredencoding()
+write_file("input_local_cn.txt", test_texts["cn"], local_enc)
+write_file("input_local_en.txt", test_texts["en"], local_enc)
 
-# UTF-16BE 无BOM
-with codecs.open("input_utf16be.txt", "w", encoding="utf-16be") as f:
-    f.write(text)
-
-print("所有标准测试文件已生成！")
+print("精简测试文件已生成！")
