@@ -154,10 +154,16 @@ public:
 	 * @brief Structure to hold the result of a conversion operation.
 	 */
 	struct IConvResult {
-		std::string        conv_result_str;	    /*!< Conversion result string */
-		int                error_code = 0;      /*!< Error code               */
-		std::string        error_msg = {NULL};  /*!< Error message            */
+		std::string        conv_result_str;  /*!< Conversion result string */
+		int                error_code;       /*!< Error code               */
+		std::string        error_msg;        /*!< Error message            */
 
+		IConvResult() {
+			/** Initialize the members */
+			conv_result_str = "";
+			error_code = 0;
+			error_msg = "";
+		}
 		/**
 		 * @brief Check if the conversion was successful.
 		 * @return True if the conversion was successful, false otherwise.
@@ -199,7 +205,7 @@ public:
 	 * @retval "UTF-8" if the system encoding is UTF-8.
 	 * @retval "UTF-16LE" if the system encoding is UTF-16LE.
 	 */
-	std::string             GetCurrentSystemEncoding();
+	std::string            GetCurrentSystemEncoding();
 
 	/**
 	 * @brief Convert between any two encodings using iconv
@@ -208,7 +214,7 @@ public:
 	 * @param toEncoding Target encoding name
 	 * @return Conversion result
 	 */
-	IConvResult              ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
+	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
 
 	/**
 	 * @brief Get current system encoding code page.
@@ -679,21 +685,25 @@ private:
 private:
 
 
-
 	/**
-	 * @brief Get a human-readable error message for a given iconv error code.
-	 * @param err_code The iconv error code.
-	 * @return The error message as a string.
+	 * @brief Retrieves a descriptive error string corresponding to an iconv error code.
+	 *
+	 * This function maps the provided error code from the iconv library to a human-readable
+	 * string that describes the error. It is useful for debugging and logging purposes
+	 * when working with character encoding conversions.
+	 * @param err_code The error code returned by the iconv library.
+	 * @return A string containing the description of the error associated with the given error code.
+	 * @retval If the error code is not found in the map,return a generic error message
 	 */
 	static std::string                  GetIconvErrorString(int err_code);
 
 	/**
-	 * @brief Get the iconv descriptor for a specific encoding conversion.
+	 * @brief Get the iconv descriptor.
 	 * @param fromcode The source encoding.
 	 * @param tocode The target encoding.
 	 * @return The iconv descriptor as an IconvSharedPtr.
 	 */
-	IconvSharedPtr                      GetIconvDescriptorS(const char* fromcode, const char* tocode);
+	IconvSharedPtr                      GetIconvDescriptor(const char* fromcode, const char* tocode);
 
 
 

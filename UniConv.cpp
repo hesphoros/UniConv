@@ -39,6 +39,16 @@ namespace {
 	};
 }
 
+const std::unordered_map<int, std::string_view> UniConv::m_iconvErrorMap = {
+	{EILSEQ, "Invalid multibyte sequence"},
+	{EINVAL, "Incomplete multibyte sequence"},
+	{E2BIG,  "Output buffer too small"},
+	{EBADF,  "Invalid conversion descriptor"},
+	{EFAULT, "Invalid buffer address"},
+	{EINTR,  "Conversion interrupted by signal"},
+	{ENOMEM, "Out of memory"}
+};
+
 /**************************  === UniConv m_encodingMap ===  ***************************/
 const std::unordered_map<std::uint16_t, UniConv::EncodingInfo> UniConv::m_encodingMap = {
     {37,     {"IBM037",       "IBM EBCDIC US-Canada"}},
@@ -202,47 +212,45 @@ std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDesscri
 
 // ===================== General convert functions =====================
 UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding) {
+
+    // The convert result
     IConvResult result;
 
-    if (input.empty()) {
-        result.error_code = 0;
-        result.conv_result_str = "";
+    auto cd = this->GetIconvDescriptor(fromEncoding, toEncoding);
+
+    if (!cd || (cd.get() == reinterpret_cast<iconv_t>(-1))) {
+        result.error_code = errno;
+        result.error_msg = GetIconvErrorString(result.error_code);
         return result;
     }
-
-    iconv_t cd = iconv_open(toEncoding, fromEncoding);
-    if (cd == (iconv_t)-1) {
-        result.error_code = errno;
-        result.error_msg = "Failed to open iconv: " + std::string(strerror(errno));
-        return result;    }
 
     // Prepare input and output buffers
     size_t inbytesleft = input.size();
     // Enough space for output, assuming worst case of 4 bytes per input byte
     // (e.g., UTF-8 to UTF-32 conversion)
-    size_t outbytesleft = inbytesleft * 4; 
+    size_t outbytesleft = inbytesleft * 4;
     std::string output(outbytesleft, '\0');
-      char* inbuf = const_cast<char*>(input.data());
+    const char* inbuf = input.data();
     char* outbuf = &output[0];
     char* outbuf_start = outbuf;
-    
-   
-    size_t ret = iconv(cd, const_cast<const char**>(&inbuf), &inbytesleft, &outbuf, &outbytesleft);
-    
+
+
+    size_t ret = iconv(cd,&inbuf, &inbytesleft, &outbuf, &outbytesleft);
+
     if (ret == (size_t)-1) {
         result.error_code = errno;
         result.error_msg = "iconv conversion failed: " + std::string(strerror(errno));
         iconv_close(cd);
         return result;
     }
-    
+
     // Calculate the size of the converted output
     size_t converted_size = outbuf - outbuf_start;
     output.resize(converted_size);
-    
+
     result.conv_result_str = std::move(output);
     result.error_code = 0;
-    
+
     iconv_close(cd);
     return result;
 }
@@ -254,7 +262,7 @@ std::string UniConv::GetCurrentSystemEncoding()
 #ifdef _WIN32
 	UINT codePage = GetACP();
 	auto it = m_encodingMap.find(codePage);
-	if (it != m_encodingMap.end()) 
+	if (it != m_encodingMap.end())
         ss << it->second.dotNetName;
 
 #endif // _WIN32
@@ -531,10 +539,10 @@ std::string UniConv::WideStringToLocale(const wchar_t* sInput) {
 std::wstring UniConv::LocaleToWideString(const char* sInput) {
 #ifdef _WIN32
     if (!sInput) return L"";
-    
+
     int wchars_needed = MultiByteToWideChar(CP_ACP, 0, sInput, -1, nullptr, 0);
     if (wchars_needed <= 0) return L"";
-    
+
     std::wstring result(wchars_needed - 1, L'\0');
     MultiByteToWideChar(CP_ACP, 0, sInput, -1, &result[0], wchars_needed);    return result;
 #else
@@ -550,16 +558,34 @@ std::wstring UniConv::LocaleToWideString(const std::string& sInput) {
 
 // ===================== Error Handling Related =====================
 std::string UniConv::GetIconvErrorString(int err_code) {
-    static const std::unordered_map<int, std::string> errorMap = {
-        {EILSEQ, "Invalid multibyte sequence"},
-        {EINVAL, "Incomplete multibyte sequence"},
-        {E2BIG, "Output buffer too small"},
-        {EBADF, "Invalid conversion descriptor"}
-    };
-    
-    auto it = errorMap.find(err_code);
-    if (it != errorMap.end()) {
-        return it->second;
-    }
-    return "Unknown iconv error: " + std::to_string(err_code);
+    auto it = m_iconvErrorMap.find(err_code);
+	if (it != m_iconvErrorMap.end()) {
+		return std::string(it->second);
+	}
+    // If the error code is not found in the map, return a generic error message
+	return std::string(std::generic_category().message(err_code));
+}
+
+
+UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
+{
+	std::string key = std::string(fromcode) + ":" + tocode;
+	std::lock_guard<std::mutex> lock(m_iconvcCacheMutex);
+
+	auto it = m_iconvDesscriptorCacheMapS.find(key);
+	if (it != m_iconvDesscriptorCacheMapS.end()) {
+		return it->second; // return cached descriptor
+	}
+
+	iconv_t cd = iconv_open(tocode, fromcode);
+	if (cd == reinterpret_cast<iconv_t>(-1)) {
+        #ifdef DEBUG
+		std::cout << "iconv_open error" << std::endl;
+        #endif // DEBUG
+		return nullptr;
+	}
+
+	auto iconvPtr = std::shared_ptr<std::remove_pointer_t<iconv_t>>(cd, IconvDeleter());
+	m_iconvDesscriptorCacheMapS.emplace(key, iconvPtr);
+	return iconvPtr;
 }

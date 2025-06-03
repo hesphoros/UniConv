@@ -33,11 +33,11 @@ int Test() {
 
     std::cout << "UniConv 编码转换库测试程序" << std::endl;
     std::cout << "============================" << std::endl;
-    
+
     try {
         // 运行所有测试
         RunAllTests();
-        
+
         std::cout << "所有测试完成！请查看日志文件和输出文件。" << std::endl;
         std::cout << "日志文件：log/TestNewConvert.log" << std::endl;
         std::cout << "输出文件：testdata/output/" << std::endl;
@@ -77,14 +77,12 @@ void TestGetEncodingNameByCodePage() {
     LOGINFO("Current system codepage:\t" + std::to_string(codepage));
     std::string encodingName = g_conv->GetEncodingNameByCodePage(codepage);
     LOGINFO("Encoding name for codepage " + std::to_string(codepage) + ":\t" + encodingName);
-    if (encodingName.empty()) {
-        LOGERROR("Failed to get encoding name for codepage " + std::to_string(codepage));
-    } else {
-        LOGINFO("Successfully retrieved encoding name: " + encodingName);
-    }
-
     std::string convResult = g_conv->GetEncodingNameByCodePage(codepage);
-    LOGINFO("Converted encoding name: " + convResult);
+    if (convResult != encodingName) {
+        LOGERROR("Encoding name mismatch for codepage " + std::to_string(codepage) + ": expected '" + encodingName + "', got '" + convResult + "'");
+    } else {
+        LOGOK("Encoding name for codepage " + std::to_string(codepage) + " is correct: " + convResult);
+    }
 
 }
 
