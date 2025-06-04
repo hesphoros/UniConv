@@ -1,6 +1,6 @@
 #ifndef INCLUDE_COMMON_H
 #define INCLUDE_COMMON_H
-#include "LightLogWriteImpl.hpp"
+#include "LightLogWriteImpl.h"
 #include "Singleton.h"
 
 

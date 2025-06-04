@@ -28,7 +28,7 @@
 *  2025/03/10 | 1.0.0.1   | hesphoros      | Create file
 *****************************************************************************/
 
-#if _MSC_VER >= 1600 
+#if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
 #endif
 
@@ -51,7 +51,9 @@
 #include <cstring>
 #include <system_error>
 #include <mutex>
+#include <shared_mutex>
 #include <memory>
+#include <algorithm>
 #include <functional>
 #include <io.h>
 #include <fcntl.h>
@@ -121,7 +123,7 @@ class UNICONV_EXPORT UniConv : public Singleton<UniConv>
 private:
 	/**
 	 * @brief Custom deleter for iconv_t to ensure proper cleanup.
-	 * This deleter will be used with std::shared_ptr to manage the iconv_t resource.
+	 * * This deleter will be used with std::shared_ptr to manage the iconv_t resource.
 	 */
 	struct IconvDeleter {
 		void operator()(iconv_t cd) const {
@@ -149,9 +151,28 @@ private:
 
 public:
 
+
+	//---------------------------------------------------------------------------
+	// Supported encodings @{
+	//---------------------------------------------------------------------------
+		/**
+		 * @see https://learn.microsoft.com/zh-cn/windows/win32/intl/code-page-identifiers.
+		 */
+	enum class Encoding : int {
+        #define X(name, str) name,
+        #include "encodings.inc"
+        #undef X
+		count
+	};
+	//---------------------------------------------------------------------------
+	//@} End of Supported encodings
+	//---------------------------------------------------------------------------
+
+
 	/**
 	 * @struct IConvResult
 	 * @brief Structure to hold the result of a conversion operation.
+	 * @note IConvResult 
 	 */
 	struct IConvResult {
 		std::string        conv_result_str;  /*!< Conversion result string */
@@ -204,32 +225,28 @@ public:
 	 * @return A string representing the current system encoding.
 	 * @retval "UTF-8" if the system encoding is UTF-8.
 	 * @retval "UTF-16LE" if the system encoding is UTF-16LE.
+	 * @note finished test on windows
 	 */
 	std::string            GetCurrentSystemEncoding();
 
-	/**
-	 * @brief Convert between any two encodings using iconv
-	 * @param input Input string data
-	 * @param fromEncoding Source encoding name
-	 * @param toEncoding Target encoding name
-	 * @return Conversion result
-	 */
-	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
 
 	/**
 	 * @brief Get current system encoding code page.
 	 * @return The code page of the current system encoding.
 	 * @retval 0 if the code page cannot be determined.
-	 * @retval -1  it not on windows or linux
+	 * @retval -1  it not on windows or Linux
+	 * @note finished test on windows
 	 */
-	static std::uint16_t     GetCurrentSystemEncodingCodePage();
+	static std::uint16_t   GetCurrentSystemEncodingCodePage();
 
 	/**
 	 * @brief Get the encoding name by code page.
 	 * @param  codePage The code page to look up.
 	 * @return The name of the encoding corresponding to the given code page.
 	 * @retval std::string
-	 */	static std::string   GetEncodingNameByCodePage(std::uint16_t codePage);
+	 * @note finished test on windows
+	 */	
+	static std::string     GetEncodingNameByCodePage(std::uint16_t codePage);
 
 /***************************************************************************/
 /*=================== Locale <-> UTF-8 Conversion Interface =========================*/
@@ -238,12 +255,15 @@ public:
 	 * @brief Convert a string from system local encoding to UTF-8 string
 	 * @param  input System local encoding input string
 	 * @return Converted UTF-8 string
+	 * @todo test
 	 */
 	std::string ToUtf8FromLocal(const std::string& input);
+
 	/**
 	 * @brief Convert a C string from system local encoding to UTF-8 string
 	 * @param  input System local encoding C string
 	 * @return Converted UTF-8 string
+	 * @todo test
 	 */
 	std::string ToUtf8FromLocal(const char* input);
 
@@ -252,14 +272,14 @@ public:
 	 * @param  input UTF-8 encoded input string
 	 * @return Converted system local encoding string
 	 */
-	std::string FromUtf8ToLocal(const std::string& input);
+	std::string ToLocalFromUtf8(const std::string& input);
 
 	/**
 	 * @brief Convert UTF-8 C string to system local encoding string
 	 * @param  input UTF-8 encoded C string
 	 * @return Converted system local encoding string
 	 */
-	std::string FromUtf8ToLocal(const char* input);
+	std::string ToLocalFromUtf8(const char* input);
 
 /***************************************************************************/
 /*=================== Locale convert to UTF-16 (LE BE) ====================*/
@@ -298,14 +318,14 @@ public:
 	 * @param  input The UTF-16BE encoded string to be converted.
 	 * @return The converted string in the current locale encoding.
 	 */
-	std::string FromUtf16BEToLocal(const std::u16string& input);
+	std::string ToLocalFromUtf16BE(const std::u16string& input);
 
 	/**
 	 * @brief Convert a C-style UTF-16BE string to the current locale encoding.
 	 * @param input The C-style UTF-16BE string to be converted.
 	 * @return The converted string in the current locale encoding.
 	 */
-	std::string FromUtf16BEToLocal(const char16_t* input);
+	std::string ToLocalFromUtf16BE(const char16_t* input);
 
 /***************************************************************************/
 /*======================== UTF-16 (LE BE) To UTF-8 ========================*/
@@ -434,7 +454,7 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief 
+	 * @brief
 	 * @param  input UTF-16LE C
 	 * @return
 	 */
@@ -447,7 +467,7 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief 
+	 * @brief
 	 * @param  input UTF-16BE
 	 * @return
 	 */
@@ -460,7 +480,7 @@ public:
 	 * @retval val std::u16string
 	 */
 	/**
-	 * @brief 
+	 * @brief
 	 * @param  input UTF-16BE C
 	 * @return
 	 */
@@ -511,14 +531,14 @@ public:
 	 * @param input UTF-16LE string to convert.
 	 * @return Converted string in local encoding.
 	 */
-	std::string FromUtf16LEToLocal(const std::u16string& input);
+	std::string ToLocalFromUtf16LE(const std::u16string& input);
 
 	/**
 	 * @brief Convert UTF-16LE C-style string to local encoding.
 	 * @param input UTF-16LE C-style string to convert.
 	 * @return Converted string in local encoding.
 	 */
-	std::string FromUtf16LEToLocal(const char16_t* input);
+	std::string ToLocalFromUtf16LE(const char16_t* input);
 
 /***************************************************************************/
 /*======================= Wide String Helpers ===========================*/
@@ -668,16 +688,34 @@ public:
 	 */
 	IConvResult                         Convert(std::wstring_view in, const char* fromcode, const char* tocode);
 
+	/**
+	 * @brief Encoding to string
+	 *
+	 */
+	static std::string ToString(UniConv::Encoding enc);
+
+	/**
+	 * @brief Convert between any two encodings using iconv
+	 * @param input Input string data
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @return Conversion result
+	 */
+	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
+
+
 private:
 
 	//----------------------------------------------------------------------------------------------------------------------
 	// Private members @{
 	//----------------------------------------------------------------------------------------------------------------------
-	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;				   /*!< Encoding map           */
+	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;                /*!< Encoding map           */
 	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
-	std::mutex                                                   m_iconvcCacheMutex;		   /*!< Iconv cache mutex      */
-	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;			   /*!< Iconv error messages   */
-	static std::unordered_map<std::string, IconvSharedPtr>       m_iconvDesscriptorCacheMapS;  /*!< Iconv descriptor cache */
+	mutable std::shared_mutex                                    m_iconvCacheMutex;            /*!< Iconv cache mutex      */
+	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;              /*!< Iconv error messages   */
+	static std::unordered_map<std::string, IconvSharedPtr>       m_iconvDescriptorCacheMapS;   /*!< Iconv descriptor cache */
+	static constexpr size_t                                      MAX_CACHE_SIZE = 100;         /*!< Iconv max cache number */
+	static const  std::string                                    m_encodingNames[];            /*!< Encoding map           */
 	//----------------------------------------------------------------------------------------------------------------------
 	/// @} ! Private members
 	//----------------------------------------------------------------------------------------------------------------------
@@ -706,29 +744,13 @@ private:
 	IconvSharedPtr                      GetIconvDescriptor(const char* fromcode, const char* tocode);
 
 
-
+	
 private:
-	UniConv() {
-	}
+	UniConv() { }
+
 	UniConv(const UniConv&) = delete;
 	UniConv& operator=(const UniConv&) = delete;
 public:
-
-//---------------------------------------------------------------------------
-// Supported encodings @{
-//---------------------------------------------------------------------------
-	/**
-	 * @see https://learn.microsoft.com/zh-cn/windows/win32/intl/code-page-identifiers.
-	 */
-	enum class Encoding : int {
-		#define X(name, str) name,
-		#include "encodings.inc"
-		#undef X
-		count
-	};
-//---------------------------------------------------------------------------
-//@} End of Supported encodings
-//---------------------------------------------------------------------------
 
 };
 
