@@ -125,8 +125,8 @@ X(utf_32le, "UTF-32LE")
 X(utf_7, "UTF-7")
 
 // Locale dependent
-X(char_encoding, "char")
-X(wchar_t_encoding, "wchar_t")
+X(char_encoding, "CHAR_T")
+X(wchar_t_encoding, "WCHAR_T")
 
 // EBCDIC compatible (not ASCII compatible, very rarely used)
 X(ibm_037, "IBM-037")

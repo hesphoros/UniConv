@@ -141,30 +141,30 @@
 //    
 //    // 测试 UTF-8 <-> 本地编码
 //    {
-//        auto local_result = conv->ToLocalFromUtf8(test_text);
+//        auto local_result = conv->ToLocaleFromUtf8(test_text);
 //        Log("UTF-8 -> Local: " + BytesToHex(local_result));
 //        
-//        auto utf8_result = conv->ToUtf8FromLocal(local_result);
+//        auto utf8_result = conv->ToUtf8FromLocale(local_result);
 //        Log("Local -> UTF-8: " + utf8_result);
 //        Log("往返转换成功: " + std::string(utf8_result == test_text ? "是" : "否"));
 //    }
 //    
 //    // 测试 UTF-8 <-> UTF-16LE
 //    {
-//        auto utf16le_result = conv->FromUtf8ToUtf16LE(test_text);
+//        auto utf16le_result = conv->ToUtf16LEFromUtf8(test_text);
 //        Log("UTF-8 -> UTF-16LE: " + BytesToHex(std::string(reinterpret_cast<const char*>(utf16le_result.data()), utf16le_result.size() * 2)));
 //        
-//        auto utf8_result = conv->FromUtf16LEToUtf8(utf16le_result);
+//        auto utf8_result = conv->ToUtf8FromUtf16LE(utf16le_result);
 //        Log("UTF-16LE -> UTF-8: " + utf8_result);
 //        Log("往返转换成功: " + std::string(utf8_result == test_text ? "是" : "否"));
 //    }
 //    
 //    // 测试 UTF-8 <-> UTF-16BE
 //    {
-//        auto utf16be_result = conv->FromUtf8ToUtf16BE(test_text);
+//        auto utf16be_result = conv->ToUtf16BEFromUtf8(test_text);
 //        Log("UTF-8 -> UTF-16BE: " + BytesToHex(std::string(reinterpret_cast<const char*>(utf16be_result.data()), utf16be_result.size() * 2)));
 //        
-//        auto utf8_result = conv->FromUtf16BEToUtf8(utf16be_result);
+//        auto utf8_result = conv->ToUtf8FromUtf16BE(utf16be_result);
 //        Log("UTF-16BE -> UTF-8: " + utf8_result);
 //        Log("往返转换成功: " + std::string(utf8_result == test_text ? "是" : "否"));
 //    }
