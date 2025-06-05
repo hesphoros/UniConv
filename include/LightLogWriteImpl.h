@@ -53,7 +53,7 @@
 #include <stdexcept>
 #include <memory>
 
- /**
+/**
   * @file LightLogWriteCommon.h
   * @brief Common definitions and structures for LightLogWrite.
   * This file contains the definitions of structures and enums used in the LightLogWrite library.
@@ -301,4 +301,4 @@ private:
 	//------------------------------------------------------------------------------------------------
 };
 
-#endif // !INCLUDE_LIGHTLOGWRITEIMPL_HPP_
+#endif // INCLUDE_LIGHTLOGWRITEIMPL_HPP_
