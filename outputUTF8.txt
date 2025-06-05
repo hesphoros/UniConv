@@ -1,6 +1,0 @@
-Chinese:
-	Invalid multibyte sequence
-	Invalid multibyte sequence
-English:
-	This is a test  const char* str  to convert to UTF-8 encoding
-	This is a test  const char* str  to convert to UTF-8 encoding
