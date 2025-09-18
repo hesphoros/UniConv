@@ -35,7 +35,7 @@
 #ifndef __UNICONV_H__
 #define __UNICONV_H__
 
-#include <iconv.h>
+#include "iconv.h"
 #include <iostream>
 #include <string>
 #include <malloc.h>
@@ -71,10 +71,16 @@
 #endif // __linux__
 
 
-#ifdef UNICONV_DLL
-#define UNICONV_EXPORT __declspec(dllexport)
+#ifdef _WIN32
+    #ifdef UNICONV_DLL
+        #define UNICONV_EXPORT __declspec(dllexport)
+    #elif defined(UNICONV_DLL_IMPORT)
+        #define UNICONV_EXPORT __declspec(dllimport)
+    #else
+        #define UNICONV_EXPORT
+    #endif
 #else
-#define UNICONV_EXPORT
+    #define UNICONV_EXPORT
 #endif
 
 #if defined(_DEBUG) || !defined(NDEBUG)   // Debug Mode
@@ -159,7 +165,7 @@ private:
 	 */
 	struct IconvDeleter {
 		void operator()(iconv_t cd) const {
-			std::cerr << "Closing iconv_t: " << cd << std::endl;
+			// std::cerr << "Closing iconv_t: " << cd << std::endl;
 			// call iconv_close to release the iconv descriptor only if it is valid
 			if (cd != reinterpret_cast<iconv_t>(-1)) {
 				iconv_close(cd);

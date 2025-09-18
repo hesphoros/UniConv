@@ -1,0 +1,25 @@
+@PACKAGE_INIT@
+
+# UniConv CMake configuration file
+
+include(CMakeFindDependencyMacro)
+
+# Find dependencies if any (iconv is embedded in UniConv)
+# find_dependency() calls go here if needed
+
+# Include the exported targets
+include("${CMAKE_CURRENT_LIST_DIR}/UniConvTargets.cmake")
+
+# Define the main target alias
+if(NOT TARGET UniConv::UniConv)
+    add_library(UniConv::UniConv ALIAS UniConv)
+endif()
+
+# Provide compatibility variables
+set(UNICONV_FOUND TRUE)
+set(UNICONV_VERSION @PROJECT_VERSION@)
+set(UNICONV_LIBRARIES UniConv::UniConv)
+set(UNICONV_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include")
+
+# Check required components (basic implementation)
+set(UniConv_FOUND TRUE)
