@@ -297,16 +297,16 @@
     <ClInclude Include="include\iconv\utf8.h" />
     <ClInclude Include="include\iconv\vietcomb.h" />
     <ClInclude Include="include\iconv\viscii.h" />
-    <ClInclude Include="UniConv.h" />
+    <ClInclude Include="include\UniConv.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="iconv.c" />
-    <ClCompile Include="localcharset.c" />
-    <ClCompile Include="relocatable.c" />
-    <ClCompile Include="UniConv.cpp" />
+    <ClCompile Include="src\iconv.c" />
+    <ClCompile Include="src\localcharset.c" />
+    <ClCompile Include="src\relocatable.c" />
+    <ClCompile Include="src\UniConv.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="encodings.inc" />
+    <None Include="include\encodings.inc" />
     <None Include="include\iconv\encodings.def" />
     <None Include="include\iconv\encodings_aix.def" />
     <None Include="include\iconv\encodings_dos.def" />
@@ -370,11 +370,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>.\include\iconv;$(IncludePath)</IncludePath>
+    <IncludePath>.\include;.\include\iconv;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>.\include\iconv;$(IncludePath)</IncludePath>
+    <IncludePath>.\include;.\include\iconv;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
