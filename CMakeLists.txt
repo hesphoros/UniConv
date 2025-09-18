@@ -1,0 +1,197 @@
+cmake_minimum_required(VERSION 3.16)
+project(UniConv 
+    VERSION 1.0.0.1
+    DESCRIPTION "A c++ library for variable encoding conversion"
+    LANGUAGES C CXX
+)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Build options
+option(UNICONV_BUILD_TESTS "Build UniConv tests" OFF)
+option(UNICONV_BUILD_SHARED "Build shared library instead of static" OFF)
+
+# Set default build type to Release if not specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# Configure compiler-specific settings
+if(MSVC)
+    # Set UTF-8 encoding for MSVC
+    add_compile_options(/utf-8)
+    # Disable specific MSVC warnings
+    add_compile_options(/wd4996)  # Disable deprecated function warnings
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+endif()
+
+# Include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/iconv)
+
+# Collect all source files (UniConv + iconv)
+set(UNICONV_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/UniConv.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/iconv.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/localcharset.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/relocatable.c
+)
+
+# Collect UniConv header files
+set(UNICONV_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/UniConv.h
+)
+
+# Create UniConv library (static or shared based on option)
+if(UNICONV_BUILD_SHARED)
+    add_library(UniConv SHARED ${UNICONV_SOURCES})
+    set_target_properties(UniConv PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    )
+else()
+    add_library(UniConv STATIC ${UNICONV_SOURCES})
+    set_target_properties(UniConv PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    )
+endif()
+
+# Set UniConv library properties
+set_target_properties(UniConv PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    OUTPUT_NAME "UniConv"
+)
+
+# No need to link separate libraries since everything is compiled together
+
+# Set include directories for UniConv
+target_include_directories(UniConv
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv
+)
+
+# Compiler definitions
+target_compile_definitions(UniConv PRIVATE
+    $<$<BOOL:${MSVC}>:_UNICODE>
+    $<$<BOOL:${MSVC}>:UNICODE>
+    # iconv specific definitions
+    LIBDIR=""
+    BUILDING_LIBICONV
+    ENABLE_RELOCATABLE=1
+    IN_LIBRARY
+    INSTALLDIR=""
+    NO_XMALLOC
+    set_relocation_prefix=libiconv_set_relocation_prefix
+    relocate=libiconv_relocate
+    HAVE_CONFIG_H
+)
+
+# Optional: Build tests
+if(UNICONV_BUILD_TESTS)
+    # Check if AllTests.cpp exists
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/AllTests.cpp)
+        # Create a simple common.h for tests
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/common.h
+"#pragma once
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <chrono>
+#include <iomanip>
+
+class LightLogWriteImpl {
+private:
+    std::ofstream logFile;
+public:
+    void SetLogsFileName(const std::string& filename) {
+        logFile.open(filename, std::ios::app);
+    }
+    void WriteLog(const std::string& level, const std::string& message) {
+        std::cout << \"[\" << level << \"] \" << message << std::endl;
+        if (logFile.is_open()) {
+            auto now = std::chrono::system_clock::now();
+            auto time_t = std::chrono::system_clock::to_time_t(now);
+            logFile << \"[\" << std::put_time(std::localtime(&time_t), \"%Y-%m-%d %H:%M:%S\") 
+                    << \"] [\" << level << \"] \" << message << std::endl;
+            logFile.flush();
+        }
+    }
+    ~LightLogWriteImpl() { if (logFile.is_open()) logFile.close(); }
+};
+
+inline LightLogWriteImpl& GetLogger() { static LightLogWriteImpl logger; return logger; }
+#define glogger GetLogger()
+#define LOGINFO(msg)  glogger.WriteLog(\"INFO\", msg)
+#define LOGERROR(msg) glogger.WriteLog(\"ERROR\", msg)
+#define LOGDEBUG(msg) glogger.WriteLog(\"DEBUG\", msg)
+#define LOGWARN(msg)  glogger.WriteLog(\"WARN\", msg)
+#define LOGFATAL(msg) glogger.WriteLog(\"FATAL\", msg)
+#define LOGTRACE(msg) glogger.WriteLog(\"TRACE\", msg)
+#define LOGOK(msg)    glogger.WriteLog(\"OK\", msg)
+")
+        
+        add_executable(UniConvTests ${CMAKE_CURRENT_SOURCE_DIR}/AllTests.cpp)
+        
+        # Set executable output directory
+        set_target_properties(UniConvTests PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        )
+        
+        # Link with UniConv library
+        target_link_libraries(UniConvTests PRIVATE UniConv)
+        
+        # Set include directories for tests
+        target_include_directories(UniConvTests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_BINARY_DIR}  # For generated common.h
+        )
+        
+        # Windows specific settings for console application
+        if(WIN32)
+            set_target_properties(UniConvTests PROPERTIES
+                WIN32_EXECUTABLE FALSE
+            )
+        endif()
+        
+        message(STATUS "UniConv tests target created: UniConvTests")
+    else()
+        message(WARNING "AllTests.cpp not found, skipping test target creation")
+    endif()
+endif()
+
+# Installation rules
+include(GNUInstallDirs)
+
+# Install libraries
+install(TARGETS UniConv
+    EXPORT UniConvTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Install headers
+install(FILES ${UNICONV_HEADERS}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
+)
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv/iconv.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv/iconv
+)
+
+# Print configuration summary
+message(STATUS "")
+message(STATUS "UniConv Configuration Summary:")
+message(STATUS "  Version: ${PROJECT_VERSION}")
+message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "  Build shared library: ${UNICONV_BUILD_SHARED}")
+message(STATUS "  Build tests: ${UNICONV_BUILD_TESTS}")
+message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "")
