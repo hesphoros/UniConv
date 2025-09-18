@@ -1,0 +1,151 @@
+\doxysection{UTF-\/16 Parametric Conversion Functions}
+\hypertarget{group__UTF16ParametricConversion}{}\label{group__UTF16ParametricConversion}\index{UTF-\/16 Parametric Conversion Functions@{UTF-\/16 Parametric Conversion Functions}}
+\doxysubsubsection*{UTF-\/16 to UTF-\/8 Conversion}
+Functions for converting between UTF-\/16 and UTF-\/8 encodings \begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{group__UTF16ToUTF8Conversion_gae6b1cc18ab9d2435a3ace16f8e86cb69}{Uni\+Conv\+::\+From\+Utf16\+LETo\+Utf8}} (const char16\+\_\+t \texorpdfstring{$\ast$}{*}input, size\+\_\+t len)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+LE buffer with length to UTF-\/8. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__UTF16ToUTF8Conversion_gaacff526e59dfd2899ab4b8da3337c63e}{Uni\+Conv\+::\+From\+Utf16\+BETo\+Utf8}} (const char16\+\_\+t \texorpdfstring{$\ast$}{*}input, size\+\_\+t len)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/16\+BE buffer with length to UTF-\/8. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+UTF-\/16 conversion functions with explicit length parameters 
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__UTF16ToUTF8Conversion_gaacff526e59dfd2899ab4b8da3337c63e}\index{UTF-\/16 Parametric Conversion Functions@{UTF-\/16 Parametric Conversion Functions}!FromUtf16BEToUtf8@{FromUtf16BEToUtf8}}
+\index{FromUtf16BEToUtf8@{FromUtf16BEToUtf8}!UTF-\/16 Parametric Conversion Functions@{UTF-\/16 Parametric Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16BEToUtf8()}{FromUtf16BEToUtf8()}}
+{\footnotesize\ttfamily \label{group__UTF16ToUTF8Conversion_gaacff526e59dfd2899ab4b8da3337c63e} 
+std\+::string Uni\+Conv\+::\+From\+Utf16\+BETo\+Utf8 (\begin{DoxyParamCaption}\item[{const char16\+\_\+t \texorpdfstring{$\ast$}{*}}]{input}{, }\item[{size\+\_\+t}]{len}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+BE buffer with length to UTF-\/8. 
+
+Convert UTF-\/16\+BE byte array to UTF-\/8 string with explicit length.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Pointer to UTF-\/16\+BE data \\
+\hline
+{\em len} & Length of the input buffer in char16\+\_\+t units \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string
+\end{DoxyReturn}
+This overload allows conversion of UTF-\/16\+BE data with explicit length specification.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16ToUTF8Conversion_gad013e8c79e13dedc12ecfa9aa14af7af}{From\+Utf16\+BETo\+Utf8(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Pointer to UTF-\/16\+BE encoded char16\+\_\+t array ~\newline
+ \\
+\hline
+{\em len} & Number of char16\+\_\+t elements in the input array \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string, empty string on error
+\end{DoxyReturn}
+Similar to From\+Utf16\+LETo\+Utf8 but handles big-\/endian UTF-\/16 data. This is commonly used when processing data from network protocols or file formats that use big-\/endian byte ordering.
+
+\begin{DoxyParagraph}{Use Cases\+:}
+
+\begin{DoxyItemize}
+\item Network protocol data processing
+\item File format parsing (some formats use UTF-\/16\+BE)
+\item Cross-\/platform data exchange
+\item Legacy system integration
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16ToUTF8Conversion_gad013e8c79e13dedc12ecfa9aa14af7af}{From\+Utf16\+BETo\+Utf8(const std\+::u16string\&)} ~\newline
+ 
+
+\doxylink{group__UTF16ToUTF8Conversion_gae6b1cc18ab9d2435a3ace16f8e86cb69}{From\+Utf16\+LETo\+Utf8(const char16\+\_\+t\texorpdfstring{$\ast$}{*}, size\+\_\+t)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00248}{248}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__UTF16ToUTF8Conversion_gae6b1cc18ab9d2435a3ace16f8e86cb69}\index{UTF-\/16 Parametric Conversion Functions@{UTF-\/16 Parametric Conversion Functions}!FromUtf16LEToUtf8@{FromUtf16LEToUtf8}}
+\index{FromUtf16LEToUtf8@{FromUtf16LEToUtf8}!UTF-\/16 Parametric Conversion Functions@{UTF-\/16 Parametric Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf16LEToUtf8()}{FromUtf16LEToUtf8()}}
+{\footnotesize\ttfamily \label{group__UTF16ToUTF8Conversion_gae6b1cc18ab9d2435a3ace16f8e86cb69} 
+std\+::string Uni\+Conv\+::\+From\+Utf16\+LETo\+Utf8 (\begin{DoxyParamCaption}\item[{const char16\+\_\+t \texorpdfstring{$\ast$}{*}}]{input}{, }\item[{size\+\_\+t}]{len}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/16\+LE buffer with length to UTF-\/8. 
+
+Convert UTF-\/16\+LE byte array to UTF-\/8 string with explicit length.
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Pointer to UTF-\/16\+LE data \\
+\hline
+{\em len} & Length of the input buffer in char16\+\_\+t units \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string
+\end{DoxyReturn}
+This overload allows conversion of UTF-\/16\+LE data with explicit length specification, useful for processing binary data or buffers that may not be null-\/terminated.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16ToUTF8Conversion_gafe613d099c00d29007cf5cc09c454dc4}{From\+Utf16\+LETo\+Utf8(const std\+::u16string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Pointer to UTF-\/16\+LE encoded char16\+\_\+t array \\
+\hline
+{\em len} & Number of char16\+\_\+t elements in the input array \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string, empty string on error
+\end{DoxyReturn}
+This overload allows conversion of UTF-\/16\+LE data with explicit length specification, useful when working with non-\/null-\/terminated buffers or when the exact length is known.
+
+\begin{DoxyParagraph}{Safety Notes\+:}
+
+\begin{DoxyItemize}
+\item Input validation\+: Returns empty string if input is null or len is 0
+\item Memory safety\+: Uses reinterpret\+\_\+cast with known buffer size
+\item Error handling\+: Returns empty string on conversion failure
+\end{DoxyItemize}
+\end{DoxyParagraph}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ Example:\ Convert\ UTF-\/16LE\ buffer\ to\ UTF-\/8}}
+\DoxyCodeLine{\textcolor{keywordtype}{char16\_t}\ utf16\_data[]\ =\ \{0x4F60,\ 0x597D,\ 0x0000\};\ \textcolor{comment}{//\ "{}ÄãºÃ"{}\ +\ null}}
+\DoxyCodeLine{std::string\ utf8\_result\ =\ \mbox{\hyperlink{group__UTF16ToUTF8Conversion_gafe613d099c00d29007cf5cc09c454dc4}{UniConv::FromUtf16LEToUtf8}}(utf16\_data,\ 2);\ \textcolor{comment}{//\ Exclude\ null\ terminator}}
+
+\end{DoxyCode}
+
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__UTF16ToUTF8Conversion_gafe613d099c00d29007cf5cc09c454dc4}{From\+Utf16\+LETo\+Utf8(const std\+::u16string\&)} 
+
+\doxylink{group__UTF16ToUTF8Conversion_gaacff526e59dfd2899ab4b8da3337c63e}{From\+Utf16\+BETo\+Utf8(const char16\+\_\+t\texorpdfstring{$\ast$}{*}, size\+\_\+t)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00220}{220}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+

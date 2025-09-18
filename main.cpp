@@ -1,172 +1,690 @@
-﻿#include "UniConv.h"
-#include "LightLogWriteImpl.h"
-
-#if CPP_STANDARD < CPP_STANDARD
-#include <codecvt>
+#if _MSC_VER >= 1600 
+#pragma execution_character_set("utf-8")
 #endif
 
+#include "UniConv.h"
+#include "common.h"
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <fstream>
+#include <windows.h>
+#include <assert.h>
 
-auto gUniConv = UniConv::GetInstance();
+auto g_conv = UniConv::GetInstance();
 
 
-void TestUtf82Locale() {
-	extern char const* utf8_cstr;
-	extern std::string utf8_str;
-    std::cout << gUniConv->Utf8ConvertToLocale(utf8_cstr) << "\n";
-    std::cout << gUniConv->Utf8ConvertToLocale(utf8_str)  << "\n";
+
+struct ConversionTask {
+    std::string inputFile;
+    std::string outputFile;
+    std::string fromEncoding;
+    std::string toEncoding;
+    std::string description;
+};
+
+
+
+std::string UTF8    = UniConv::ToString(UniConv::Encoding::utf_8);
+std::string GBK     = UniConv::ToString(UniConv::Encoding::gbk);
+std::string UTF16LE = UniConv::ToString(UniConv::Encoding::utf_16le);
+std::string UTF16BE = UniConv::ToString(UniConv::Encoding::utf_16be);
+
+
+ConversionTask task_gb2312_to_utf8 = {
+    "testdata/input_gb2312.txt",
+    "testdata/output/output_gb2312_to_utf-8.txt",
+	"GBK",
+	"UTF-8",
+	"GBK -> UTF-8"
+};
+
+
+
+enum class BomEncoding {
+    None,
+    UTF8,
+    UTF16_LE,
+    UTF16_BE,
+    UTF32_LE,
+    UTF32_BE
+};
+
+std::vector<ConversionTask> tasks = {
+    task_gb2312_to_utf8
+};
+
+// Convert the byte data to a hexadecimal string
+std::string BytesToHex(const std::string& data) {
+    std::ostringstream oss;
+    for (unsigned char c : data) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c) << " ";
+    }
+    return oss.str();
 }
 
 
-void TestLocale2Utf8() {
-	system("chcp 65001 > null");
-	extern char const* gbk_cstr;
-	extern std::string gbk_str;
-	std::cout << gUniConv->LocaleConvertToUtf8(gbk_cstr) << "\n";
-	std::cout << gUniConv->LocaleConvertToUtf8(gbk_str)  << "\n";
-
+std::string ReadFileBytes(const std::string& filePath) {
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        return "";
+    }
+    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
+bool WriteFileBytes(const std::string& filePath, const std::string& data) {
+    std::ofstream file(filePath, std::ios::binary);
+    if (!file) {
+        return false;
+    }
+    file.write(data.data(), data.size());
+    return file.good();
+}
 
+// check file encoding and remove BOM if exists
+std::pair<std::string, std::string> DetectEncodingAndRemoveBOM(const std::string& data) {
+	if (data.empty()) {
+		return std::make_pair("UTF-8", data);
+	}
 
+	// detect bom
+	if (data.size() >= 3 &&
+		static_cast<unsigned char>(data[0]) == 0xEF &&
+		static_cast<unsigned char>(data[1]) == 0xBB &&
+		static_cast<unsigned char>(data[2]) == 0xBF) {
+		return std::make_pair("UTF-8", data.substr(3));
+	}
 
+	if (data.size() >= 2 &&
+		static_cast<unsigned char>(data[0]) == 0xFF &&
+		static_cast<unsigned char>(data[1]) == 0xFE) {
+		return std::make_pair("UTF-16LE", data.substr(2));
+	}
 
+	if (data.size() >= 2 &&
+		static_cast<unsigned char>(data[0]) == 0xFE &&
+		static_cast<unsigned char>(data[1]) == 0xFF) {
+		return std::make_pair("UTF-16BE", data.substr(2));
+	}
 
-void TestWide2Utf8() {
 	
-	std::wstring wstr = L"这是一个测试字符串,用来转换成Utf-8编码";
-	std::string sstr1 = gUniConv->WstringConvertToString(wstr);
-	std::cout << sstr1 << "\n";
-	system("chcp 65001");
-	std::string sstr2 = gUniConv->WideConvertToUtf8(wstr);
-	std::cout << sstr1 << "\n" << sstr2 << "\n";
+	return std::make_pair("", data);
 }
 
-// 测试成功
-void TestGB2321ToUtf8() {
-	
-	
-	std::string chinese_str =  "这是一个测试的string字符串，用来转换成Utf-8编码";
-	const char* chinese_cstr = "这是一个测试的const char 字符串，用来转换为Utf-8编码";
-	std::string chinese_conv_strutf8 = gUniConv->LocaleConvertToUtf8(chinese_str);
-	std::string chinese_conv_cstrutf8  = gUniConv->LocaleConvertToUtf8(chinese_cstr);
+std::pair<BomEncoding, std::string_view> RemoveBOM(const std::string_view& data) {
+    const unsigned char* bytes = reinterpret_cast<const unsigned char*>(data.data());
+    size_t len = data.size();
 
-	std::string english_str = "This is a test string to convert to UTF-8 encoding";
-	const char* english_cstr = "This is a test  const char* str  to convert to UTF-8 encoding";
-	std::string english_conv_str = gUniConv->LocaleConvertToUtf8(english_cstr);
-	std::string english_conv_cstr = gUniConv->LocaleConvertToUtf8(english_cstr);
+    if (len >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        return { BomEncoding::UTF8, data.substr(3) };
+    if (len >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+        return { BomEncoding::UTF16_LE, data.substr(2) };
+    if (len >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+        return { BomEncoding::UTF16_BE, data.substr(2) };
+    if (len >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0x00 && bytes[3] == 0x00)
+        return { BomEncoding::UTF32_LE, data.substr(4) };
+    if (len >= 4 && bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0xFE && bytes[3] == 0xFF)
+        return { BomEncoding::UTF32_BE, data.substr(4) };
 
-	std::string japanese_str = "これはUTF-8エンコードに変換するためのテスト文字列です";
-	const char* japanese_cstr = "これはUTF-8エンコードに変換するためのテストC文字列です";
-	std::string japanese_conv_str = gUniConv->LocaleConvertToUtf8(japanese_cstr);
-    std::string japanese_conv_cstr = gUniConv->LocaleConvertToUtf8(japanese_cstr);
-
-	//韩文
-	std::string korean_str = "이것은 UTF-8 인코딩으로 변환하기 위한 테스트 문자열입니다";
-	const char* korean_cstr = "이것은 UTF-8 인코딩으로 변환하기 위한 테스트 C 문자열입니다";
-	std::string	korean_conv_str = gUniConv->LocaleConvertToUtf8(korean_cstr);
-    std::string korean_conv_cstr = gUniConv->LocaleConvertToUtf8(korean_cstr);
-
-	std::string french_str = "Ceci est une chaîne de test pour convertir en encodage Utf-8";
-	const char* french_cstr = "Ceci est une chaîne C de test pour convertir en encodage Utf-8";
-	std::string french_conv_str = gUniConv->LocaleConvertToUtf8(french_cstr);
-    std::string french_conv_cstr = gUniConv->LocaleConvertToUtf8(french_cstr);
-
-	std::string spanish_str = "Esta es una cadena de prueba para convertir a codificación Utf-8";
-	const char* spanish_cstr = "Esta es una cadena C de prueba para convertir a codificación Utf-8";
-	std::string spanish_conv_str = gUniConv->LocaleConvertToUtf8(spanish_cstr);
-    std::string spanish_conv_cstr = gUniConv->LocaleConvertToUtf8(spanish_cstr);
-
-	std::string russian_str = "Это тестовая строка для преобразования в кодировку Utf-8";
-	const char* russian_cstr = "Это тестовая C-строка для преобразования в кодировку Utf-8";
-    std::string russian_conv_str = gUniConv->LocaleConvertToUtf8(russian_cstr);
-    std::string russian_conv_cstr = gUniConv->LocaleConvertToUtf8(russian_cstr);
-
-	//葡萄牙文
-	std::string portuguese_str = "Esta é uma string de teste para converter para codificação Utf-8";
-	const char* portuguese_cstr = "Esta é uma string C de teste para converter para codificação Utf-8";
-    std::string portuguese_conv_str = gUniConv->LocaleConvertToUtf8(portuguese_cstr);
-    std::string portuguese_conv_cstr = gUniConv->LocaleConvertToUtf8(portuguese_cstr);
-
-
-	std::string italian_str = "Questa è una stringa di test per la conversione in codifica Utf-8";
-	const char* italian_cstr = "Questa è una stringa C di test per la conversione in codifica Utf-8";
-	std::string italian_conv_str = gUniConv->LocaleConvertToUtf8(italian_cstr);
-    std::string italian_conv_cstr = gUniConv->LocaleConvertToUtf8(italian_cstr);
-
-	// 打开文件并写入字符串
-	std::ofstream out_file("outputUTF8.txt");
-	if (out_file.is_open()) {
-		//TODO 
-		out_file << "Chinese:" << std::endl;
-		out_file << "\t" << chinese_conv_strutf8 << "\n" << "\t" << chinese_conv_cstrutf8 << "\n";
-
-		out_file << "English:" << std::endl;
-        out_file << "\t" << english_conv_str << "\n" << "\t" << english_conv_cstr << "\n";
-		out_file.close();
-		std::cout << "String successfully written to file." << std::endl;
-	}
-	else {
-		std::cerr << "Failed to open file for writing." << std::endl;
-		
-	}
-
+    return { BomEncoding::None, data };
 }
 
-void TestGB18030ToUTF8() {
-	std::string gb18030_str = {};
-	std::ifstream in_file("InputGB18030.txt");
-	if (in_file.is_open()) {
-		std::getline(in_file,gb18030_str);
-		in_file.close();
-		std::cout << "Before convert " << gb18030_str << std::endl;
-		std::string convert_out_utf8_str = gUniConv->Utf8ConvertToLocale(gb18030_str);
-		std::cout<< "After convert" << convert_out_utf8_str << std::endl;
-	}
 
-}
+void InitializeLogging() {
 
-int main() {
-	gLogWrite.SetLastingsLogs("./log","TestGB2312TOUTF8");
-	//gLogWrite.SetLogsFileName(L"uniconv.log");
-	
-	TestGB2321ToUtf8();
-	return 0;
+    glogger.SetLogsFileName("log/test_log.log");
 }
 
 
 
-// 测试日志文件创建和写入
-void TestLogFileCreation() {
-	LightLogWrite_Impl logger;
-
-	logger.SetLogsFileName(L"test_log.txt");
-	logger.WriteLogContent(L"INFO", L"This is a test info  log message.");
-	std::this_thread::sleep_for(std::chrono::seconds(1)); // 等待日志写入完成
-	std::cout << "TestLogFileCreation: Log file created and message written.\n";
+/// <summary>
+/// Test GetCurrentSystemEncoding API
+/// </summary>
+void TestGetCurrentSystemEncoding() {
+	std::string sCurSysEnc =  g_conv->GetCurrentSystemEncoding();
+    LOGINFO("Current system encoding:\t" + sCurSysEnc);
+}
+/// <summary>
+/// Test GetCurrentSystemEncodingCodePage API
+/// </summary>
+void TestGetCurrentSystemEncodingCodePage() {
+    int nCurSysEncCodePage = g_conv->GetCurrentSystemEncodingCodePage();
+    LOGINFO("Current system codepage:\t" + std::to_string(nCurSysEncCodePage));
 }
 
-// 测试多线程日志写入
-void TestMultiThreadLogging() {
-	LightLogWrite_Impl logger;
-	logger.SetLogsFileName(L"multi_thread_log.txt");
+/// <summary>
+/// Test API GetEncodingNameByCodePage
+/// </summary>
+void TestGetEncodingNameByCodePage() {
+    int codepage = g_conv->GetCurrentSystemEncodingCodePage();
+    LOGINFO("Current system codepage:\t" + std::to_string(codepage));
+    std::string encodingName = g_conv->GetEncodingNameByCodePage(codepage);
+    LOGINFO("Encoding name for codepage " + std::to_string(codepage) + ":\t" + encodingName);
+    std::string convResult = g_conv->GetEncodingNameByCodePage(codepage);
+    if (convResult != encodingName) {
+        LOGERROR("Encoding name mismatch for codepage " + std::to_string(codepage) + ": expected '" + encodingName + "', got '" + convResult + "'");
+    } else {
+        LOGOK("Encoding name for codepage " + std::to_string(codepage) + " is correct: " + convResult);
+    }
+}
 
-	auto logTask = [&logger](int threadId) {
-		for (int i = 0; i < 5; ++i) {
-			std::wstring message = L"Thread " + std::to_wstring(threadId) + L" - Log " + std::to_wstring(i);
-			logger.WriteLogContent(L"TestMultiThreadLogging", message);
-			std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 模拟延迟
-		}
-		};
+//
+//void BatchConvertFiles() {
+//    std::cout << "=== Start the batch file conversion test === " << std::endl;
+//    LOGINFO("=== Start the batch file conversion test === ");
+//
+//    for (const auto& task : tasks) {
+//        LOGINFO("--- " + task.description + " ---");
+//        std::cout << "--- " + task.description + " ---" << std::endl;
+//        std::string input_data = ReadFileBytes(task.inputFile);
+//        if ( input_data.empty() ) {
+//            LOGERROR("Error: cannot read file\t" + task.inputFile);
+//			std::cout << "Error: cannot read file\t" + task.inputFile << std::endl;
+//        }
+//
+//        // Check and remove BOM 
+//		auto result_pair = DetectEncodingAndRemoveBOM(input_data);
+//		std::string detectedEncoding = result_pair.first;
+//		std::string cleanedData = result_pair.second;
+//		std::string actualFromEncoding = detectedEncoding.empty() ? task.fromEncoding : detectedEncoding;
+//
+//        // Log info
+//		LOGINFO("Input file: " + task.inputFile);
+//        LOGINFO("Input file size: " + std::to_string(input_data.size()) + " bytes");
+//		LOGINFO("Detected encoding: " + (detectedEncoding.empty()) ? "NO BOM" : detectedEncoding);
+//		LOGINFO("Clean data size: " + std::to_string(cleanedData.size()) + " bytes");
+//		LOGINFO("Input data hex: " + BytesToHex(cleanedData));
+//
+//        std::cout << "Input file: " + task.inputFile << std::endl;
+//		std::cout << "Input file size: " + std::to_string(input_data.size()) + " bytes" << std::endl;
+//		std::cout << "Detected encoding: " + (detectedEncoding.empty() ? "NO BOM" : detectedEncoding) << std::endl;
+//		std::cout << "Clean data size: " + std::to_string(cleanedData.size()) + " bytes" << std::endl;
+//        std::cout << "Input data hex: " + BytesToHex(cleanedData) << std::endl;
+//
+//		auto result = g_conv->ConvertEncoding(cleanedData, actualFromEncoding.c_str(), task.toEncoding.c_str());
+//
+//        if (result.IsSuccess()) {
+//            LOGOK("Conversion successful: " + task.fromEncoding + " -> " + task.toEncoding);
+//			std::cout << "Conversion successful: " + task.fromEncoding + " -> " + task.toEncoding << std::endl;
+//
+//            LOGINFO("Output file: " + task.outputFile);
+//            std::cout << "Output file: " + task.outputFile << std::endl;
+//
+//            // Write the converted data to the output file
+//            if (WriteFileBytes(task.outputFile, result.conv_result_str)) {
+//                LOGOK("Output file written successfully: " + task.outputFile);
+//                std::cout << "Output file written successfully: " + task.outputFile << std::endl;
+//            } else {
+//                LOGERROR("Error writing output file: " + task.outputFile);
+//                std::cout << "Error writing output file: " + task.outputFile << std::endl;
+//            }
+//        }
+//        else {
+//
+//        }
+//    }
+//}
 
-	std::vector<std::thread> threads;
-	for (int i = 0; i < 5; ++i) {
-		threads.emplace_back(logTask, i + 1);
-	}
 
-	for (auto& t : threads) {
-		t.join();
+void TestTostring()
+{
+    std::string utf8 = "UTF-8";
+	std::string gbk = "GBK";
+    std::string uni_utf8 = UniConv::ToString(UniConv::Encoding::utf_8);
+	std::string uni_gbk = UniConv::ToString(UniConv::Encoding::gbk);
+
+    if( uni_utf8 == utf8 && uni_gbk == gbk ) {
+        LOGOK("UniConv::ToString() works correctly for UTF-8 and GBK.");
+    } else {
+        LOGERROR("UniConv::ToString() failed for UTF-8 or GBK.");
 	}
 
-	std::cout << "TestMultiThreadLogging: Log messages written from multiple threads.\n";
 }
 
+
+/// <summary>
+/// Test API ToLocaleFromUtf8
+/// </summary>
+void TestToLocaleFromUtf8() {
+
+	std::string inputFile = "testdata/input_utf8.txt";
+	std::string outputFile = "testdata/output/output_utf-8_to_local.txt";
+	std::string content = ReadFileBytes(inputFile);
+
+	std::string convert = g_conv->ToLocaleFromUtf8(content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+
+	WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+	std::cout << content << std::endl;
+	std::cout << convert << std::endl;
+
+}
+
+/// <summary>
+/// Test API ToLocaleFromUtf8 with BOM
+/// </summary>
+void TestToLocaleFromUtf8WithBOM() {
+
+	std::string inputFile = "testdata/input_utf8_bom.txt";
+	std::string outputFile = "testdata/output/output_utf-8_bom_to_local.txt";
+	std::string content = ReadFileBytes(inputFile);
+
+    auto [encoding, content_view] = RemoveBOM(content);
+    if (encoding != BomEncoding::UTF8) {
+        LOGERROR("Expected UTF-8 encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) + " FILE: " + inputFile);
+        std::cout << "Expected UTF-8 encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) << std::endl;
+        return;
+    }
+    else if (encoding == BomEncoding::UTF8) {
+        LOGOK("Encoding detected as UTF-8 with BOM. FILE: " + inputFile);
+        std::cout << "Encoding detected as UTF-8 with BOM. FILE: " << inputFile << std::endl;
+	}
+
+	std::string cleaned_content(content_view.data(), content_view.size());
+    auto convert = g_conv->ToLocaleFromUtf8(cleaned_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+
+	WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+
+
+/// <summary>
+/// Test API ToUtf8FromLocale
+/// </summary>
+void TestToUtf8FromLocale() {
+	std::string inputFile = "testdata/input_gb2312.txt";
+	std::string outputFile = "testdata/output/output_gb2312_to_utf-8_2.txt";
+	std::string content = ReadFileBytes(inputFile);
+
+	std::string convert = g_conv->ToUtf8FromLocale(content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+	WriteFileBytes(outputFile, convert);
+
+	std::cout << content << std::endl;
+	std::cout << convert << std::endl;
+	LOGINFO("Converted content: " + convert);
+}
+
+
+/// <summary>
+/// Test API ToUtf16LEFromLocale
+/// </summary>
+void TestToUtf16LEFromLocale() {
+	std::string inputFile = "testdata/input_gb2312.txt";
+	std::string outputFile = "testdata/output/output_gb2312_to_utf-16le.txt";
+	std::string content = ReadFileBytes(inputFile);
+
+	std::u16string convert = g_conv->ToUtf16LEFromLocale(content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+
+	WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(convert.data()), convert.size() * sizeof(char16_t)));
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+	std::cout << content << std::endl;
+
+}
+
+/// <summary>
+/// Test API ToUtf16BEFromLocale
+/// </summary>
+void TestToUtf16BEFromLocale() {
+	std::string inputFile = "testdata/input_gb2312.txt";
+    std::string outputFile = "testdata/output/output_gb2312_to_utf-16be.txt";
+    std::string content = ReadFileBytes(inputFile);
+    std::u16string convert = g_conv->ToUtf16BEFromLocale(content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+    WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(convert.data()), convert.size() * sizeof(char16_t)));
+    std::cout << "Converted content written to: " + outputFile << std::endl;
+	std::cout << content << std::endl;
+
+}
+
+/// <summary>
+/// Test API ToLocaleFromUtf16BE
+/// </summary>
+void TestToLocaleFromUtf16BE() {
+	std::string inputFile = "testdata/input_utf16be_nobom.txt";
+    std::string outputFile = "testdata/output/output_utf-16be_to_local.txt";
+    std::string content = ReadFileBytes(inputFile);
+	std::u16string utf16be_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
+
+    auto convert = g_conv->ToLocaleFromUtf16BE(utf16be_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+    WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToLocaleFromUtf16BE with BOM
+/// </summary>
+void TestToLocaleFromUtf16BE_WithBOM() {
+	std::string inputFile = "testdata/input_utf16be.txt";
+    std::string outputFile = "testdata/output/output_utf-16be_to_local_with_bom.txt";
+	std::string content = ReadFileBytes(inputFile);
+    auto [encoding, content_view]  = RemoveBOM(content);
+    if ( encoding !=  BomEncoding::UTF16_BE ) {
+        LOGERROR("Expected UTF-16BE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) + "FILE : " + inputFile);
+        std::cout << "Expected UTF-16BE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) << std::endl;
+        return;
+    }
+    else if ( encoding == BomEncoding::UTF16_BE ) {
+        LOGOK("Encoding detected as UTF-16BE with BOM. FILE: " + inputFile);
+		std::cout << "Encoding detected as UTF-16BE with BOM. FILE: " << inputFile << std::endl;
+    }
+
+	std::string cleaned_content(content_view.data(), content_view.size());
+	std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
+
+	auto convert = g_conv->ToLocaleFromUtf16BE(u16_cleaned_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+    WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+
+}
+
+
+/// <summary>
+/// Test API ToLocalFromUtf16LE
+/// </summary>
+void TestToLocaleFromUtf16LE() {
+    std::string inputFile = "testdata/input_utf16le_nobom.txt";
+    std::string outputFile = "testdata/output/output_utf-16le_to_local.txt";
+    std::string content = ReadFileBytes(inputFile);
+    std::u16string utf16le_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
+
+    auto convert = g_conv->ToLocalFromUtf16LE(utf16le_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+    WriteFileBytes(outputFile, convert);
+    std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToLocaleFromUtf16LE with BOM
+/// </summary>
+void TestToLocaleFromUtf16LEWithBOM() {
+	std::string inputFile = "testdata/input_utf16le.txt";
+	std::string outputFile = "testdata/output/output_utf-16le_to_local_with_bom.txt";
+	std::string content = ReadFileBytes(inputFile);
+	auto [encoding, content_view] = RemoveBOM(content);
+    if (encoding != BomEncoding::UTF16_LE) {
+        LOGERROR("Expected UTF-16LE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) + " FILE: " + inputFile);
+        std::cout << "Expected UTF-16LE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) << std::endl;
+        return;
+    }
+    else if (encoding == BomEncoding::UTF16_LE) {
+        LOGOK("Encoding detected as UTF-16LE with BOM. FILE: " + inputFile);
+        std::cout << "Encoding detected as UTF-16LE with BOM. FILE: " << inputFile << std::endl;
+	}
+
+    std::string cleaned_content(content_view.data(), content_view.size());
+    std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
+
+	auto convert = g_conv->ToLocalFromUtf16LE(u16_cleaned_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+
+    WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+
+/// <summary>
+/// Test API ToUtf8FromUtf16LE
+/// </summary>
+void TestToUtf8FromUtf16LE() {
+	std::string inputFile = "testdata/input_utf16le_nobom.txt";
+	std::string outputFile = "testdata/output/output_utf-16le_to_utf-8.txt";
+	std::string content = ReadFileBytes(inputFile);
+	std::u16string utf16le_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
+	auto convert = g_conv->ToUtf8FromUtf16LE(utf16le_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+    WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToUtf8FromUtf16LE with BOM
+/// </summary>
+void TestToUtf8FromUtf16LEWithBOM() {
+	std::string inputFile = "testdata/input_utf16le.txt";
+	std::string outputFile = "testdata/output/output_utf-16le_to_utf-8_with_bom.txt";
+	std::string content = ReadFileBytes(inputFile);
+    auto [encoding, content_view] = RemoveBOM(content);
+    if (encoding != BomEncoding::UTF16_LE) {
+        LOGERROR("Expected UTF-16LE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) + " FILE: " + inputFile);
+        std::cout << "Expected UTF-16LE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) << std::endl;
+        return;
+    }
+    else if (encoding == BomEncoding::UTF16_LE) {
+        LOGOK("Encoding detected as UTF-16LE with BOM. FILE: " + inputFile);
+        std::cout << "Encoding detected as UTF-16LE with BOM. FILE: " << inputFile << std::endl;
+    }
+    std::string cleaned_content(content_view.data(), content_view.size());
+	std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
+
+    auto convert = g_conv->ToUtf8FromUtf16LE(u16_cleaned_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+	WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToUtf8FromUtf16BE
+/// </summary>
+void TestToUtf8FromUtf16BE() {
+	std::string inputFile = "testdata/input_utf16be_nobom.txt";
+	std::string outputFile = "testdata/output/output_utf-16be_to_utf-8.txt";
+	std::string content = ReadFileBytes(inputFile);
+	std::u16string utf16be_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
+    auto convert = g_conv->ToUtf8FromUtf16BE(utf16be_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+	WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToUtf8FromUtf16BE with BOM
+/// </summary>
+void TestToUtf8FromUtf16BEWithBOM() {
+    std::string inputFile = "testdata/input_utf16be.txt";
+    std::string outputFile = "testdata/output/output_utf-16be_to_utf-8_with_bom.txt";
+    std::string content = ReadFileBytes(inputFile);
+    auto [encoding, content_view] = RemoveBOM(content);
+    if (encoding != BomEncoding::UTF16_BE) {
+        LOGERROR("Expected UTF-16BE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) + " FILE: " + inputFile);
+        std::cout << "Expected UTF-16BE encoding with BOM, but got: " + std::to_string(static_cast<int>(encoding)) << std::endl;
+        return;
+    }
+    else if (encoding == BomEncoding::UTF16_BE) {
+        LOGOK("Encoding detected as UTF-16BE with BOM. FILE: " + inputFile);
+        std::cout << "Encoding detected as UTF-16BE with BOM. FILE: " << inputFile << std::endl;
+    }
+    std::string cleaned_content(content_view.data(), content_view.size());
+    std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
+    auto convert = g_conv->ToUtf8FromUtf16BE(u16_cleaned_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+    WriteFileBytes(outputFile, convert);
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToUtf16LEFromUtf8
+/// </summary>
+void TestToUtf16LEFromUtf8() {
+	std::string inputFile = "testdata/input_utf8.txt";
+	std::string outputFile = "testdata/output/output_utf-8_to_utf-16le.txt";
+	std::string content = ReadFileBytes(inputFile);
+    std::u16string convert = g_conv->ToUtf16LEFromUtf8(content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+    }
+	WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(convert.data()), convert.size() * sizeof(char16_t)));
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToUtf16BEFromUtf8
+/// </summary>
+void TestToUtf16BEFromUtf8() {
+	std::string inputFile = "testdata/input_utf8.txt";
+	std::string outputFile = "testdata/output/output_utf-8_to_utf-16be.txt";
+    std::string content = ReadFileBytes(inputFile);
+    std::u16string convert = g_conv->ToUtf16BEFromUtf8(content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+	WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(convert.data()), convert.size() * sizeof(char16_t)));
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+
+}
+
+/// <summary>
+/// Test API ToUtf16LEFromUtf16BE
+/// </summary>
+void TestToUtf16BEFromUtf16LE() {
+	std::string inputFile = "testdata/input_utf16le_nobom.txt";
+	std::string outputFile = "testdata/output/output_utf-16le_to_utf-16be.txt";
+    std::string content = ReadFileBytes(inputFile);
+    std::u16string utf16le_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
+    std::u16string convert = g_conv->ToUtf16BEFromUtf16LE(utf16le_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+	WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(convert.data()), convert.size() * sizeof(char16_t)));
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+/// <summary>
+/// Test API ToUtf16LEFromUtf16BE
+/// </summary>
+void TestToUtf16LEFromUtf16BE() {
+	std::string inputFile = "testdata/input_utf16be_nobom.txt";
+    std::string outputFile = "testdata/output/output_utf-16be_to_utf-16le.txt";
+    std::string content = ReadFileBytes(inputFile);
+    std::u16string utf16be_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
+    std::u16string convert = g_conv->ToUtf16LEFromUtf16BE(utf16be_content);
+    if (convert.empty()) {
+        LOGERROR("Conversion failed for file: " + inputFile);
+        std::cout << "Conversion failed for file: " + inputFile << std::endl;
+        return;
+	}
+	WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(convert.data()), convert.size() * sizeof(char16_t)));
+	std::cout << "Converted content written to: " + outputFile << std::endl;
+}
+
+
+/// <summary>
+/// Test API LocaleToWideString
+/// </summary>
+void TestLocaleToWideString() {
+    std::string inputFile = "testdata/input_gb2312.txt";
+
+    std::string content = ReadFileBytes(inputFile);
+	std::cout << "Content size: " << content.size() << " bytes" << std::endl;
+    std::cout << "Content : " << content << std::endl;
+    std::wstring wideResult = g_conv->LocaleToWideString(content);
+    assert(!wideResult.empty());
+
+	std::string outputFile = "testdata/output/output_gbk_to_wide.txt";
+	WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(wideResult.data()), wideResult.size() * sizeof(wchar_t)));
+    std::cout << "[Test_LocaleToWideString] wideResult size: " << wideResult.size() << " characters" << std::endl;
+    std::wcout.imbue(std::locale(""));
+    std::wcout << L"[Test_LocaleToWideString] wideResult: " << wideResult << std::endl;
+	LOGINFO("Converted content written to: " + outputFile);
+}
+
+
+
+int  main() {
+
+    SetConsoleOutputCP(CP_UTF8);
+    InitializeLogging();
+
+	TestToUtf8FromLocale();            // OK
+	TestToLocaleFromUtf8();            // OK
+
+    TestGetCurrentSystemEncoding();    // OK
+	TestGetEncodingNameByCodePage();   // OK
+    TestToUtf16LEFromLocale();         // OK
+    TestToUtf16BEFromLocale();         // OK
+    TestToLocaleFromUtf16BE();         // OK
+    TestToLocaleFromUtf16LE();         // OK
+    TestToLocaleFromUtf8WithBOM();     // OK
+	TestToLocaleFromUtf16BE_WithBOM(); // OK
+    TestToLocaleFromUtf16LEWithBOM();  // OK
+    TestToUtf8FromUtf16LE();
+    TestToUtf8FromUtf16LEWithBOM();
+
+    TestToUtf8FromUtf16BE();          // OK
+	TestToUtf8FromUtf16BEWithBOM();   // OK
+    
+    TestToUtf16LEFromUtf8();
+    TestToUtf16BEFromUtf8();
+    
+    TestToUtf16BEFromUtf16LE();  // OK
+    TestToUtf16LEFromUtf16BE();  // OK
+    TestLocaleToWideString();
+   
+    
+
+    return 0;
+}

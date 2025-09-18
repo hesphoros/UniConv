@@ -39,7 +39,7 @@ extern LIBICONV_DLL_EXPORTED @DLL_VARIABLE@ int _libiconv_version; /* Likewise *
 #else
 #define LIBICONV_DLL_EXPORTED __declspec(dllimport)
 #endif
-extern LIBICONV_DLL_EXPORTED int _libiconv_version;//第48行
+extern LIBICONV_DLL_EXPORTED int _libiconv_version;
 
 /* We would like to #include any system header file which could define
    iconv_t, 1. in order to eliminate the risk that the user gets compilation

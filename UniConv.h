@@ -1,3 +1,37 @@
+ï»¿/*****************************************************************************
+*  UniConv
+*  Copyright (C) 2025 hesphoros <hesphoros@gmail.com>
+*
+*  This file is part of UniConv.
+*
+*  This program is free software; you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License version 3 as
+*  published by the Free Software Foundation.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program. If not, see <http://www.gnu.org/licenses/>.
+*
+*  @file     UniConv.h
+*  @brief    UniConv A c++ library for variable encoding conversion
+*  @details  Unicode conversion library
+*
+*  @author   hesphoros
+*  @email    hesphoros@gmail.com
+*  @version  1.0.0.1
+*  @date     2025/03/10
+*  @license  GNU General Public License (GPL)
+*---------------------------------------------------------------------------*
+*  Remark         : None
+*---------------------------------------------------------------------------*
+*  Change History :
+*  <Date>     | <Version> | <Author>       | <Description>
+*  2025/03/10 | 1.0.0.1   | hesphoros      | Create file
+*****************************************************************************/
+
+#if _MSC_VER >= 1600
+#pragma execution_character_set("utf-8")
+#endif
+
 #ifndef __UNICONV_H__
 #define __UNICONV_H__
 
@@ -9,20 +43,22 @@
 #include <cwchar>
 #include <clocale>
 #include <sstream>
-#include <iostream>
+#include <utility>
 #include <vector>
-#include <errno.h>
 #include <string_view>
 #include <cerrno>
 #include <fstream>
 #include <cstring>
 #include <system_error>
 #include <mutex>
+#include <shared_mutex>
 #include <memory>
+#include <algorithm>
 #include <functional>
 #include <io.h>
 #include <fcntl.h>
-#include "Singleton.h"
+
+
 
 
 #ifdef _WIN32
@@ -35,26 +71,34 @@
 #endif // __linux__
 
 
-#ifdef UNICONV_DLL 
+#ifdef UNICONV_DLL
 #define UNICONV_EXPORT __declspec(dllexport)
 #else
 #define UNICONV_EXPORT
 #endif
 
-#define DEBUG
+#if defined(_DEBUG) || !defined(NDEBUG)   // Debug Mode
+#define UNICONV_DEBUG_MODE 1
+#else                                     // Release Mode
+#define UNICONV_DEBUG_MODE 0
+#endif
 
-// ÊÊÅä Visual Studio µÄ __cplusplus ºê
+// C++ standard version detection
 #if defined(_MSC_VER)
-	// MSVC ±àÒëÆ÷ÐèÒª¼ì²é _MSVC_LANG
+// MSVC compiler uses _MSVC_LANG to indicate the C++ standard version
 #define CPP_STANDARD _MSVC_LANG
 #else
 #define CPP_STANDARD __cplusplus
 #endif
 
-// Ç¿ÖÆÒªÇó×îµÍ C++11 ±ê×¼
+// Make sure the C++ standard version is at least C++11
 static_assert(CPP_STANDARD >= 201103L, "Error: This code requires C++11 or later");
 
-// ÔÚÍ·ÎÄ¼þÖÐ¶¨Òå³£Á¿
+/**
+ * @brief Get the current C++ standard version as a string.
+ * @return A string_view representing the current C++ standard version.
+ * @retval "C++20 or later" if the standard is C++20 or later.
+ */
 inline constexpr std::string_view current_cpp_standard() {
 #if CPP_STANDARD >= 202002L
 	return "C++20 or later";
@@ -69,24 +113,54 @@ inline constexpr std::string_view current_cpp_standard() {
 #endif
 }
 
- 
+
+template <typename T>
+class Singleton {
+protected:
+
+	Singleton() = default;
+	Singleton(const Singleton<T>&) = delete;
+	Singleton& operator=(const Singleton<T>& st) = delete;
+
+	static std::shared_ptr<T> _instance;
+public:
+	static std::shared_ptr<T> GetInstance() {
+		static std::once_flag s_flag;
+		std::call_once(s_flag, [&]() {
+			_instance = std::shared_ptr<T>(new T);
+			});
+
+		return _instance;
+	}
+	~Singleton() {
+		//std::cout << "this is singleton destruct" << std::endl;
+	}
+};
+
+template <typename T>
+std::shared_ptr<T> Singleton<T>::_instance = nullptr;
 
 
-//TODO: ´íÎó¼ÇÂ¼Ê¹ÓÃunique_ptr get() ÂÞÖ¸Õë¹¹Ôì´íÎó 
-// ×îÖÕÊ¹ÓÃshared_ptr ±£´æ´íÎóÐÅÏ¢
+class EncodingNames;
 
 
 class UNICONV_EXPORT UniConv : public Singleton<UniConv>
 {
 
-	friend class Singleton<UniConv>; // ÔÊÐí Singleton ·ÃÎÊ Convert µÄË½ÓÐ¹¹Ôìº¯Êý
+	/**
+	 * @brief Singleton class for UniConv.
+	 */
+	friend class Singleton<UniConv>;
 
 private:
-	// ×Ô¶¨ÒåÉ¾³ýÆ÷£¬ÓÃÓÚÊÍ·Å iconv_t ×ÊÔ´
+	/**
+	 * @brief Custom deleter for iconv_t to ensure proper cleanup.
+	 * * This deleter will be used with std::shared_ptr to manage the iconv_t resource.
+	 */
 	struct IconvDeleter {
 		void operator()(iconv_t cd) const {
 			std::cerr << "Closing iconv_t: " << cd << std::endl;
-			// Ö»ÓÐÔÚ cd ²»ÊÇÎÞÐ§¾ä±úÊ±²Åµ÷ÓÃ iconv_close
+			// call iconv_close to release the iconv descriptor only if it is valid
 			if (cd != reinterpret_cast<iconv_t>(-1)) {
 				iconv_close(cd);
 			}
@@ -95,27 +169,96 @@ private:
 
 	/*using IconvUniquePtr = std::unique_ptr <std::remove_pointer<iconv_t>::type, UniConv::IconvDeleter>;*/
 	using IconvSharedPtr = std::shared_ptr <std::remove_pointer<iconv_t>::type>;
-	
-	/// <summary>
-	/// ±àÂëÐÅÏ¢
-	/// </summary>
+
+	/**
+	 * @struct EncodingInfo
+	 * @brief Structure to hold encoding information.
+	 * @details This structure holds information about a specific text encoding.
+	 */
 	struct EncodingInfo
 	{
-		std::string dotNetName;//±àÂëÃû³Æ
-		std::string extra_info;
+		std::string dotNetName;  /*!< .NET encoding name */
+		std::string extra_info;	 /*!< Extra information */
 	};
 
 public:
-	
-	/// <summary>
-	/// ×ª»»½á¹û½á¹¹Ìå
-	/// </summary>
-	struct IConvResult {
-		std::string        conv_result_str;// ×ª»»³É¹¦µÄ½á¹û Ê¹ÓÃÐÂ±àÂëµÄ×Ö·û´®
-		int                error_code = 0; // ´íÎóÂë
-		std::string        error_msg = {NULL}; // ´íÎóÐÅÏ¢
 
-		// ÅÐ¶ÏÊÇ·ñ×ª»»³É¹¦
+   void SetDefaultEncoding(const std::string& encoding);
+
+	//---------------------------------------------------------------------------
+	// Bom encodings @{
+	//---------------------------------------------------------------------------
+		/**
+		 * @brief Enumeration representing different Byte Order Mark (BOM) encodings
+		 *
+		 * This enum class defines the various BOM (Byte Order Mark) encoding types
+		 * that can be detected or used in Unicode text processing. BOM is a special
+		 * marker at the beginning of a text file that indicates the encoding format
+		 * and byte order of the text.
+		 *
+		 * @note This is a scoped enumeration (enum class) to prevent name collisions
+		 *       and provide type safety.
+		 */
+	enum class BomEncoding {
+		None,
+		UTF8,
+		UTF16_LE,
+		UTF16_BE,
+		UTF32_LE,
+		UTF32_BE
+	};
+	//---------------------------------------------------------------------------
+	// @} End of Bom encoding
+	//---------------------------------------------------------------------------
+
+
+
+	//---------------------------------------------------------------------------
+	// Supported encodings @{
+	//---------------------------------------------------------------------------
+        /**
+         * @enum Encoding
+         * @brief Enumeration of supported encoding types
+         * @details
+         * This enumeration defines all supported encoding types.
+         * Enumeration values â€‹â€‹are automatically generated by including the "encodings.inc" file.
+         * Each enumeration member represents an encoding method.
+         * Its order and content are consistent with the "encodings.inc" file .
+         * The last member count is used to indicate the number of encoding types.
+         * @see https://learn.microsoft.com/zh-cn/windows/win32/intl/code-page-identifiers
+        */
+        enum class Encoding : int {
+        #define X(name, str) name,
+        #include "encodings.inc"
+        #undef X
+        count
+        };
+	//---------------------------------------------------------------------------
+	//@} End of Supported encodings
+	//---------------------------------------------------------------------------
+
+
+	/**
+	 * @struct IConvResult
+	 * @brief Structure to hold the result of a conversion operation.
+	 * @note IConvResult
+	 */
+	struct IConvResult {
+		std::string        conv_result_str;  /*!< Conversion result string */
+		int                error_code;       /*!< Error code               */
+		std::string        error_msg;        /*!< Error message            */
+
+		IConvResult() {
+			/** Initialize the members */
+			conv_result_str = "";
+			error_code = 0;
+			error_msg = "";
+		}
+		/**
+		 * @brief Check if the conversion was successful.
+		 * @return True if the conversion was successful, false otherwise.
+		 * @return bool
+		 */
 		bool IsSuccess() const {
 			return error_code == 0;
 		}
@@ -134,357 +277,500 @@ public:
 			return error_code != code;
 		}
 
-
 		const char* c_str() const {
 			return IsSuccess() ? conv_result_str.c_str() : error_msg.data();
 		}
 	};
 
 
-	~UniConv()
-	{
-		
+	~UniConv() {
 	}
-	
-
-	/// <summary>
-	/// »ñÈ¡µ±Ç°ÏµÍ³±àÂë
-	/// </summary>
-	/// <returns> µ±Ç°ÏµÍ³±àÂëµÄ.Net name </returns>
-	std::string          GetCurrentSystemEncoding();
-
-	/// <summary>
-	/// »ñÈ¡µ±Ç°ÏµÍ³±àÂë´úÂëÒ³
-	/// </summary>
-	/// <returns> ÈôÎ´ÕÒµ½Ä¬ÈÏÎª65001 ²»Ö§³ÖÔò·µ»Ø0 </returns>
-	static std::uint16_t GetCurrentSystemEncodingCodePage();
-
-	/// <summary>
-	/// »ñÈ¡Ö¸¶¨´úÂëÒ³µÄ±àÂëÃû³Æ
-	/// </summary>
-	/// <param name="codePage"></param>
-	/// <returns></returns>
-	static std::string   GetEncodingNameByCodePage(std::uint16_t codePage);
-
-	/// <summary>
-	/// ±¾µØ±àÂë×ª»»ÎªUTF-8 TEST SUCCESS
-	/// </summary>
-	/// <param name="input"></param>
-	/// <returns></returns>
-	std::string          LocaleConvertToUtf8(const std::string& sInput);
-	std::string          LocaleConvertToUtf8(const char* sInput);
-
-	/// <summary>
-	/// UTF-8 ×ª»»Îª±¾µØ±àÂë TEST SUCCESS
-	/// </summary>
-	/// <param name="sInput"></param>
-	/// <returns></returns>
-	std::string          Utf8ConvertToLocale(const std::string& sInput);
-    std::string          Utf8ConvertToLocale(const char* sInput);
-
-	/// <summary>
-	/// ±¾µØ±àÂë×ª»»ÎªUTF-16LE Ð¡¶Ë
-	/// </summary>
-	/// <param name="sInput"></param>
-	/// <returns></returns>
-	std::u16string       LocaleConvertToUtf16LE(const std::string& sInput);
-    std::u16string       LocaleConvertToUtf16LE(const char* sInput);
-
-	/// <summary>
-	/// ±¾µØ±àÂë×ª»»ÎªUTF-16BE ´ó¶Ë
-	/// </summary>
-	/// <param name="sInput"></param>
-	/// <returns></returns>
-	std::u16string       LocaleConvertToUtf16BE(const std::string& sInput);
-	std::u16string       LocaleConvertToUtf16BE(const char* sInput);
-
-	/// <summary>
-	/// UTF-16LE Ð¡¶Ë ×ª»»Îª±¾µØ±àÂë Ä¿Ç°´æÔÚÎÊÌâ
-	/// </summary>
-	/// <param name="sInput"></param>
-	/// <returns></returns>
-	std::string          Utf16BEConvertToLocale(const std::u16string& sInput);
-	std::string          Utf16BEConvertToLocale(const char16_t* sInput);
-
-	/// <summary>
-	/// UTF-16LE Ð¡¶Ë ×ª»»ÎªUTF8±àÂë
-	/// </summary>
-	/// <param name="sInput"></param>
-	/// <returns></returns>
-	std::string          Utf16LEConvertToUtf8(const std::u16string& sInput);
-	std::string          Utf16LEConvertToUtf8(const char16_t* sInput);
+/** Test Success */
+/***************************************************************************/
+/*========================= Get current encoding ==========================*/
+/***************************************************************************/
+	/**
+	 * @brief Get current system encoding.
+	 * @return A string representing the current system encoding.
+	 * @retval "UTF-8" if the system encoding is UTF-8.
+	 * @retval "UTF-16LE" if the system encoding is UTF-16LE.
+	 * @note finished test on windows
+	 */
+	static std::string     GetCurrentSystemEncoding();
 
 
-	std::string          Utf16BEConvertToUtf8(const std::u16string& sInput);
-	std::string          Utf16BEConvertToUtf8(const char16_t* sInput);
+	/**
+	 * @brief Get current system encoding code page.
+	 * @return The code page of the current system encoding.
+	 * @retval 0 if the code page cannot be determined.
+	 * @retval -1  it not on windows or Linux
+	 * @note finished test on windows
+	 */
+	static std::uint16_t   GetCurrentSystemEncodingCodePage();
+
+	/**
+	 * @brief Get the encoding name by code page.
+	 * @param  codePage The code page to look up.
+	 * @return The name of the encoding corresponding to the given code page.
+	 * @retval std::string
+	 * @note finished test on windows
+	 */
+	static std::string     GetEncodingNameByCodePage(std::uint16_t codePage);
+
+/** Test Success */ 
+/***************************************************************************/
+/*=================== Locale <-> UTF-8 Conversion Interface =========================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert a string from system local encoding to UTF-8 string
+	 * @param  input System local encoding input string
+	 * @return Converted UTF-8 string
+	 * @todo test
+	 */
+	std::string ToUtf8FromLocale(const std::string& input);
+
+	/**
+	 * @brief Convert a C string from system local encoding to UTF-8 string
+	 * @param  input System local encoding C string
+	 * @return Converted UTF-8 string
+	 * @todo test
+	 */
+	std::string ToUtf8FromLocale(const char* input);
+
+	/**
+	 * @brief Convert UTF-8 string to system local encoding string
+	 * @param  input UTF-8 encoded input string
+	 * @return Converted system local encoding string
+	 */
+	std::string ToLocaleFromUtf8(const std::string& input);
+
+	/**
+	 * @brief Convert UTF-8 C string to system local encoding string
+	 * @param  input UTF-8 encoded C string
+	 * @return Converted system local encoding string
+	 */
+	std::string ToLocaleFromUtf8(const char* input);
+/** Test Success */
+/***************************************************************************/
+/*=================== Locale convert to UTF-16 (LE BE) ====================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert a string from the current locale encoding to UTF-16LE.
+	 * @param  input The input string to be converted.
+	 * @return The converted string in UTF-16LE encoding.
+	 */
+	std::u16string ToUtf16LEFromLocale(const std::string& input);
+
+	/**
+	 * @brief Convert a C-style string from the current locale encoding to UTF-16LE.
+	 * @param input The C-style string to be converted.
+	 * @return The converted string in UTF-16LE encoding.
+	 */
+	std::u16string ToUtf16LEFromLocale(const char* input);
+	/**
+	 * @brief Convert a string from the current locale encoding to UTF-16BE.
+	 * @param  input The input string to be converted.
+	 * @return The converted string in UTF-16BE encoding.
+	 */
+	std::u16string ToUtf16BEFromLocale(const std::string& input);
+	/**
+	 * @brief Convert a C-style string from the current locale encoding to UTF-16BE.
+	 * @param input The C-style string to be converted.
+	 * @return The converted string in UTF-16BE encoding.
+	 */
+	std::u16string ToUtf16BEFromLocale(const char* input);
+
+/** Test Success */
+/***************************************************************************/
+/*========================== UTF-16 BE To Locale ==========================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert a UTF-16BE encoded string to the current locale encoding.
+	 * @param  input The UTF-16BE encoded string to be converted.
+	 * @return The converted string in the current locale encoding.
+	 */
+	std::string ToLocaleFromUtf16BE(const std::u16string& input);
+
+	/**
+	 * @brief Convert a C-style UTF-16BE string to the current locale encoding.
+	 * @param input The C-style UTF-16BE string to be converted.
+	 * @return The converted string in the current locale encoding.
+	 */
+	std::string ToLocaleFromUtf16BE(const char16_t* input);
+
+/** Test Success */
+/***************************************************************************/
+/*======================== UTF-16 (LE BE) To UTF-8 ========================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert a UTF-16LE string to UTF-8.
+	 * @param input The UTF-16LE string to be converted.
+	 * @return The converted string in UTF-8 encoding.
+	 */
+	std::string ToUtf8FromUtf16LE(const std::u16string& input);
+
+	// Overload with length parameter
+	std::string ToUtf8FromUtf16LE(const char16_t* input, size_t len);
+
+	/**
+	 * @brief Convert a C-style UTF-16LE string to UTF-8.
+	 * @param input The C-style UTF-16LE string to be converted.
+	 * @return The converted string in UTF-8 encoding.
+	 */
+	std::string ToUtf8FromUtf16LE(const char16_t* input);
+
+	/**
+	 * @brief Convert a UTF-16BE string to UTF-8.
+	 * @param sInput The UTF-16BE string to be converted.
+	 * @return The converted string in UTF-8 encoding.
+	 * @retval val std::string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-16BE
+	 * @return
+	 */
+	std::string ToUtf8FromUtf16BE(const std::u16string& input);
+
+	std::string ToUtf8FromUtf16BE(const char16_t* input, size_t len);
+
+	/**
+	 * @brief Convert a C-style UTF-16BE string to UTF-8.
+	 * @param sInput The C-style UTF-16BE string to be converted.
+	 * @return The converted string in UTF-8 encoding.
+	 * @retval val std::string
+	 */
+	/**
+	 * @brief UTF-16BE -8
+	 * @param  input UTF-16BE C
+	 * @return
+	 */
+	std::string ToUtf8FromUtf16BE(const char16_t* input);
+
+/** Test Success */
+/***************************************************************************/
+/*========================== UTF-8 To UTF16(LE BE) ========================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert a UTF-8 string to UTF-16LE.
+	 * @param sInput The UTF-8 string to be converted.
+	 * @return The converted string in UTF-16LE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-8
+	 * @return
+	 */
+	std::u16string ToUtf16LEFromUtf8(const std::string& input);
+
+	/**
+	 * @brief Convert a C-style UTF-8 string to UTF-16LE.
+	 * @param sInput The C-style UTF-8 string to be converted.
+	 * @return The converted string in UTF-16LE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-8 C
+	 * @return
+	 */
+	std::u16string ToUtf16LEFromUtf8(const char* input);
+
+	/**
+	 * @brief Convert a UTF-8 string to UTF-16BE.
+	 * @param sInput The UTF-8 string to be converted.
+	 * @return The converted string in UTF-16BE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-8
+	 */
+	std::u16string ToUtf16BEFromUtf8(const std::string& input);
+
+	/**
+	 * @brief Convert a C-style UTF-8 string to UTF-16BE.
+	 * @param sInput The C-style UTF-8 string to be converted.
+	 * @return The converted string in UTF-16BE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-8 C
+	 * @return
+	 */
+	std::u16string ToUtf16BEFromUtf8(const char* input);
+
+/** Test Success */
+/***************************************************************************/
+/*====================== UTF16 LE BE <-> UTF16 LE BE ======================*/
+/***************************************************************************/
+
+	/**
+	 * @brief Convert a UTF-16LE string to UTF-16BE.
+	 * @param sInput The UTF-16LE string to be converted.
+	 * @return The converted string in UTF-16BE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief Utf16le to utf16be
+	 * @param  input UTF-16LE
+	 * @return
+	 */
+	std::u16string ToUtf16BEFromUtf16LE(const std::u16string& input);
+
+	/**
+	 * @brief Convert a C-style UTF-16LE string to UTF-16BE.
+	 * @param sInput The C-style UTF-16LE string to be converted.
+	 * @return The converted string in UTF-16BE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-16LE C
+	 * @return
+	 */
+	std::u16string ToUtf16BEFromUtf16LE(const char16_t* input);
+
+	/**
+	 * @brief Convert a UTF-16BE string to UTF-16LE.
+	 * @param sInput The UTF-16BE string to be converted.
+	 * @return The converted string in UTF-16LE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-16BE
+	 * @return
+	 */
+	std::u16string ToUtf16LEFromUtf16BE(const std::u16string& input);
+
+	/**
+	 * @brief Convert a C-style UTF-16BE string to UTF-16LE.
+	 * @param sInput The C-style UTF-16BE string to be converted.
+	 * @return The converted string in UTF-16LE encoding.
+	 * @retval val std::u16string
+	 */
+	/**
+	 * @brief
+	 * @param  input UTF-16BE C
+	 * @return
+	 */
+	std::u16string ToUtf16LEFromUtf16BE(const char16_t* input);
+
+/*Test Success */
+/***************************************************************************/
+/*========================= string <-> wstring ============================*/
+/***************************************************************************/
+
+	/**
+	 * @brief Convert a string to a wide string.
+	 * @param sInput The input string to be converted.
+	 * @return The converted wide string.
+	 * @retval val std::wstring
+	 */
+	std::wstring         LocaleToWideString(const std::string& sInput);
+
+	/**
+	 * @brief Convert a C-style string to a wide string.
+	 * @param sInput The C-style string to be converted.
+	 * @return The converted wide string.
+	 * @retval val std::wstring
+	 */
+	std::wstring         LocaleToWideString(const char* sInput);
+
+	/**	
+	 * @brief Convert a wide string to a string in the current locale encoding.
+	 * @param sInput The wide string to be converted.
+	 * @return The converted string in the current locale encoding.
+	 * @retval val std::string
+	 */
+	std::string          LocaleToNarrowString(const std::wstring& sInput);
+
+	/**
+	 * @brief Convert a C-style wide string to a string in the current locale encoding.
+	 * @param sInput The C-style wide string to be converted.
+	 * @return The converted string in the current locale encoding.
+	 * @retval val std::string
+	 */
+	std::string          LocaleToNarrowString(const wchar_t* sInput);
+
+/** Test Suceess */
+/***************************************************************************/
+/*===================== UTF16 <-> Local Encoding =======================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert UTF-16LE string to local encoding.
+	 * @param input UTF-16LE string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string ToLocalFromUtf16LE(const std::u16string& input);
+
+	/**
+	 * @brief Convert UTF-16LE C-style string to local encoding.
+	 * @param input UTF-16LE C-style string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string ToLocalFromUtf16LE(const char16_t* input);
+
+/***************************************************************************/
+/*======================= Wide String Helpers ===========================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert wide string to local encoding.
+	 * @param sInput Wide string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string WideStringToLocale(const std::wstring& sInput);
+
+	/**
+	 * @brief Convert wide C-style string to local encoding.
+	 * @param sInput Wide C-style string to convert.
+	 * @return Converted string in local encoding.
+	 */
+	std::string WideStringToLocale(const wchar_t* sInput);
+
+/***************************************************************************/
+/*=========================== UTF32 <=> other ============================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert a UTF-32 string to UTF-8.
+	 * @param sInput The UTF-32 string to be converted.
+	 * @return The converted UTF-8 string.
+	 * @retval val std::string
+	 */
+	std::string          ToUtf8FromUtf32LE(const std::u32string& sInput);
+	std::string          ToUtf8FromUtf32LE(const char32_t* sInput);
 
 
-	std::u16string       Utf8ConvertToUtf16LE(const std::string& sInput);
-	std::u16string       Utf8ConvertToUtf16LE(const char* sInput);
+	/**
+	 * @brief Convert a UTF-32 string to UTF-16LE.
+	 * @param sInput The UTF-32 string to be converted.
+	 * @return The converted UTF-16LE string.
+	 * @retval val std::u16string
+	 */
+	std::u16string       ToUtf16LEFromUtf32LE(const std::u32string& sInput);
+	std::u16string       ToUtf16LEFromUtf32LE(const char32_t* sInput);
 
-	std::u16string       Utf8ConvertToUtf16BE(const std::string& sInput);
-	std::u16string       Utf8ConvertToUtf16BE(const char* sInput);
+	/**
+	 * @brief Convert a UTF-32 string to UTF-16BE.
+	 * @param sInput The UTF-32 string to be converted.
+	 * @return The converted UTF-16BE string.
+	 * @retval val std::u16string
+	 */
+	std::u16string       Utf32LEConvertToUtf16BE(const std::u32string& sInput);
+	std::u16string       Utf32LEConvertToUtf16BE(const char32_t* sInput);
 
-	std::u16string       Utf16LEConvertToUtf16BE(const std::u16string& sInput);
-	std::u16string       Utf16LEConvertToUtf16BE(const char16_t* sInput);
+	/**
+	 * @brief Convert UTF-8 string to UTF-32.
+	 * @param sInput The UTF-8 string to be converted.
+	 * @return The converted UTF-32 string.
+	 * @retval val std::u32string
+	 */
+	std::u32string       Utf8ConvertToUtf32LE(const std::string& sInput);
+	std::u32string       Utf8ConvertToUtf32LE(const char* sInput);
 
-	std::u16string       Utf16BEConvertToUtf16LE(const std::u16string& sInput);
-	std::u16string       Utf16BEConvertToUtf16LE(const char16_t* sInput);
+	/**
+	 * @brief Convert a UTF-16LE string to UTF-32.
+	 * @param sInput The UTF-16LE string to be converted.
+	 * @return The converted UTF-32 string.
+	 * @retval val std::u32string
+	 */
+	std::u32string       Utf16LEConvertToUtf32LE(const std::u16string& sInput);
+	std::u32string       Utf16LEConvertToUtf32LE(const char16_t* sInput);
 
-	std::wstring         LocaleConvertToWide(const std::string& sInput);
-	std::wstring         LocaleConvertToWide(const char* sInput);
+	/**
+	 * @brief Convert a UTF-16BE string to UTF-32.
+	 * @param sInput The UTF-16BE string to be converted.
+	 * @return The converted UTF-32 string.
+	 * @retval val std::u32string
+	 */
+	std::u32string       Utf16BEConvertToUtf32LE(const std::u16string& sInput);
+	std::u32string       Utf16BEConvertToUtf32LE(const char16_t* sInput);
 
-	//// ¿í×Ö·û×ª Locale
-	std::string          WideConvertToLocale(const std::wstring& sInput);
-	std::string          WideConvertToLocale(const wchar_t* sInput);
+	/**
+    * @brief Convert a UCS-4 (std::wstring, platform dependent) string to UTF-8 encoded std::string.
+    * @details This function converts a wide string (std::wstring), which is typically UCS-4 on Linux (wchar_t = 4 bytes)
+    *          and UTF-16 on Windows (wchar_t = 2 bytes), to a UTF-8 encoded std::string.
+    *          The conversion assumes the input is UCS-4 (i.e., each wchar_t is a Unicode code point).
+    * @param wstr The input wide string (UCS-4 encoded).
+    * @return The converted UTF-8 encoded string.
+    */
+	std::string          Ucs4ConvertToUtf8(const std::wstring& wstr);
 
-	std::wstring         Utf8ConvertToWide(const std::string& sInput);
-	std::wstring         Utf8ConvertToWide(const char* sInput);
+	std::wstring         Utf8ConvertsToUcs4(const std::string& utf8str);
 
-	std::string          WideConvertToUtf8(const std::wstring& sInput);
-	std::string          WideConvertToUtf8(const wchar_t* sInput);
 
-	std::string          Utf32ConvertToUtf8(const std::u32string& sInput);
-	std::u16string       Utf32ConvertToUtf16LE(const std::u32string& sInput);
-	std::u16string       Utf32ConvertToUtf16BE(const std::u32string& sInput);
+	std::wstring         U16StringToWString(const std::u16string& u16str);
+	std::wstring		 U16StringToWString(const char16_t* u16str);
 
-	std::u32string       Utf8ConvertToUtf32(const std::string& sInput);
-	std::u32string       Utf16LEConvertToUtf32(const std::u16string& sInput);
-	std::u32string       Utf16BEConvertToUtf32(const std::u16string& sInput);
-	
-	std::wstring         StringConvertToWstring(const std::string& str);
-	std::string          WstringConvertToString(const std::wstring& wstr);
-	
+	/**
+	 * @brief Encoding to string
+	 *
+	 */
+	static std::string ToString(UniConv::Encoding enc);
+
+	/**
+	 * @brief Convert between any two encodings using iconv
+	 * @param input Input string data
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @return Conversion result
+	 */
+	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
+
 private:
-	static const std::unordered_map<std::uint16_t,EncodingInfo>             m_encodingMap;
-	static const std::unordered_map<std::string,std::uint16_t>              m_encodingToCodePageMap;
-	//std::unordered_map<std::string,UniConv::IconvUniquePtr>               m_iconvDesscriptorCacheMap;
-	std::mutex                                                              m_iconvcCacheMutex;
-	static const std::unordered_map<int,std::string_view>                   m_iconvErrorMap;
-	static std::unordered_map<std::string, IconvSharedPtr>                  m_iconvDesscriptorCacheMapS;
-	
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// Private members @{
+	//----------------------------------------------------------------------------------------------------------------------
+	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;                /*!< Encoding map           */
+	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
+	mutable std::shared_mutex                                    m_iconvCacheMutex;            /*!< Iconv cache mutex      */
+	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;              /*!< Iconv error messages   */
+	static std::unordered_map<std::string, IconvSharedPtr>       m_iconvDescriptorCacheMapS;   /*!< Iconv descriptor cache */
+	static constexpr size_t                                      MAX_CACHE_SIZE = 100;         /*!< Iconv max cache number */
+	static const  std::string                                    m_encodingNames[];            /*!< Encoding map           */
+	static std::string                                           m_defaultEncoding;            /*!< Current encoding       */
+	//----------------------------------------------------------------------------------------------------------------------
+	/// @} ! Private members
+	//----------------------------------------------------------------------------------------------------------------------
+
 private:
-	/// <summary>
-	/// °ü×°µÄiconv ×ª»»º¯Êý
-	/// </summary>
-	/// <param name="in"></param>
-	/// <param name="fromcode"></param>
-	/// <param name="tocode"></param>
-	/// <returns></returns>
-	IConvResult                         Convert(std::string_view in, const char* fromcode, const char* tocode);
-	IConvResult                         Convert(std::wstring_view in, const char* fromcode, const char* tocode);
+
+
+	/**
+	 * @brief Retrieves a descriptive error string corresponding to an iconv error code.
+	 *
+	 * This function maps the provided error code from the iconv library to a human-readable
+	 * string that describes the error. It is useful for debugging and logging purposes
+	 * when working with character encoding conversions.
+	 * @param err_code The error code returned by the iconv library.
+	 * @return A string containing the description of the error associated with the given error code.
+	 * @retval If the error code is not found in the map,return a generic error message
+	 */
 	static std::string                  GetIconvErrorString(int err_code);
 
-	/// <summary>
-	/// »ñÈ¡iconv ×ª»»ÃèÊö·û
-	/// </summary>
-	/// <param name="fromcode"> Ô­±àÂëc </param>
-	/// <param name="tocode"> Ä¿±ê±àÂë </param>
-	/// <returns>
-	///  iconv_t ÃèÊö·û µ±´íÎó·¢ÉúÊ±Ò²»á·µ»ØÒ»¸ö´íÎóµÄiconv_t ÃèÊö·û
-	/// </returns>
-	//IconvUniquePtr                    GetIconvDescriptor(const char* fromcode, const char* tocode);
-	IconvSharedPtr                      GetIconvDescriptorS(const char* fromcode, const char* tocode);
+	/**
+	 * @brief Get the iconv descriptor.
+	 * @param fromcode The source encoding.
+	 * @param tocode The target encoding.
+	 * @return The iconv descriptor as an IconvSharedPtr.
+	 */
+	IconvSharedPtr                            GetIconvDescriptor(const char* fromcode, const char* tocode);
 
-	
+	std::pair<BomEncoding, std::string_view>  DetectAndRemoveBom(const std::string_view& data);
+	std::pair<BomEncoding, std::wstring_view> DetectAndRemoveBom(const std::wstring_view& data);
 
 private:
-	UniConv() {					
-	}
+	UniConv() { }
+
 	UniConv(const UniConv&) = delete;
 	UniConv& operator=(const UniConv&) = delete;
-	public:
-		/// <summary>
-		/// ÕâÀï¶¨ÒåÒ»Ð©³£ÓÃµÄ±àÂë
-		/// </summary>
-		/*{@ */
+public:
 
-		// European languages Å·ÖÞÓïÑÔ
-		static constexpr const char* ascii_encoding = "ASCII";
-		static constexpr const char* iso_8859_1_encoding = "ISO-8859-1";
-		static constexpr const char* iso_8859_2_encoding = "ISO-8859-2";
-		static constexpr const char* iso_8859_3_encoding = "ISO-8859-3";
-		static constexpr const char* iso_8859_4_encoding = "ISO-8859-4";
-		static constexpr const char* iso_8859_5_encoding = "ISO-8859-5";
-		static constexpr const char* iso_8859_7_encoding = "ISO-8859-7";
-		static constexpr const char* iso_8859_9_encoding = "ISO-8859-9";
-		static constexpr const char* iso_8859_10_encoding = "ISO-8859-10";
-		static constexpr const char* iso_8859_13_encoding = "ISO-8859-13";
-		static constexpr const char* iso_8859_14_encoding = "ISO-8859-14";
-		static constexpr const char* iso_8859_15_encoding = "ISO-8859-15";
-		static constexpr const char* iso_8859_16_encoding = "ISO-8859-16";
-		static constexpr const char* koi8_r_encoding = "KOI8-R";
-		static constexpr const char* koi8_u_encoding = "KOI8-U";
-		static constexpr const char* koi8_ru_encoding = "KOI8-RU";
-		static constexpr const char* cp1250_encoding = "CP1250";
-		static constexpr const char* cp1251_encoding = "CP1251";
-		static constexpr const char* cp1252_encoding = "CP1252";
-		static constexpr const char* cp1253_encoding = "CP1253";
-		static constexpr const char* cp1254_encoding = "CP1254";
-		static constexpr const char* cp1257_encoding = "CP1257";
-		static constexpr const char* cp850_encoding = "CP850";
-		static constexpr const char* cp866_encoding = "CP866";
-		static constexpr const char* cp1131_encoding = "CP1131";
-		static constexpr const char* mac_roman_encoding = "MacRoman";
-		static constexpr const char* mac_central_europe_encoding = "MacCentralEurope";
-		static constexpr const char* mac_iceland_encoding = "MacIceland";
-		static constexpr const char* mac_croatian_encoding = "MacCroatian";
-		static constexpr const char* mac_romania_encoding = "MacRomania";
-		static constexpr const char* mac_cyrillic_encoding = "MacCyrillic";
-		static constexpr const char* mac_ukraine_encoding = "MacUkraine";
-		static constexpr const char* mac_greek_encoding = "MacGreek";
-		static constexpr const char* mac_turkish_encoding = "MacTurkish";
-		static constexpr const char* macintosh_encoding = "Macintosh";
-
-		// Semitic languages
-		static constexpr const char* iso_8859_6_encoding = "ISO-8859-6";
-		static constexpr const char* iso_8859_8_encoding = "ISO-8859-8";
-		static constexpr const char* cp1255_encoding = "CP1255";
-		static constexpr const char* cp1256_encoding = "CP1256";
-		static constexpr const char* cp862_encoding = "CP862";
-		static constexpr const char* mac_hebrew_encoding = "MacHebrew";
-		static constexpr const char* mac_arabic_encoding = "MacArabic";
-
-		// Japanese
-		static constexpr const char* euc_jp_encoding = "EUC-JP";
-		static constexpr const char* shift_jis_encoding = "SHIFT_JIS";
-		static constexpr const char* cp932_encoding = "CP932";
-		static constexpr const char* iso_2022_jp_encoding = "ISO-2022-JP";
-		static constexpr const char* iso_2022_jp_2_encoding = "ISO-2022-JP-2";
-		static constexpr const char* iso_2022_jp_1_encoding = "ISO-2022-JP-1";
-		static constexpr const char* iso_2022_jp_ms_encoding = "ISO-2022-JP-MS";
-
-		// Chinese
-		static constexpr const char* euc_cn_encoding = "EUC-CN";
-		static constexpr const char* hz_encoding = "HZ";
-		static constexpr const char* gbk_encoding = "GBK";
-		static constexpr const char* cp936_encoding = "CP936";
-		static constexpr const char* gb18030_encoding = "GB18030";
-		static constexpr const char* gb18030_2022_encoding = "GB18030:2022";
-		static constexpr const char* euc_tw_encoding = "EUC-TW";
-		static constexpr const char* big5_encoding = "BIG5";
-		static constexpr const char* cp950_encoding = "CP950";
-		static constexpr const char* big5_hkscs_encoding = "BIG5-HKSCS";
-		static constexpr const char* big5_hkscs_2004_encoding = "BIG5-HKSCS:2004";
-		static constexpr const char* big5_hkscs_2001_encoding = "BIG5-HKSCS:2001";
-		static constexpr const char* big5_hkscs_1999_encoding = "BIG5-HKSCS:1999";
-		static constexpr const char* iso_2022_cn_encoding = "ISO-2022-CN";
-		static constexpr const char* iso_2022_cn_ext_encoding = "ISO-2022-CN-EXT";
-
-		// Korean
-		static constexpr const char* euc_kr_encoding = "EUC-KR";
-		static constexpr const char* cp949_encoding = "CP949";
-		static constexpr const char* iso_2022_kr_encoding = "ISO-2022-KR";
-		static constexpr const char* johab_encoding = "JOHAB";
-
-		// Armenian
-		static constexpr const char* armscii_8_encoding = "ARMSCII-8";
-
-		// Georgian
-		static constexpr const char* georgian_academy_encoding = "Georgian-Academy";
-		static constexpr const char* georgian_ps_encoding = "Georgian-PS";
-
-		// Tajik
-		static constexpr const char* koi8_t_encoding = "KOI8-T";
-
-		// Kazakh
-		static constexpr const char* pt154_encoding = "PT154";
-		static constexpr const char* rk1048_encoding = "RK1048";
-
-		// Thai
-		static constexpr const char* tis_620_encoding = "TIS-620";
-		static constexpr const char* cp874_encoding = "CP874";
-		static constexpr const char* mac_thai_encoding = "MacThai";
-
-		// Laotian
-		static constexpr const char* mulelao_1_encoding = "MuleLao-1";
-		static constexpr const char* cp1133_encoding = "CP1133";
-
-		// Vietnamese
-		static constexpr const char* viscii_encoding = "VISCII";
-		static constexpr const char* tcvn_encoding = "TCVN";
-		static constexpr const char* cp1258_encoding = "CP1258";
-
-		// Platform specifics
-		static constexpr const char* hp_roman8_encoding = "HP-ROMAN8";
-		static constexpr const char* nextstep_encoding = "NEXTSTEP";
-
-		// Full Unicode
-		static constexpr const char* utf_8_encoding = "UTF-8";
-		static constexpr const char* ucs_2_encoding = "UCS-2";
-		static constexpr const char* ucs_2be_encoding = "UCS-2BE";
-		static constexpr const char* ucs_2le_encoding = "UCS-2LE";
-		static constexpr const char* ucs_4_encoding = "UCS-4";
-		static constexpr const char* ucs_4be_encoding = "UCS-4BE";
-		static constexpr const char* ucs_4le_encoding = "UCS-4LE";
-		static constexpr const char* utf_16_encoding = "UTF-16";
-		static constexpr const char* utf_16be_encoding = "UTF-16BE";
-		static constexpr const char* utf_16le_encoding = "UTF-16LE";
-		static constexpr const char* utf_32_encoding = "UTF-32";
-		static constexpr const char* utf_32be_encoding = "UTF-32BE";
-		static constexpr const char* utf_32le_encoding = "UTF-32LE";
-		static constexpr const char* utf_7_encoding = "UTF-7";
-
-		// Locale dependent
-		static constexpr const char* char_encoding = "char";
-		static constexpr const char* wchar_t_encoding = "wchar_t";
-
-		// EBCDIC compatible (not ASCII compatible, very rarely used)
-		static constexpr const char* ibm_037_encoding = "IBM-037";
-		static constexpr const char* ibm_273_encoding = "IBM-273";
-		static constexpr const char* ibm_277_encoding = "IBM-277";
-		static constexpr const char* ibm_278_encoding = "IBM-278";
-		static constexpr const char* ibm_280_encoding = "IBM-280";
-		static constexpr const char* ibm_282_encoding = "IBM-282";
-		static constexpr const char* ibm_284_encoding = "IBM-284";
-		static constexpr const char* ibm_285_encoding = "IBM-285";
-		static constexpr const char* ibm_297_encoding = "IBM-297";
-		static constexpr const char* ibm_423_encoding = "IBM-423";
-		static constexpr const char* ibm_500_encoding = "IBM-500";
-		static constexpr const char* ibm_870_encoding = "IBM-870";
-		static constexpr const char* ibm_871_encoding = "IBM-871";
-		static constexpr const char* ibm_875_encoding = "IBM-875";
-		static constexpr const char* ibm_880_encoding = "IBM-880";
-		static constexpr const char* ibm_905_encoding = "IBM-905";
-		static constexpr const char* ibm_924_encoding = "IBM-924";
-		static constexpr const char* ibm_1025_encoding = "IBM-1025";
-		static constexpr const char* ibm_1026_encoding = "IBM-1026";
-		static constexpr const char* ibm_1047_encoding = "IBM-1047";
-		static constexpr const char* ibm_1112_encoding = "IBM-1112";
-		static constexpr const char* ibm_1122_encoding = "IBM-1122";
-		static constexpr const char* ibm_1123_encoding = "IBM-1123";
-		static constexpr const char* ibm_1140_encoding = "IBM-1140";
-		static constexpr const char* ibm_1141_encoding = "IBM-1141";
-		static constexpr const char* ibm_1142_encoding = "IBM-1142";
-		static constexpr const char* ibm_1143_encoding = "IBM-1143";
-		static constexpr const char* ibm_1144_encoding = "IBM-1144";
-		static constexpr const char* ibm_1145_encoding = "IBM-1145";
-		static constexpr const char* ibm_1146_encoding = "IBM-1146";
-		static constexpr const char* ibm_1147_encoding = "IBM-1147";
-		static constexpr const char* ibm_1148_encoding = "IBM-1148";
-		static constexpr const char* ibm_1149_encoding = "IBM-1149";
-		static constexpr const char* ibm_1153_encoding = "IBM-1153";
-		static constexpr const char* ibm_1154_encoding = "IBM-1154";
-		static constexpr const char* ibm_1155_encoding = "IBM-1155";
-		static constexpr const char* ibm_1156_encoding = "IBM-1156";
-		static constexpr const char* ibm_1157_encoding = "IBM-1157";
-		static constexpr const char* ibm_1158_encoding = "IBM-1158";
-		static constexpr const char* ibm_1165_encoding = "IBM-1165";
-		static constexpr const char* ibm_1166_encoding = "IBM-1166";
-		static constexpr const char* ibm_4971_encoding = "IBM-4971";
-		static constexpr const char* ibm_424_encoding = "IBM-424";
-		static constexpr const char* ibm_425_encoding = "IBM-425";
-		static constexpr const char* ibm_12712_encoding = "IBM-12712";
-		static constexpr const char* ibm_16804_encoding = "IBM-16804";
-		static constexpr const char* ibm_1097_encoding = "IBM-1097";
-		static constexpr const char* ibm_838_encoding = "IBM-838";
-		static constexpr const char* ibm_1160_encoding = "IBM-1160";
-		static constexpr const char* ibm_1132_encoding = "IBM-1132";
-		static constexpr const char* ibm_1130_encoding = "IBM-1130";
-		static constexpr const char* ibm_1164_encoding = "IBM-1164";
-		static constexpr const char* ibm_1137_encoding = "IBM-1137";
-		/*@}*/
 };
 
-#endif // __UNICONV_H__
+#endif // UNICONV_H__
 

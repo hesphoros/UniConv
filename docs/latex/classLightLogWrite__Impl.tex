@@ -1,0 +1,449 @@
+\doxysection{Light\+Log\+Write\+\_\+\+Impl Class Reference}
+\hypertarget{classLightLogWrite__Impl}{}\label{classLightLogWrite__Impl}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+
+
+Lightweight asynchronous logging implementation.  
+
+
+
+
+{\ttfamily \#include $<$Light\+Log\+Write\+Impl.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classLightLogWrite__Impl_ab494ce683ce058c703525aeaa629ee44}{Light\+Log\+Write\+\_\+\+Impl}} ()
+\begin{DoxyCompactList}\small\item\em Constructor -\/ initializes logging system and starts writer thread. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classLightLogWrite__Impl_a84db3483eda51e6f439193ac99dbc842}{\texorpdfstring{$\sim$}{\string~}\+Light\+Log\+Write\+\_\+\+Impl}} ()
+\begin{DoxyCompactList}\small\item\em Destructor -\/ cleanly shuts down logging system. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}{Set\+Logs\+File\+Name}} (const std\+::wstring \&s\+Filename)
+\begin{DoxyCompactList}\small\item\em Set log file name (wide string version) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_a5c2f5a970ffcbe9731dfdf97976d3e5a}{Set\+Logs\+File\+Name}} (const std\+::string \&s\+Filename)
+\begin{DoxyCompactList}\small\item\em Set log file name (UTF-\/8 string version) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_ab62c4420c4c8180d9b6d3151b1785d8f}{Set\+Logs\+File\+Name}} (const std\+::u16string \&s\+Filename)
+\begin{DoxyCompactList}\small\item\em Set log file name (UTF-\/16 string version) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{Set\+Lastings\+Logs}} (const std\+::wstring \&s\+File\+Path, const std\+::wstring \&s\+Base\+Name)
+\begin{DoxyCompactList}\small\item\em Enable persistent logging with automatic file rotation. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_a3ff8b3accce1246594a7d49c77481d36}{Set\+Lastings\+Logs}} (const std\+::u16string \&s\+File\+Path, const std\+::u16string \&s\+Base\+Name)
+\begin{DoxyCompactList}\small\item\em Enable persistent logging (UTF-\/16 version) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_a0a4eb862ad5a0adb6bc3a8d586ae21c1}{Set\+Lastings\+Logs}} (const std\+::string \&s\+File\+Path, const std\+::string \&s\+Base\+Name)
+\begin{DoxyCompactList}\small\item\em Enable persistent logging (UTF-\/8 version) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{Write\+Log\+Content}} (const std\+::wstring \&s\+Type\+Val, const std\+::wstring \&s\+Message)
+\begin{DoxyCompactList}\small\item\em Write log entry to queue (wide string version) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_a79cf08fb3d3d31b815e839882e3e472c}{Write\+Log\+Content}} (const std\+::string \&s\+Type\+Val, const std\+::string \&s\+Message)
+\begin{DoxyCompactList}\small\item\em Write log entry to queue (UTF-\/8 version) \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classLightLogWrite__Impl_a6793412c489d963072d3deeb398b2246}{Write\+Log\+Content}} (const std\+::u16string \&s\+Type\+Val, const std\+::u16string \&s\+Message)
+\begin{DoxyCompactList}\small\item\em Write log entry to queue (UTF-\/16 version) \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+std\+::wstring \mbox{\hyperlink{group__LoggingInternals_ga3c612177e101789279c2f5155513118c}{Build\+Log\+File\+Out}} ()
+\begin{DoxyCompactList}\small\item\em Build log file name with timestamp. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__LoggingInternals_ga5432b6bdffcbc2dc2a04201cc65a4d49}{Close\+Log\+Stream}} ()
+\begin{DoxyCompactList}\small\item\em Clean shutdown of logging system. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__LoggingInternals_gaef370bc38f695c58da5493be555c69c6}{Create\+Logs\+File}} ()
+\begin{DoxyCompactList}\small\item\em Create new log file for persistent logging. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__LoggingInternals_ga18d59709020cd8077bf6a6978f698119}{Run\+Write\+Thread}} ()
+\begin{DoxyCompactList}\small\item\em Main writer thread function. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{group__LoggingInternals_ga8a38717ee1428cf2f33542e7c4ec7a61}{Checks\+Directory}} (const std\+::wstring \&s\+Filename)
+\begin{DoxyCompactList}\small\item\em Ensure directory structure exists for log file. \end{DoxyCompactList}\item 
+std\+::wstring \mbox{\hyperlink{group__LoggingInternals_ga8c5588b019435d5cc831b7996f099d30}{Get\+Current\+Timer}} () const
+\begin{DoxyCompactList}\small\item\em Get current time as formatted wide string. \end{DoxyCompactList}\item 
+std\+::tm \mbox{\hyperlink{group__LoggingInternals_gafc1b5135df1b50d3712db40ff74adfb7}{Get\+Currs\+Timer\+Tm}} () const
+\begin{DoxyCompactList}\small\item\em Get current time as std\+::tm structure. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::wofstream \mbox{\hyperlink{group__LoggingMembers_ga4f8301efe3face31257350b5242e9855}{p\+Log\+File\+Stream}}
+\begin{DoxyCompactList}\small\item\em Log file output stream. \end{DoxyCompactList}\item 
+std\+::mutex \mbox{\hyperlink{group__LoggingMembers_ga2c8bfb133ddc406e15c473da0bc5ccb9}{p\+Log\+Write\+Mutex}}
+\begin{DoxyCompactList}\small\item\em Mutex for thread-\/safe operations. \end{DoxyCompactList}\item 
+std\+::queue$<$ \mbox{\hyperlink{structLightLogWrite__Info}{Light\+Log\+Write\+\_\+\+Info}} $>$ \mbox{\hyperlink{group__LoggingMembers_gad2722e893e408aca558578f0a5890734}{p\+Log\+Write\+Queue}}
+\begin{DoxyCompactList}\small\item\em Queue for pending log entries. \end{DoxyCompactList}\item 
+std\+::condition\+\_\+variable \mbox{\hyperlink{group__LoggingMembers_ga503630be81ed28258549859809be1b83}{p\+Writed\+Cond\+Var}}
+\begin{DoxyCompactList}\small\item\em Condition variable for thread communication. \end{DoxyCompactList}\item 
+std\+::thread \mbox{\hyperlink{group__LoggingMembers_ga81eab5f5dede399b678e67c4cca431ad}{s\+Writed\+Threads}}
+\begin{DoxyCompactList}\small\item\em Background writer thread. \end{DoxyCompactList}\item 
+std\+::atomic$<$ bool $>$ \mbox{\hyperlink{group__LoggingMembers_ga48e38499120eff9e85f0e7a2c441f8ee}{b\+Is\+Stop\+Logging}}
+\begin{DoxyCompactList}\small\item\em Atomic stop flag (default\+: false) \end{DoxyCompactList}\item 
+std\+::wstring \mbox{\hyperlink{group__LoggingMembers_ga651c8384959547880cca6b5f3c05bfbc}{s\+Log\+Lasting\+Dir}}
+\begin{DoxyCompactList}\small\item\em Directory path for persistent logs. \end{DoxyCompactList}\item 
+std\+::wstring \mbox{\hyperlink{group__LoggingMembers_ga84821ee32a6c7ff8ee67b39a403191fd}{s\+Logs\+Based\+Name}}
+\begin{DoxyCompactList}\small\item\em Base name for persistent log files. \end{DoxyCompactList}\item 
+std\+::atomic$<$ bool $>$ \mbox{\hyperlink{group__LoggingMembers_gafb18948ce0ffa0c4ef5456e01f76b1ca}{b\+Has\+Log\+Lasting}}
+\begin{DoxyCompactList}\small\item\em Enable persistent logging flag (default\+: false) \end{DoxyCompactList}\item 
+std\+::atomic$<$ bool $>$ \mbox{\hyperlink{group__LoggingMembers_ga4f7397326b856a105c090627c5d7f6f9}{b\+Lasting\+Tm\+Tags}}
+\begin{DoxyCompactList}\small\item\em Current time period flag (AM/\+PM tracking) \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Lightweight asynchronous logging implementation. 
+
+Thread-\/safe logging class that provides asynchronous log writing with support for multiple string encodings and automatic file rotation. Uses a dedicated writer thread and producer-\/consumer pattern for high-\/performance logging without blocking the calling threads.
+
+\begin{DoxyParagraph}{Usage Pattern\+:}
+
+\begin{DoxyEnumerate}
+\item Create instance and optionally set log file or persistent logging
+\item Call \doxylink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{Write\+Log\+Content()} from any thread to add log entries
+\item Destructor automatically handles cleanup and thread synchronization
+\end{DoxyEnumerate}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Thread Safety\+:}
+
+\begin{DoxyItemize}
+\item All public methods are thread-\/safe
+\item Uses mutex for queue operations and file access
+\item Condition variable for efficient thread communication
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{File Rotation\+:}
+
+\begin{DoxyItemize}
+\item Automatic rotation based on AM/\+PM periods
+\item Files named as\+: basename\+\_\+\+YYYY\+\_\+\+MM\+\_\+\+DD\+\_\+\+AM/\+PM.\+log
+\item Directory structure auto-\/created as needed
+\end{DoxyItemize}
+\end{DoxyParagraph}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ Example\ usage}}
+\DoxyCodeLine{\mbox{\hyperlink{classLightLogWrite__Impl_ab494ce683ce058c703525aeaa629ee44}{LightLogWrite\_Impl}}\ logger;}
+\DoxyCodeLine{logger.\mbox{\hyperlink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{SetLastingsLogs}}(\textcolor{stringliteral}{"{}./logs"{}},\ \textcolor{stringliteral}{"{}myapp"{}});}
+\DoxyCodeLine{logger.\mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{WriteLogContent}}(\textcolor{stringliteral}{"{}INFO"{}},\ \textcolor{stringliteral}{"{}Application\ started"{}});}
+\DoxyCodeLine{logger.\mbox{\hyperlink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{WriteLogContent}}(\textcolor{stringliteral}{"{}ERROR"{}},\ \textcolor{stringliteral}{"{}Something\ went\ wrong"{}});}
+\DoxyCodeLine{\textcolor{comment}{//\ Destructor\ handles\ cleanup\ automatically}}
+
+\end{DoxyCode}
+
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00096}{96}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classLightLogWrite__Impl_ab494ce683ce058c703525aeaa629ee44}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{LightLogWrite\_Impl()}{LightLogWrite\_Impl()}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_ab494ce683ce058c703525aeaa629ee44} 
+Light\+Log\+Write\+\_\+\+Impl\+::\+Light\+Log\+Write\+\_\+\+Impl (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Constructor -\/ initializes logging system and starts writer thread. 
+
+Creates the asynchronous logging system with default settings. Starts the dedicated writer thread that processes log entries from the internal queue.
+
+\begin{DoxyParagraph}{Initialization\+:}
+
+\begin{DoxyItemize}
+\item Sets up atomic flags for thread control
+\item Starts the writer thread (Run\+Write\+Thread)
+\item Initializes synchronization primitives 
+\end{DoxyItemize}
+\end{DoxyParagraph}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00109}{109}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_a84db3483eda51e6f439193ac99dbc842}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!````~LightLogWrite\_Impl@{\texorpdfstring{$\sim$}{\string~}LightLogWrite\_Impl}}
+\index{````~LightLogWrite\_Impl@{\texorpdfstring{$\sim$}{\string~}LightLogWrite\_Impl}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{\texorpdfstring{$\sim$}{\string~}LightLogWrite\_Impl()}{\string~LightLogWrite\_Impl()}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a84db3483eda51e6f439193ac99dbc842} 
+Light\+Log\+Write\+\_\+\+Impl\+::\texorpdfstring{$\sim$}{\string~}\+Light\+Log\+Write\+\_\+\+Impl (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Destructor -\/ cleanly shuts down logging system. 
+
+Ensures all pending log entries are written and properly closes the writer thread and file streams.
+
+\begin{DoxyParagraph}{Cleanup Process\+:}
+
+\begin{DoxyItemize}
+\item Signals writer thread to stop
+\item Waits for all pending entries to be written
+\item Joins writer thread
+\item Closes file streams 
+\end{DoxyItemize}
+\end{DoxyParagraph}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00126}{126}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classLightLogWrite__Impl_a0a4eb862ad5a0adb6bc3a8d586ae21c1}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!SetLastingsLogs@{SetLastingsLogs}}
+\index{SetLastingsLogs@{SetLastingsLogs}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{SetLastingsLogs()}{SetLastingsLogs()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a0a4eb862ad5a0adb6bc3a8d586ae21c1} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Set\+Lastings\+Logs (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{s\+File\+Path}{, }\item[{const std\+::string \&}]{s\+Base\+Name}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Enable persistent logging (UTF-\/8 version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+File\+Path} & UTF-\/8 directory path for log files \\
+\hline
+{\em s\+Base\+Name} & UTF-\/8 base name for log files\\
+\hline
+\end{DoxyParams}
+Convenience overload that converts UTF-\/8 strings to wide strings.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{Set\+Lastings\+Logs(const std\+::wstring\&, const std\+::wstring\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00225}{225}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_a3ff8b3accce1246594a7d49c77481d36}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!SetLastingsLogs@{SetLastingsLogs}}
+\index{SetLastingsLogs@{SetLastingsLogs}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{SetLastingsLogs()}{SetLastingsLogs()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a3ff8b3accce1246594a7d49c77481d36} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Set\+Lastings\+Logs (\begin{DoxyParamCaption}\item[{const std\+::u16string \&}]{s\+File\+Path}{, }\item[{const std\+::u16string \&}]{s\+Base\+Name}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Enable persistent logging (UTF-\/16 version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+File\+Path} & UTF-\/16 directory path for log files \\
+\hline
+{\em s\+Base\+Name} & UTF-\/16 base name for log files\\
+\hline
+\end{DoxyParams}
+Convenience overload that converts UTF-\/16 strings to wide strings.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}{Set\+Lastings\+Logs(const std\+::wstring\&, const std\+::wstring\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00213}{213}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!SetLastingsLogs@{SetLastingsLogs}}
+\index{SetLastingsLogs@{SetLastingsLogs}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{SetLastingsLogs()}{SetLastingsLogs()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a50eb334550138ff18989612a23f35798} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Set\+Lastings\+Logs (\begin{DoxyParamCaption}\item[{const std\+::wstring \&}]{s\+File\+Path}{, }\item[{const std\+::wstring \&}]{s\+Base\+Name}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Enable persistent logging with automatic file rotation. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+File\+Path} & Wide string directory path for log files \\
+\hline
+{\em s\+Base\+Name} & Wide string base name for log files\\
+\hline
+\end{DoxyParams}
+Enables persistent logging mode where log files are automatically rotated based on time periods (AM/\+PM). Files are named using the pattern\+: basename\+\_\+\+YYYY\+\_\+\+MM\+\_\+\+DD\+\_\+\+AM/\+PM.\+log
+
+\begin{DoxyParagraph}{File Naming Pattern\+:}
+
+\begin{DoxyItemize}
+\item Format\+: \{s\+Base\+Name\}\+\_\+\{YYYY\+\_\+\+MM\+\_\+\+DD\}\+\_\+\{AM\texorpdfstring{$\vert$}{|}\+PM\}.log
+\item Example\+: myapp\+\_\+2025\+\_\+03\+\_\+14\+\_\+\+AM.\+log
+\item Rotation occurs when crossing AM/\+PM boundary
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Directory Structure\+:}
+All log files are created in the specified directory path. The directory structure is created automatically if it doesn\textquotesingle{}t exist.
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LoggingInternals_ga3c612177e101789279c2f5155513118c}{Build\+Log\+File\+Out()} 
+
+\doxylink{group__LoggingInternals_gaef370bc38f695c58da5493be555c69c6}{Create\+Logs\+File()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00198}{198}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_a5c2f5a970ffcbe9731dfdf97976d3e5a}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!SetLogsFileName@{SetLogsFileName}}
+\index{SetLogsFileName@{SetLogsFileName}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{SetLogsFileName()}{SetLogsFileName()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a5c2f5a970ffcbe9731dfdf97976d3e5a} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Set\+Logs\+File\+Name (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{s\+Filename}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Set log file name (UTF-\/8 string version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Filename} & UTF-\/8 encoded path to log file\\
+\hline
+\end{DoxyParams}
+Convenience overload that converts UTF-\/8 string to wide string and calls the main Set\+Logs\+File\+Name method.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}{Set\+Logs\+File\+Name(const std\+::wstring\&)} 
+
+\doxylink{group__ConversionUtilities_gaf4aede720833ac05ee18d0d466e07da0}{Utf8\+Converts\+To\+Ucs4()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00161}{161}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_ab62c4420c4c8180d9b6d3151b1785d8f}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!SetLogsFileName@{SetLogsFileName}}
+\index{SetLogsFileName@{SetLogsFileName}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{SetLogsFileName()}{SetLogsFileName()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_ab62c4420c4c8180d9b6d3151b1785d8f} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Set\+Logs\+File\+Name (\begin{DoxyParamCaption}\item[{const std\+::u16string \&}]{s\+Filename}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Set log file name (UTF-\/16 string version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Filename} & UTF-\/16 encoded path to log file\\
+\hline
+\end{DoxyParams}
+Convenience overload that converts UTF-\/16 string to wide string and calls the main Set\+Logs\+File\+Name method.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}{Set\+Logs\+File\+Name(const std\+::wstring\&)} 
+
+\doxylink{group__ConversionUtilities_gaa8379bbece52d17a30431d1ed5480a69}{U16\+String\+To\+WString()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00174}{174}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!SetLogsFileName@{SetLogsFileName}}
+\index{SetLogsFileName@{SetLogsFileName}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{SetLogsFileName()}{SetLogsFileName()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_ad1c8eb28c6d9aa1af77f540b7c855917} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Set\+Logs\+File\+Name (\begin{DoxyParamCaption}\item[{const std\+::wstring \&}]{s\+Filename}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Set log file name (wide string version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Filename} & Wide string path to log file\\
+\hline
+\end{DoxyParams}
+Sets the target log file for writing. If the file doesn\textquotesingle{}t exist, it will be created. The directory structure is also created automatically if needed.
+
+\begin{DoxyParagraph}{Behavior\+:}
+
+\begin{DoxyItemize}
+\item Thread-\/safe operation using mutex lock
+\item Closes any existing file stream
+\item Creates directory structure if needed
+\item Opens file in append mode
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyNote}{Note}
+This overrides any persistent logging configuration 
+\end{DoxyNote}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LoggingInternals_ga8a38717ee1428cf2f33542e7c4ec7a61}{Checks\+Directory()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00146}{146}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_a79cf08fb3d3d31b815e839882e3e472c}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!WriteLogContent@{WriteLogContent}}
+\index{WriteLogContent@{WriteLogContent}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{WriteLogContent()}{WriteLogContent()}\hspace{0.1cm}{\footnotesize\ttfamily [1/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a79cf08fb3d3d31b815e839882e3e472c} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Write\+Log\+Content (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{s\+Type\+Val}{, }\item[{const std\+::string \&}]{s\+Message}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Write log entry to queue (UTF-\/8 version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Type\+Val} & UTF-\/8 log type/tag \\
+\hline
+{\em s\+Message} & UTF-\/8 log message content\\
+\hline
+\end{DoxyParams}
+Convenience overload that converts UTF-\/8 strings to wide strings.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{Write\+Log\+Content(const std\+::wstring\&, const std\+::wstring\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00262}{262}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_a6793412c489d963072d3deeb398b2246}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!WriteLogContent@{WriteLogContent}}
+\index{WriteLogContent@{WriteLogContent}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{WriteLogContent()}{WriteLogContent()}\hspace{0.1cm}{\footnotesize\ttfamily [2/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a6793412c489d963072d3deeb398b2246} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Write\+Log\+Content (\begin{DoxyParamCaption}\item[{const std\+::u16string \&}]{s\+Type\+Val}{, }\item[{const std\+::u16string \&}]{s\+Message}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Write log entry to queue (UTF-\/16 version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Type\+Val} & UTF-\/16 log type/tag \\
+\hline
+{\em s\+Message} & UTF-\/16 log message content\\
+\hline
+\end{DoxyParams}
+Convenience overload that converts UTF-\/16 strings to wide strings.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}{Write\+Log\+Content(const std\+::wstring\&, const std\+::wstring\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00275}{275}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+
+\Hypertarget{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841}\index{LightLogWrite\_Impl@{LightLogWrite\_Impl}!WriteLogContent@{WriteLogContent}}
+\index{WriteLogContent@{WriteLogContent}!LightLogWrite\_Impl@{LightLogWrite\_Impl}}
+\doxysubsubsection{\texorpdfstring{WriteLogContent()}{WriteLogContent()}\hspace{0.1cm}{\footnotesize\ttfamily [3/3]}}
+{\footnotesize\ttfamily \label{classLightLogWrite__Impl_a78a9cc299bb69aff33cab42d172a2841} 
+void Light\+Log\+Write\+\_\+\+Impl\+::\+Write\+Log\+Content (\begin{DoxyParamCaption}\item[{const std\+::wstring \&}]{s\+Type\+Val}{, }\item[{const std\+::wstring \&}]{s\+Message}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Write log entry to queue (wide string version) 
+
+
+\begin{DoxyParams}{Parameters}
+{\em s\+Type\+Val} & Wide string log type/tag (e.\+g., "{}\+INFO"{}, "{}\+ERROR"{}, "{}\+DEBUG"{}) \\
+\hline
+{\em s\+Message} & Wide string log message content\\
+\hline
+\end{DoxyParams}
+Thread-\/safe method to add a log entry to the processing queue. The entry is processed asynchronously by the writer thread.
+
+\begin{DoxyParagraph}{Thread Safety\+:}
+
+\begin{DoxyItemize}
+\item Uses mutex lock for queue operations
+\item Notifies writer thread via condition variable
+\item Non-\/blocking for calling thread
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Log Format\+:}
+The final log entry format is\+: \{s\+Type\+Val\}-\///\texorpdfstring{$>$}{>}\texorpdfstring{$>$}{>}\texorpdfstring{$>$}{>}\{timestamp\} \+: \{s\+Message\}
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LoggingInternals_ga18d59709020cd8077bf6a6978f698119}{Run\+Write\+Thread()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{LightLogWriteImpl_8h_source_l00246}{246}} of file \mbox{\hyperlink{LightLogWriteImpl_8h_source}{Light\+Log\+Write\+Impl.\+h}}.
+

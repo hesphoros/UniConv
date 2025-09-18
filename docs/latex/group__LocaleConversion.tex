@@ -1,0 +1,268 @@
+\doxysection{Local Encoding Conversion Functions}
+\hypertarget{group__LocaleConversion}{}\label{group__LocaleConversion}\index{Local Encoding Conversion Functions@{Local Encoding Conversion Functions}}
+
+
+Functions for converting between system locale and other encodings.  
+
+
+\doxysubsubsection*{Local Encoding to UTF-\/8 Conversion}
+High-\/level functions for converting between system locale and UTF-\/8 \begin{DoxyCompactItemize}
+\item 
+std\+::string \mbox{\hyperlink{group__LocaleConversion_ga3570fb88b9c90403cb87d8d62aabbe7f}{Uni\+Conv\+::\+To\+Utf8\+From\+Local}} (const std\+::string \&input)
+\begin{DoxyCompactList}\small\item\em Convert system locale encoded string to UTF-\/8. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__LocaleConversion_ga8bbffaa97e8bffdb66cfac51512b6f15}{Uni\+Conv\+::\+To\+Utf8\+From\+Local}} (const char \texorpdfstring{$\ast$}{*}input)
+\begin{DoxyCompactList}\small\item\em Convert system locale encoded C-\/string to UTF-\/8. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__LocaleConversion_ga745be1e69f1c9c78e8c3d9e1cf98742b}{Uni\+Conv\+::\+From\+Utf8\+To\+Local}} (const std\+::string \&input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/8 string to system locale encoding. \end{DoxyCompactList}\item 
+std\+::string \mbox{\hyperlink{group__LocaleConversion_ga25571b3d1a025426cd4d9e8080a28e56}{Uni\+Conv\+::\+From\+Utf8\+To\+Local}} (const char \texorpdfstring{$\ast$}{*}input)
+\begin{DoxyCompactList}\small\item\em Convert UTF-\/8 C-\/string to system locale encoding. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for converting between system locale and other encodings. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__LocaleConversion_ga25571b3d1a025426cd4d9e8080a28e56}\index{Local Encoding Conversion Functions@{Local Encoding Conversion Functions}!FromUtf8ToLocal@{FromUtf8ToLocal}}
+\index{FromUtf8ToLocal@{FromUtf8ToLocal}!Local Encoding Conversion Functions@{Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf8ToLocal()}{FromUtf8ToLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__LocaleConversion_ga25571b3d1a025426cd4d9e8080a28e56} 
+std\+::string Uni\+Conv\+::\+From\+Utf8\+To\+Local (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/8 C-\/string to system locale encoding. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Input UTF-\/8 encoded C-\/style string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on conversion failure or null input
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style strings (const char\texorpdfstring{$\ast$}{*}). Handles null input gracefully by returning an empty string.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleConversion_ga745be1e69f1c9c78e8c3d9e1cf98742b}{From\+Utf8\+To\+Local(const std\+::string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/8 encoded C-\/string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error or null input
+\end{DoxyReturn}
+Convenience overload for C-\/style strings.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleConversion_ga745be1e69f1c9c78e8c3d9e1cf98742b}{From\+Utf8\+To\+Local(const std\+::string\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00345}{345}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__LocaleConversion_ga745be1e69f1c9c78e8c3d9e1cf98742b}\index{Local Encoding Conversion Functions@{Local Encoding Conversion Functions}!FromUtf8ToLocal@{FromUtf8ToLocal}}
+\index{FromUtf8ToLocal@{FromUtf8ToLocal}!Local Encoding Conversion Functions@{Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{FromUtf8ToLocal()}{FromUtf8ToLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__LocaleConversion_ga745be1e69f1c9c78e8c3d9e1cf98742b} 
+std\+::string Uni\+Conv\+::\+From\+Utf8\+To\+Local (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert UTF-\/8 string to system locale encoding. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Input UTF-\/8 encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on conversion failure
+\end{DoxyReturn}
+This function converts UTF-\/8 text to the system\textquotesingle{}s default locale encoding. Useful for preparing text for display in legacy applications or for system API calls that expect locale-\/encoded strings.
+
+\begin{DoxyParagraph}{Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{std::string\ utf8\_text\ =\ \textcolor{stringliteral}{"{}你好"{}};\ \ \textcolor{comment}{//\ UTF-\/8\ encoded}}
+\DoxyCodeLine{std::string\ local\_text\ =\ conv-\/>FromUtf8ToLocal(utf8\_text);\ \ \textcolor{comment}{//\ Convert\ to\ GBK\ on\ GBK\ system}}
+
+\end{DoxyCode}
+
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417}{Convert\+Encoding()}, \doxylink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Get\+Current\+System\+Encoding()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & UTF-\/8 encoded string \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+String in system locale encoding, empty string on error
+\end{DoxyReturn}
+Converts a UTF-\/8 string to the current system\textquotesingle{}s default encoding. This is useful when interfacing with legacy APIs or file systems that expect locale-\/specific encodings.
+
+\begin{DoxyParagraph}{Common Use Cases\+:}
+
+\begin{DoxyItemize}
+\item File system operations on non-\/\+UTF-\/8 systems
+\item Legacy API compatibility
+\item Terminal/console output on Windows
+\item Database integration with legacy character sets
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyWarning}{Warning}
+Some characters may be lost if the target encoding doesn\textquotesingle{}t support them. Consider using UTF-\/8 when possible.
+\end{DoxyWarning}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleConversion_ga3570fb88b9c90403cb87d8d62aabbe7f}{To\+Utf8\+From\+Local()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00329}{329}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__LocaleConversion_ga8bbffaa97e8bffdb66cfac51512b6f15}\index{Local Encoding Conversion Functions@{Local Encoding Conversion Functions}!ToUtf8FromLocal@{ToUtf8FromLocal}}
+\index{ToUtf8FromLocal@{ToUtf8FromLocal}!Local Encoding Conversion Functions@{Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{ToUtf8FromLocal()}{ToUtf8FromLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{group__LocaleConversion_ga8bbffaa97e8bffdb66cfac51512b6f15} 
+std\+::string Uni\+Conv\+::\+To\+Utf8\+From\+Local (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert system locale encoded C-\/string to UTF-\/8. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Input C-\/style string in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string, empty string on conversion failure or null input
+\end{DoxyReturn}
+Overloaded version that accepts C-\/style strings (const char\texorpdfstring{$\ast$}{*}). Handles null input gracefully by returning an empty string.
+
+\begin{DoxyParagraph}{Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ gbk\_text\ =\ \textcolor{stringliteral}{"{}你好"{}};\ \ \textcolor{comment}{//\ GBK\ encoded\ C-\/string}}
+\DoxyCodeLine{std::string\ utf8\_text\ =\ conv-\/>ToUtf8FromLocal(gbk\_text);}
+
+\end{DoxyCode}
+
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleConversion_ga3570fb88b9c90403cb87d8d62aabbe7f}{To\+Utf8\+From\+Local(const std\+::string\&)} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & C-\/string in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string, empty string on error or null input
+\end{DoxyReturn}
+Convenience overload for C-\/style strings. Internally converts to std\+::string and calls the string version.
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleConversion_ga3570fb88b9c90403cb87d8d62aabbe7f}{To\+Utf8\+From\+Local(const std\+::string\&)} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00303}{303}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
+\Hypertarget{group__LocaleConversion_ga3570fb88b9c90403cb87d8d62aabbe7f}\index{Local Encoding Conversion Functions@{Local Encoding Conversion Functions}!ToUtf8FromLocal@{ToUtf8FromLocal}}
+\index{ToUtf8FromLocal@{ToUtf8FromLocal}!Local Encoding Conversion Functions@{Local Encoding Conversion Functions}}
+\doxysubsubsection{\texorpdfstring{ToUtf8FromLocal()}{ToUtf8FromLocal()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{group__LocaleConversion_ga3570fb88b9c90403cb87d8d62aabbe7f} 
+std\+::string Uni\+Conv\+::\+To\+Utf8\+From\+Local (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{input}{}\end{DoxyParamCaption})}
+
+
+
+Convert system locale encoded string to UTF-\/8. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em input} & Input string in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string, empty string on conversion failure
+\end{DoxyReturn}
+This function automatically detects the system\textquotesingle{}s locale encoding and converts the input string to UTF-\/8. It\textquotesingle{}s a convenience wrapper around \doxylink{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417}{Convert\+Encoding()} that handles system encoding detection.
+
+\begin{DoxyParagraph}{Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ On\ a\ GBK\ system,\ convert\ GBK\ string\ to\ UTF-\/8}}
+\DoxyCodeLine{std::string\ gbk\_text\ =\ \textcolor{stringliteral}{"{}你好"{}};\ \ \textcolor{comment}{//\ Assumes\ this\ is\ GBK\ encoded}}
+\DoxyCodeLine{std::string\ utf8\_text\ =\ conv-\/>ToUtf8FromLocal(gbk\_text);}
+
+\end{DoxyCode}
+
+\end{DoxyParagraph}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417}{Convert\+Encoding()}, \doxylink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Get\+Current\+System\+Encoding()} 
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em input} & String in system locale encoding \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+UTF-\/8 encoded string, empty string on error
+\end{DoxyReturn}
+Converts a string from the current system\textquotesingle{}s default encoding to UTF-\/8. The system encoding is automatically detected using \doxylink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Get\+Current\+System\+Encoding()}.
+
+\begin{DoxyParagraph}{Platform Behavior\+:}
+
+\begin{DoxyItemize}
+\item Windows\+: Converts from active code page (GBK, Big5, etc.) to UTF-\/8
+\item Unix/\+Linux\+: Usually no conversion needed (UTF-\/8 → UTF-\/8)
+\end{DoxyItemize}
+\end{DoxyParagraph}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{//\ Example:\ Convert\ GBK\ string\ to\ UTF-\/8\ on\ Chinese\ Windows}}
+\DoxyCodeLine{std::string\ gbk\_text\ =\ \textcolor{stringliteral}{"{}你好世界"{}};\ \textcolor{comment}{//\ In\ GBK\ encoding}}
+\DoxyCodeLine{std::string\ utf8\_text\ =\ \mbox{\hyperlink{group__LocaleConversion_ga3570fb88b9c90403cb87d8d62aabbe7f}{UniConv::ToUtf8FromLocal}}(gbk\_text);}
+
+\end{DoxyCode}
+
+
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{group__LocaleConversion_ga745be1e69f1c9c78e8c3d9e1cf98742b}{From\+Utf8\+To\+Local()} 
+
+\doxylink{group__SystemEncoding_gab60334a4a8219bd32f7d893d8ef115f2}{Get\+Current\+System\+Encoding()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00286}{286}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+

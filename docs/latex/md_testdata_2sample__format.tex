@@ -1,0 +1,31 @@
+\chapter{测试样本文件格式说明}
+\hypertarget{md_testdata_2sample__format}{}\label{md_testdata_2sample__format}\index{测试样本文件格式说明@{测试样本文件格式说明}}
+\label{md_testdata_2sample__format_autotoc_md71}%
+\Hypertarget{md_testdata_2sample__format_autotoc_md71}%
+
+
+
+\begin{DoxyItemize}
+\item 文件名：sample\+\_\+utf8.\+txt
+\item 编码：\+UTF-\/8（无\+BOM）
+\item 内容示例：
+\end{DoxyItemize}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{Hello,\ 世界!\ 1234\ äöüß}
+\DoxyCodeLine{Line2:\ 中文English123}
+\DoxyCodeLine{Line3:\ 特殊符号!@\#￥\%……\&*（）}
+\DoxyCodeLine{Line4:\ emoji\ 😊🚀}
+
+\end{DoxyCode}
+
+
+
+\begin{DoxyItemize}
+\item 每行为一组典型内容，包含：
+\begin{DoxyItemize}
+\item 英文、数字、中文、德语变音、特殊符号、emoji
+\end{DoxyItemize}
+\item 用于编码转换测试，建议读取后直接参与各类编码转换接口的测试。 
+\end{DoxyItemize}

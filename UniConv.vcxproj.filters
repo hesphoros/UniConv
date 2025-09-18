@@ -18,10 +18,10 @@
     <ClInclude Include="UniConv.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Singleton.h">
+    <ClInclude Include="common.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="convert_tools.h">
+    <ClInclude Include="Singleton.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -29,20 +29,19 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Test.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="UniConv.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="gbk_str.cpp">
+    <ClCompile Include="common.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="utf8_str.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="convet_tools.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="LightLogWriteImpl.h">
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="encodings.inc">
       <Filter>头文件</Filter>
-    </ClCompile>
+    </None>
   </ItemGroup>
 </Project>

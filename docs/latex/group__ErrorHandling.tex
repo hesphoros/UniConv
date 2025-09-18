@@ -1,0 +1,136 @@
+\doxysection{Error Handling and Diagnostics}
+\hypertarget{group__ErrorHandling}{}\label{group__ErrorHandling}\index{Error Handling and Diagnostics@{Error Handling and Diagnostics}}
+
+
+Functions for error reporting and diagnostics.  
+
+
+\doxysubsubsection*{Private Helper Functions}
+Internal utility functions for error handling and descriptor management \begin{DoxyCompactItemize}
+\item 
+static std\+::string \mbox{\hyperlink{group__ErrorHandling_ga0803c945e46c24a7042b1b5cbbb60946}{Uni\+Conv\+::\+Get\+Iconv\+Error\+String}} (int err\+\_\+code)
+\begin{DoxyCompactList}\small\item\em Get human-\/readable error message for iconv error code. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{classUniConv_a34c8f8fa5f60dda39be3e3ad56889ab1}{Iconv\+Shared\+Ptr}} \mbox{\hyperlink{group__ErrorHandling_ga2d216cd3a036f400d2eb623563b7020b}{Uni\+Conv\+::\+Get\+Iconv\+DescriptorS}} (const char \texorpdfstring{$\ast$}{*}fromcode, const char \texorpdfstring{$\ast$}{*}tocode)
+\begin{DoxyCompactList}\small\item\em Get cached or create new iconv descriptor for encoding conversion. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Functions for error reporting and diagnostics. 
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{group__ErrorHandling_ga2d216cd3a036f400d2eb623563b7020b}\index{Error Handling and Diagnostics@{Error Handling and Diagnostics}!GetIconvDescriptorS@{GetIconvDescriptorS}}
+\index{GetIconvDescriptorS@{GetIconvDescriptorS}!Error Handling and Diagnostics@{Error Handling and Diagnostics}}
+\doxysubsubsection{\texorpdfstring{GetIconvDescriptorS()}{GetIconvDescriptorS()}}
+{\footnotesize\ttfamily \label{group__ErrorHandling_ga2d216cd3a036f400d2eb623563b7020b} 
+\mbox{\hyperlink{classUniConv_a34c8f8fa5f60dda39be3e3ad56889ab1}{Iconv\+Shared\+Ptr}} Uni\+Conv\+::\+Get\+Iconv\+DescriptorS (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{fromcode}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{tocode}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+Get cached or create new iconv descriptor for encoding conversion. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em fromcode} & Source encoding name \\
+\hline
+{\em tocode} & Target encoding name \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Shared pointer to iconv descriptor with automatic cleanup
+\end{DoxyReturn}
+This function manages the iconv descriptor cache, providing thread-\/safe access to conversion descriptors. If a descriptor for the requested encoding pair exists in cache, it returns the cached version. Otherwise, it creates a new descriptor and adds it to the cache.
+
+\begin{DoxyParagraph}{Caching Benefits\+:}
+
+\begin{DoxyItemize}
+\item Reduces overhead of repeated \doxylink{iconv_8h_abc93f77b3b8b5891765c9f3c483ec013}{iconv\+\_\+open()} calls
+\item Improves performance for repeated conversions
+\item Automatic cleanup via RAII when no longer needed
+\item Thread-\/safe access with mutex protection
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Error Handling\+:}
+Returns nullptr if \doxylink{iconv_8h_abc93f77b3b8b5891765c9f3c483ec013}{iconv\+\_\+open()} fails (invalid encoding names)
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\Hypertarget{group__ErrorHandling_ga0803c945e46c24a7042b1b5cbbb60946}\index{Error Handling and Diagnostics@{Error Handling and Diagnostics}!GetIconvErrorString@{GetIconvErrorString}}
+\index{GetIconvErrorString@{GetIconvErrorString}!Error Handling and Diagnostics@{Error Handling and Diagnostics}}
+\doxysubsubsection{\texorpdfstring{GetIconvErrorString()}{GetIconvErrorString()}}
+{\footnotesize\ttfamily \label{group__ErrorHandling_ga0803c945e46c24a7042b1b5cbbb60946} 
+std\+::string Uni\+Conv\+::\+Get\+Iconv\+Error\+String (\begin{DoxyParamCaption}\item[{int}]{err\+\_\+code}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+Get human-\/readable error message for iconv error code. 
+
+Get human-\/readable error description for iconv error codes.
+
+
+\begin{DoxyParams}{Parameters}
+{\em err\+\_\+code} & The iconv error code to translate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Human-\/readable error message string
+\end{DoxyReturn}
+This static function provides standardized error messages for iconv error codes. It maps common errno values that iconv functions return to descriptive text.
+
+\begin{DoxyParagraph}{Common Error Codes\+:}
+
+\begin{DoxyItemize}
+\item EINVAL\+: Invalid encoding names or unsupported conversion
+\item EILSEQ\+: Invalid byte sequence in input
+\item E2\+BIG\+: Output buffer too small
+\item ENOMEM\+: Memory allocation failure
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1
+\end{DoxySince}
+
+\begin{DoxyParams}{Parameters}
+{\em err\+\_\+code} & The errno value returned by iconv operations \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Human-\/readable error description string
+\end{DoxyReturn}
+Translates iconv-\/specific error codes into descriptive messages that can be displayed to users or used for debugging purposes.
+
+\begin{DoxyParagraph}{Supported Error Codes\+:}
+
+\begin{DoxyItemize}
+\item EILSEQ\+: Invalid multibyte sequence encountered
+\item EINVAL\+: Incomplete multibyte sequence at end of input
+\item E2\+BIG\+: Output buffer too small for conversion result
+\item EBADF\+: Invalid conversion descriptor (encoding not supported)
+\end{DoxyItemize}
+\end{DoxyParagraph}
+\begin{DoxyParagraph}{Usage Example\+:}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keyword}{auto}\ result\ =\ \mbox{\hyperlink{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417}{UniConv::ConvertEncoding}}(input,\ \textcolor{stringliteral}{"{}UTF-\/8"{}},\ \textcolor{stringliteral}{"{}GBK"{}});}
+\DoxyCodeLine{\textcolor{keywordflow}{if}\ (!result.IsSuccess())\ \{}
+\DoxyCodeLine{\ \ \ \ std::string\ error\_desc\ =\ \mbox{\hyperlink{group__ErrorHandling_ga0803c945e46c24a7042b1b5cbbb60946}{UniConv::GetIconvErrorString}}(result.error\_code);}
+\DoxyCodeLine{\ \ \ \ std::cerr\ <<\ \textcolor{stringliteral}{"{}Conversion\ failed:\ "{}}\ <<\ error\_desc\ <<\ std::endl;}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+\end{DoxyParagraph}
+\begin{DoxySince}{Since}
+1.\+0.\+0.\+1 
+\end{DoxySince}
+\begin{DoxySeeAlso}{See also}
+\doxylink{structUniConv_1_1IConvResult_aba22472ed917747cea938ba87ed38f10}{IConv\+Result\+::error\+\_\+code} 
+
+\doxylink{group__SystemEncoding_gafbdae139bdf6873ef140c5c925215417}{Convert\+Encoding()} 
+\end{DoxySeeAlso}
+
+
+Definition at line \mbox{\hyperlink{UniConv_8cpp_source_l00975}{975}} of file \mbox{\hyperlink{UniConv_8cpp_source}{Uni\+Conv.\+cpp}}.
+
