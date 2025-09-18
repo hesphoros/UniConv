@@ -63,9 +63,12 @@ std::vector<ConversionTask> tasks = {
 std::string ReadFileBytes(const std::string& filePath) {
     std::ifstream file(filePath, std::ios::binary);
     if (!file) {
+        std::cout << "[DEBUG] Failed to open file: " << filePath << std::endl;
         return "";
     }
-    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    std::cout << "[DEBUG] Successfully read file: " << filePath << " (" << content.size() << " bytes)" << std::endl;
+    return content;
 }
 
 bool WriteFileBytes(const std::string& filePath, const std::string& data) {

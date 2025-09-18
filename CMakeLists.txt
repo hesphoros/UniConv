@@ -155,6 +155,34 @@ inline LightLogWriteImpl& GetLogger() { static LightLogWriteImpl logger; return 
             ${CMAKE_CURRENT_BINARY_DIR}  # For generated common.h
         )
         
+        # Auto-copy DLL to test executable directory when building shared library
+        if(UNICONV_BUILD_SHARED AND WIN32)
+            add_custom_command(TARGET UniConvTests POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:UniConv>
+                    $<TARGET_FILE_DIR:UniConvTests>
+                COMMENT "Copying UniConv DLL to test executable directory"
+            )
+        endif()
+        
+        # Auto-copy test data directory to test executable directory
+        add_custom_command(TARGET UniConvTests POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_CURRENT_SOURCE_DIR}/testdata
+                $<TARGET_FILE_DIR:UniConvTests>/testdata
+            COMMENT "Copying test data directory to test executable directory"
+        )
+        
+        # Enable CTest and add test with correct working directory
+        enable_testing()
+        add_test(NAME UniConvTest
+                 COMMAND UniConvTests
+                 WORKING_DIRECTORY $<TARGET_FILE_DIR:UniConvTests>)
+        set_tests_properties(UniConvTest PROPERTIES
+            TIMEOUT 60
+            PASS_REGULAR_EXPRESSION "All tests completed successfully"
+        )
+        
         # Windows specific settings for console application
         if(WIN32)
             set_target_properties(UniConvTests PROPERTIES
