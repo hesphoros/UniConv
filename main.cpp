@@ -3,30 +3,15 @@
 #endif
 
 #include "UniConv.h"
-#include "LightLogWriteImpl.hpp"
+#include "common.h"
 #include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <fstream>
 #include <windows.h>
 #include <assert.h>
 
-
-
-constexpr const char* LOG_INFO  = "[  INFO   ]";
-constexpr const char* LOG_ERROR = "[  ERROR  ]";
-constexpr const char* LOG_DEBUG = "[  DEBUG  ]";
-constexpr const char* LOG_WARN  = "[  WARN   ]";
-constexpr const char* LOG_FATAL = "[  FATAL  ]";
-constexpr const char* LOG_TRACE = "[  TRACE  ]";
-constexpr const char* LOG_OK    = "[   OK    ]";
-
 auto g_conv = UniConv::GetInstance();
-
-#define LOGERROR(msg) glogger.WriteLogContent(LOG_ERROR, msg)
-#define LOGINFO(msg)  glogger.WriteLogContent(LOG_INFO, msg)
-#define LOGDEBUG(msg) glogger.WriteLogContent(LOG_DEBUG, msg)
-#define LOGWARN(msg)  glogger.WriteLogContent(LOG_WARN, msg)
-#define LOGFATAL(msg) glogger.WriteLogContent(LOG_FATAL, msg)
-#define LOGTRACE(msg) glogger.WriteLogContent(LOG_TRACE, msg)
-#define LOGOK(msg)    glogger.WriteLogContent(LOG_OK, msg)
 
 
 

@@ -26,9 +26,14 @@
 *  Change History :
 *  <Date>     | <Version> | <Author>       | <Description>
 *  2025/03/10 | 1.0.0.1   | hesphoros      | Create file
+*  Change History :
+*  <Date>     | <Version> | <Author>       | <Description>
+*  2025/9/18  | 1.0.0.2   | hesphoros      | Add ConvertEncoding API
 *****************************************************************************/
+#define _CRT_SECURE_NO_WARNINGS
 #include "UniConv.h"
-#include "LightLogWriteImpl.hpp"
+
+
 
 
 
@@ -49,6 +54,8 @@ const std::unordered_map<int, std::string_view> UniConv::m_iconvErrorMap = {
 	{EINTR,  "Conversion interrupted by signal"},
 	{ENOMEM, "Out of memory"}
 };
+
+std::string UniConv::m_defaultEncoding = {}; // Default encoding, can be set by user
 
 /**************************  === UniConv m_encodingMap ===  ***************************/
 const std::unordered_map<std::uint16_t, UniConv::EncodingInfo> UniConv::m_encodingMap = {
@@ -211,9 +218,18 @@ const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePa
 std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDescriptorCacheMapS = {};
 
 
+void UniConv::SetDefaultEncoding(const std::string& encoding)
+{
+    this->m_defaultEncoding = encoding;
+}
+
+
 // ===================== System encoding related functions =====================
 std::string UniConv::GetCurrentSystemEncoding()
 {
+    if (!m_defaultEncoding.empty()) {
+        return m_defaultEncoding;
+    }
 	std::stringstream ss;
 #ifdef _WIN32
 	UINT codePage = GetACP();
@@ -366,9 +382,9 @@ UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const ch
     if ( iteration_count >= max_iterations && inbuf_left > 0 ) {
         iconv_result.error_code = ELOOP;
         iconv_result.error_msg = "Maximum conversion iterations exceeded";
-        #ifdef DEBUG
+        #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
         std::cerr << "Too many cycles in thr iconv convert" << std::endl;
-        #endif //DEBUG
+        #endif //UNICONV_DEBUG_MODE
     }
 
 	// 返回转换结果
@@ -605,10 +621,19 @@ std::u16string UniConv::ToUtf16LEFromUtf16BE(const char16_t* input) {
 }
 
 std::wstring UniConv::LocaleToWideString(const std::string& sInput) {
-	if (sInput.empty()) return std::wstring{};
-	std::string currentEncoding = this->GetCurrentSystemEncoding();
-	auto result = this->ConvertEncoding(sInput, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str());
-	return result.IsSuccess() ? std::wstring(reinterpret_cast<const wchar_t*>(result.conv_result_str.data()), result.conv_result_str.size() / sizeof(wchar_t)) : std::wstring{};
+    if (sInput.empty()) return std::wstring{};
+    std::string currentEncoding = this->GetCurrentSystemEncoding();
+    auto result = this->ConvertEncoding(sInput, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str());
+    if (!result.IsSuccess()) return std::wstring{};
+    // Remove the BOM (if any)
+    const char* data = result.conv_result_str.data();
+    size_t size = result.conv_result_str.size();
+    if (size >= 2 && (uint8_t)data[0] == 0xFF && (uint8_t)data[1] == 0xFE) {
+        data += 2;
+        size -= 2;
+    }
+    return std::wstring(reinterpret_cast<const wchar_t*>(data), size / sizeof(wchar_t));
+
 }
 
 std::wstring UniConv::LocaleToWideString(const char* sInput) {
@@ -769,6 +794,69 @@ std::u32string UniConv::Utf16BEConvertToUtf32LE(const char16_t* sInput)
 	return  Utf16BEConvertToUtf32LE(std::u16string(sInput));
 }
 
+std::string UniConv::Ucs4ConvertToUtf8(const std::wstring& wstr)
+{
+    #if defined(_WIN32)
+        // Windows platform：Use Windows API WideCharToMultiByte
+        if (wstr.empty()) return std::string();
+    
+        int sizeRequired = WideCharToMultiByte(
+            CP_UTF8, 
+            0,
+            wstr.data(), 
+            (int)wstr.size(),
+            nullptr, 
+            0, 
+            nullptr,
+            nullptr);
+
+        if (sizeRequired <= 0)
+        {
+    		return std::string{}; // Error or empty string
+        }
+        std::vector<char> utf8Buffer(sizeRequired);
+        WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), utf8Buffer.data(), sizeRequired, nullptr, nullptr);
+        return std::string(utf8Buffer.begin(), utf8Buffer.end());
+
+    #else defined(__linux__) || defined(__APPLE__)
+        if (wstr.empty()) return std::string();
+        std::string utf8_str = reinterpret_cast<const char*>(wstr.data());
+        auto result = ConvertEncoding(utf8_str, ToString(Encoding::wchar_t_encoding).c_str(), ToString(Encoding::utf_8).c_str());
+        return result.IsSuccess() ? result.conv_result_str : std::string{};
+    #endif
+}
+
+std::wstring UniConv::Utf8ConvertsToUcs4(const std::string& utf8str)
+{
+    if (utf8str.empty()) return std::wstring{};
+    // Convert UTF-8 to UCS-4 (wide string)
+    auto result = ConvertEncoding(utf8str, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16le).c_str());
+    if (result.IsSuccess() && result.conv_result_str.size() % sizeof(wchar_t) == 0) {
+        return std::wstring(reinterpret_cast<const wchar_t*>(result.conv_result_str.data()),
+            result.conv_result_str.size() / sizeof(wchar_t));
+    }
+    return std::wstring{};
+}
+
+std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
+{
+    if (u16str.empty()) return std::wstring{};
+    auto result = ConvertEncoding(std::string(reinterpret_cast<const char*>(u16str.data()), u16str.size() * sizeof(char16_t)),
+        ToString(Encoding::utf_16le).c_str(), ToString(Encoding::wchar_t_encoding).c_str());
+    if (result.IsSuccess() && result.conv_result_str.size() % sizeof(wchar_t) == 0) {
+        return std::wstring(reinterpret_cast<const wchar_t*>(result.conv_result_str.data()),
+            result.conv_result_str.size() / sizeof(wchar_t));
+    }
+    return std::wstring{};
+}
+
+std::wstring UniConv::U16StringToWString(const char16_t* u16str)
+{
+    if (!u16str) return std::wstring{};
+    return U16StringToWString(std::u16string(u16str));
+}
+
+
 // ===================== Error Handling Related =====================
 std::string UniConv::GetIconvErrorString(int err_code) {
     auto it = m_iconvErrorMap.find(err_code);
@@ -810,9 +898,9 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     // Use iconv_open to create a new conversion descriptor
 	iconv_t cd = iconv_open(tocode, fromcode);
 	if (cd == reinterpret_cast<iconv_t>(-1)) {
-        #ifdef DEBUG
+        #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
 		std::cout << "iconv_open error" << std::endl;
-        #endif // DEBUG
+        #endif 
 		return nullptr;
 	}
     // Create a shared pointer to manage the iconv descriptor
@@ -820,9 +908,10 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
 	auto iconvPtr = std::shared_ptr<std::remove_pointer_t<iconv_t>>(cd, IconvDeleter());
 	m_iconvDescriptorCacheMapS.emplace(key, iconvPtr);
 
-    #ifdef DEBUG
-    std::cout << "Create and cached iconv descriptor: " << key << std::endl;
-	#endif //DEBUG
+    #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
+        std::cout << "Create and cached iconv descriptor: " << key << std::endl;
+    #endif
+
     return iconvPtr;
 }
 

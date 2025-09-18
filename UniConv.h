@@ -57,7 +57,7 @@
 #include <functional>
 #include <io.h>
 #include <fcntl.h>
-#include "common.h"
+
 
 
 
@@ -77,7 +77,11 @@
 #define UNICONV_EXPORT
 #endif
 
-#define DEBUG
+#if defined(_DEBUG) || !defined(NDEBUG)   // Debug Mode
+#define UNICONV_DEBUG_MODE 1
+#else                                     // Release Mode
+#define UNICONV_DEBUG_MODE 0
+#endif
 
 // C++ standard version detection
 #if defined(_MSC_VER)
@@ -108,6 +112,34 @@ inline constexpr std::string_view current_cpp_standard() {
 	return "C++03 or earlier";
 #endif
 }
+
+
+template <typename T>
+class Singleton {
+protected:
+
+	Singleton() = default;
+	Singleton(const Singleton<T>&) = delete;
+	Singleton& operator=(const Singleton<T>& st) = delete;
+
+	static std::shared_ptr<T> _instance;
+public:
+	static std::shared_ptr<T> GetInstance() {
+		static std::once_flag s_flag;
+		std::call_once(s_flag, [&]() {
+			_instance = std::shared_ptr<T>(new T);
+			});
+
+		return _instance;
+	}
+	~Singleton() {
+		//std::cout << "this is singleton destruct" << std::endl;
+	}
+};
+
+template <typename T>
+std::shared_ptr<T> Singleton<T>::_instance = nullptr;
+
 
 class EncodingNames;
 
@@ -150,6 +182,8 @@ private:
 	};
 
 public:
+
+   void SetDefaultEncoding(const std::string& encoding);
 
 	//---------------------------------------------------------------------------
 	// Bom encodings @{
@@ -655,15 +689,27 @@ public:
 	std::u32string       Utf16BEConvertToUtf32LE(const std::u16string& sInput);
 	std::u32string       Utf16BEConvertToUtf32LE(const char16_t* sInput);
 
+	/**
+    * @brief Convert a UCS-4 (std::wstring, platform dependent) string to UTF-8 encoded std::string.
+    * @details This function converts a wide string (std::wstring), which is typically UCS-4 on Linux (wchar_t = 4 bytes)
+    *          and UTF-16 on Windows (wchar_t = 2 bytes), to a UTF-8 encoded std::string.
+    *          The conversion assumes the input is UCS-4 (i.e., each wchar_t is a Unicode code point).
+    * @param wstr The input wide string (UCS-4 encoded).
+    * @return The converted UTF-8 encoded string.
+    */
+	std::string          Ucs4ConvertToUtf8(const std::wstring& wstr);
 
+	std::wstring         Utf8ConvertsToUcs4(const std::string& utf8str);
+
+
+	std::wstring         U16StringToWString(const std::u16string& u16str);
+	std::wstring		 U16StringToWString(const char16_t* u16str);
 
 	/**
 	 * @brief Encoding to string
 	 *
 	 */
 	static std::string ToString(UniConv::Encoding enc);
-
-private:
 
 	/**
 	 * @brief Convert between any two encodings using iconv
@@ -673,7 +719,6 @@ private:
 	 * @return Conversion result
 	 */
 	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
-
 
 private:
 
@@ -687,6 +732,7 @@ private:
 	static std::unordered_map<std::string, IconvSharedPtr>       m_iconvDescriptorCacheMapS;   /*!< Iconv descriptor cache */
 	static constexpr size_t                                      MAX_CACHE_SIZE = 100;         /*!< Iconv max cache number */
 	static const  std::string                                    m_encodingNames[];            /*!< Encoding map           */
+	static std::string                                           m_defaultEncoding;            /*!< Current encoding       */
 	//----------------------------------------------------------------------------------------------------------------------
 	/// @} ! Private members
 	//----------------------------------------------------------------------------------------------------------------------
@@ -712,7 +758,7 @@ private:
 	 * @param tocode The target encoding.
 	 * @return The iconv descriptor as an IconvSharedPtr.
 	 */
-	IconvSharedPtr                      GetIconvDescriptor(const char* fromcode, const char* tocode);
+	IconvSharedPtr                            GetIconvDescriptor(const char* fromcode, const char* tocode);
 
 	std::pair<BomEncoding, std::string_view>  DetectAndRemoveBom(const std::string_view& data);
 	std::pair<BomEncoding, std::wstring_view> DetectAndRemoveBom(const std::wstring_view& data);
