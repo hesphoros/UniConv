@@ -1,8 +1,0 @@
-var searchData=
-[
-  ['wideconverttolocale_0',['WideConvertToLocale',['../group__WideStringConversion.html#ga5150035bf9ffccd7415f6cce6915cd13',1,'UniConv::WideConvertToLocale(const std::wstring &amp;sInput)'],['../group__WideStringConversion.html#ga95148941b4ee9d6ef97eb0a350174c5c',1,'UniConv::WideConvertToLocale(const wchar_t *sInput)']]],
-  ['wideconverttoutf8_1',['WideConvertToUtf8',['../classUniConv.html#aca06cba36006796ce11a96e7868b5d54',1,'UniConv::WideConvertToUtf8(const std::wstring &amp;sInput)'],['../classUniConv.html#a58d2d4e2e786e0c35c441a2267ced345',1,'UniConv::WideConvertToUtf8(const wchar_t *sInput)']]],
-  ['widestringtolocale_2',['WideStringToLocale',['../group__WideStringConversion.html#ga1df39668c62d89cbf812305934318b81',1,'UniConv::WideStringToLocale(const std::wstring &amp;sInput)'],['../group__WideStringConversion.html#ga27b3b2e6144204dbc0f1943e78ed0e8f',1,'UniConv::WideStringToLocale(const wchar_t *sInput)']]],
-  ['writelogcontent_3',['WriteLogContent',['../classLightLogWrite__Impl.html#a78a9cc299bb69aff33cab42d172a2841',1,'LightLogWrite_Impl::WriteLogContent(const std::wstring &amp;sTypeVal, const std::wstring &amp;sMessage)'],['../classLightLogWrite__Impl.html#a79cf08fb3d3d31b815e839882e3e472c',1,'LightLogWrite_Impl::WriteLogContent(const std::string &amp;sTypeVal, const std::string &amp;sMessage)'],['../classLightLogWrite__Impl.html#a6793412c489d963072d3deeb398b2246',1,'LightLogWrite_Impl::WriteLogContent(const std::u16string &amp;sTypeVal, const std::u16string &amp;sMessage)']]],
-  ['wstringconverttostring_4',['WstringConvertToString',['../classUniConv.html#a275221d9e26b5d6eb6b9b285bda7add9',1,'UniConv']]]
-];
