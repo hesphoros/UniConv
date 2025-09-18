@@ -189,9 +189,9 @@ install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/encodings.inc
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
 )
 
-# Install iconv.h to the main include directory (since UniConv.h includes <iconv.h>)
+# Install iconv.h to UniConv directory (since UniConv.h includes "iconv.h")
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv/iconv.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
 )
 
 # Export targets for CMake

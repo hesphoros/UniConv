@@ -826,5 +826,6 @@ int main() {
     RunAllTests();
 
     LOGINFO("=== All tests completed successfully ===");
+    system("pause");
     return 0;
 }
