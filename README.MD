@@ -1,13 +1,15 @@
 # UniConv ✨
 
-**一个跨平台的C++字符编码转换库**
+**一个现代化的跨平台C++字符编码转换库**
 
-UniConv 是一个功能全面、高性能的 C++ 库，提供各种文本编码之间的无缝字符编码转换，包括 UTF-8、UTF-16LE/BE、GBK、GB2312、GB18030 以及系统本地编码。
+UniConv 是一个功能全面、高性能的 C++ 库，提供各种文本编码之间的无缝字符编码转换，包括 UTF-8、UTF-16LE/BE、GBK、GB2312、GB18030 以及系统本地编码。基于内嵌 GNU libiconv 实现，支持现代 CMake 构建系统，提供完整的自动化测试和开发工具链。
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![C++](https://img.shields.io/badge/C++-11%2F14%2F17-blue.svg)](https://isocpp.org/)
+[![C++](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/)
+[![CMake](https://img.shields.io/badge/CMake-3.16%2B-green.svg)](https://cmake.org/)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg)](https://github.com/hesphoros/UniConv/releases)
 
 ---
 
@@ -31,51 +33,93 @@ UniConv 是一个功能全面、高性能的 C++ 库，提供各种文本编码�
 ## 🌟 功能特性
 
 ### 核心功能
+
 - **🔄 双向编码转换**: 支持 UTF-8、UTF-16LE、UTF-16BE、GBK、GB2312、GB18030 以及 100+ 种其他编码
 - **🌐 系统本地编码检测**: 自动检测并支持系统本地编码转换
-- **⚡ 高性能处理**: 基于 GNU libiconv 库，提供快速可靠的转换
+- **⚡ 高性能处理**: 基于内嵌 GNU libiconv 库，提供快速可靠的转换
 - **🔒 线程安全**: 线程安全的单例模式实现，支持多线程环境
 - **🛡️ 错误处理**: 全面的错误检测和报告机制，详细的错误代码
 - **📊 编码检测**: 内置编码检测和验证功能
 
-### 高级特性
+### 现代化特性
+
+- **CMake 构建系统**: 现代化的 CMake 3.16+ 构建配置，支持静态/动态库构建
+- **🚀 自动化测试**: 完整的 CTest 集成和自动化测试套件
+- **📦 自动部署**: 自动复制 DLL 和测试数据，开箱即用的开发体验
 - **🎯 宽字符支持**: 原生支持 `std::wstring` 和宽字符操作
 - **🔧 灵活的API**: 多种转换接口适应不同使用场景
 - **📈 内存优化**: 优化的内存使用和智能缓冲区管理
-- **🧪 全面测试**: 涵盖各种编码场景的完整测试套件
 - **📝 丰富文档**: 完整的 Doxygen 文档和使用示例
 
 ### 平台支持
+
 - **🖥️ 跨平台**: 支持 Windows、Linux 和 macOS
-- **🏗️ 现代C++**: 兼容 C++11/14/17 标准
-- **🔨 多种构建系统**: 支持 Visual Studio、CMake 和 Makefile
+- **🏗️ 现代C++**: 兼容 C++17 标准
+- **🔨 构建系统**: 支持 Visual Studio 项目和现代 CMake
 
 ---
 
 ## 🏗️ 项目架构
 
-UniConv 采用清晰的模块化架构：
+UniConv 采用现代化的模块化架构，基于 CMake 构建系统：
 
 ```
 UniConv/
-├── UniConv.h/cpp           # 核心转换引擎
-├── Singleton.h             # 线程安全单例模式
-├── convert_tools.h/cpp     # 工具转换函数
-├── LightLogWriteImpl.h     # 异步日志系统
-├── common.h/cpp            # 公共头文件和实现
-├── include/iconv.h         # GNU libiconv 库头文件
-├── lib/libiconv.lib        # 静态库二进制文件
-├── doc/                    # 完整文档目录
-├── testdata/               # 测试数据和脚本
-└── test/                   # 测试套件和示例
+├── CMakeLists.txt          # 现代 CMake 构建配置
+├── README.MD               # 项目说明文档
+├── .gitignore              # Git 忽略文件配置
+│
+├── include/                # 头文件目录
+│   ├── UniConv.h           # 主要 API 接口头文件
+│   ├── encodings.inc       # 编码定义文件
+│   └── iconv/              # 内嵌 GNU libiconv 头文件
+│       ├── iconv.h         # iconv 主头文件
+│       ├── config.h        # 配置头文件
+│       ├── encodings.def   # 编码定义
+│       ├── aliases*.h      # 编码别名定义
+│       ├── canonical*.h    # 标准编码映射
+│       ├── utf*.h          # Unicode 编码实现
+│       ├── gb*.h           # 中文编码实现
+│       ├── iso8859*.h      # ISO 编码实现
+│       └── ...             # 100+ 种编码实现头文件
+│
+├── src/                    # 源代码目录
+│   ├── UniConv.cpp         # 核心转换引擎实现
+│   ├── iconv.c             # GNU libiconv 核心实现
+│   ├── localcharset.c      # 本地字符集检测
+│   └── relocatable.c       # 路径重定位支持
+│
+├── test/                   # 测试代码目录
+│   └── AllTests.cpp        # 完整测试套件
+│
+├── testdata/               # 测试数据目录
+│   ├── input_*.txt         # 各种编码的输入测试文件
+│   └── output/             # 测试输出文件目录
+│
+├── script/                 # 工具脚本目录
+│   └── generate_test_files.py  # 测试文件生成脚本
+│
+├── doc/                    # 文档目录  
+│   ├── 常见编码简介.md     # 编码基础知识
+│   ├── Chinese编码(GBK等).md # 中文编码详解
+│   ├── unicode.md          # Unicode 标准说明
+│   └── iconv.md            # iconv 使用指南
+│
+├── cmake/                  # CMake 配置文件
+│   └── UniConvConfig.cmake.in  # 包配置模板
+│
+└── .github/                # GitHub 配置
+    └── workflows/          # CI/CD 工作流配置
+        └── static.yml      # 静态分析工作流
 ```
 
 ### 核心组件
 
-- **UniConv 类**: 主要转换引擎，包含 100+ 种转换函数
-- **单例模式**: 线程安全的实例管理
-- **错误处理**: 强大的错误检测和报告系统
-- **日志系统**: 异步日志记录，用于调试和监控
+- **UniConv 类**: 主要转换引擎，基于内嵌 GNU libiconv 实现
+- **CMake 构建系统**: 现代化构建配置，支持静态/动态库构建
+- **内嵌 iconv**: 完整的 GNU libiconv 源码内嵌，无外部依赖
+- **自动化测试**: CTest 集成的完整测试套件
+- **智能部署**: 自动 DLL 复制和测试数据管理
 
 ---
 
@@ -94,28 +138,52 @@ UniConv/
 
 ## 🚀 安装配置
 
-### 方式一：克隆并构建
+### 方式一：现代 CMake 构建（推荐）
 
 ```bash
 # 克隆仓库
 git clone https://github.com/hesphoros/UniConv.git
 cd UniConv
 
-# Windows (Visual Studio)
-# 在 Visual Studio 中打开 UniConv.sln 并构建
+# 创建构建目录
+mkdir build && cd build
 
-# Linux/macOS (使用提供的 Makefile)
-make clean && make
+# 配置项目（静态库，不构建测试）
+cmake .. -DUNICONV_BUILD_SHARED=OFF -DUNICONV_BUILD_TESTS=OFF
+
+# 或者配置动态库版本，包含测试
+cmake .. -DUNICONV_BUILD_SHARED=ON -DUNICONV_BUILD_TESTS=ON
+
+# 构建项目
+cmake --build . --config Release
+
+# 运行测试（如果启用了测试）
+ctest --output-on-failure
 ```
 
-### 方式二：集成到项目
+### 方式二：Visual Studio 项目
 
-1. 复制源文件到你的项目中
-2. 包含头文件并链接 `libiconv.lib`
-3. 在项目设置中添加包含目录
+```bash
+# 克隆仓库后，直接在 Visual Studio 中打开
+# 1. 打开 UniConv.sln
+# 2. 选择构建配置（Debug/Release）
+# 3. 构建解决方案
+```
+
+### 方式三：集成到现有项目
+
+1. 使用 CMake `add_subdirectory`：
+
+```cmake
+add_subdirectory(UniConv)
+target_link_libraries(your_target PRIVATE UniConv)
+```
+
+2. 或者复制源文件并手动链接：
 
 ```cpp
 #include "UniConv.h"
+// 无需额外链接，iconv 已内嵌
 ```
 
 ---
@@ -355,34 +423,49 @@ void runConversionTests() {
 
 ## 🧪 测试说明
 
-### 运行测试
+### 现代化测试系统
+
+项目集成了完整的自动化测试框架，支持 CTest 和传统测试方式：
+
+### 使用 CMake + CTest 运行测试（推荐）
 
 ```bash
-# 编译并运行主测试程序
-cd d:\codespace\UniConv
-.\x64\Debug\UniConv.exe
+# 构建测试版本
+mkdir build && cd build
+cmake .. -DUNICONV_BUILD_SHARED=ON -DUNICONV_BUILD_TESTS=ON
+cmake --build . --config Debug
 
-# 或者直接运行
-make test
+# 使用 CTest 运行测试
+ctest --output-on-failure
+
+# 或者直接运行测试程序
+cd bin/Debug && ./UniConvTests.exe
 ```
+
+### 测试特性
+
+- **🚀 自动化集成**: 构建时自动复制 DLL 和测试数据
+- **📁 智能路径处理**: 自动解决测试文件路径问题
+- **🔍 详细调试信息**: 测试失败时提供详细的调试输出
+- **⚡ 快速验证**: 一键运行所有编码转换测试
 
 ### 测试数据生成
 
 项目包含Python脚本用于生成测试数据：
 
 ```bash
-cd testdata
-python gen_testdata.py    # 生成标准测试文件
-python fix_utf8.py        # 生成UTF-8测试文件
+cd script
+python generate_test_files.py    # 生成标准测试文件
 ```
 
 ### 测试覆盖
 
-- **编码转换测试**: 100+ 种编码组合
-- **错误处理测试**: 无效输入和编码检测
-- **性能测试**: 大文件和批量转换
-- **内存测试**: 内存泄漏和资源管理
-- **线程安全测试**: 多线程环境测试
+- **编码转换测试**: 100+ 种编码组合，包括双向转换验证
+- **错误处理测试**: 无效输入和编码检测，边界条件测试
+- **性能测试**: 大文件和批量转换性能基准
+- **内存测试**: 内存泄漏和资源管理验证
+- **线程安全测试**: 多线程环境并发测试
+- **自动化验证**: 编码检测和 BOM 处理测试
 
 ---
 
@@ -440,17 +523,7 @@ enum class ConversionError {
 - 为新功能包含**单元测试**
 - 确保**跨平台**兼容性
 
-### 测试
 
-```bash
-# 运行所有测试
-make test
-
-# 运行特定测试套件
-.\test\test_encoding_conversion.exe
-.\test\test_thread_safety.exe
-.\test\test_error_handling.exe
-```
 
 ---
 
@@ -489,32 +562,62 @@ make test
 
 ## 📊 项目统计
 
-- **代码行数**: 15,000+
+### v2.0.0 版本亮点
+
+- **🏗️ 现代化构建**: 完全重构的 CMake 构建系统
+- **🚀 自动化流程**: DLL 自动复制、测试数据自动部署
+- **🧪 完整测试**: CTest 集成、自动化测试验证
+- **📦 内嵌依赖**: GNU libiconv 源码内嵌，无外部依赖
+- **🔧 开发友好**: 一键构建、智能路径处理、详细调试信息
+
+### 技术指标
+
 - **转换函数**: 100+ 种转换函数
-- **测试用例**: 200+ 个综合测试
+- **测试用例**: 200+ 个综合测试，涵盖所有主要编码
 - **文档覆盖**: 95% API 覆盖率
 - **平台支持**: Windows, Linux, macOS
-- **编码支持**: 100+ 种字符编码
+- **编码支持**: 100+ 种字符编码，包括所有主流编码
+- **CMake 版本**: 3.16+ 现代化构建配置
+- **C++ 标准**: C++17 优化实现
 
 ---
 
 ## 🔗 相关链接
 
-- **文档**: [GitHub Pages](https://hesphoros.github.io/UniConv/)
-- **错误报告**: [GitHub Issues](https://github.com/hesphoros/UniConv/issues)
-- **功能请求**: [GitHub Discussions](https://github.com/hesphoros/UniConv/discussions)
-- **发布说明**: [GitHub Releases](https://github.com/hesphoros/UniConv/releases)
+- **项目主页**: [GitHub Repository](https://github.com/hesphoros/UniConv)
+- **发布版本**: [GitHub Releases](https://github.com/hesphoros/UniConv/releases)
+- **API 文档**: [GitHub Pages](https://hesphoros.github.io/UniConv/)
+- **问题反馈**: [GitHub Issues](https://github.com/hesphoros/UniConv/issues)
+- **功能讨论**: [GitHub Discussions](https://github.com/hesphoros/UniConv/discussions)
 
 ---
 
-<div align="center">
+## 🎉 致谢与支持
 
-**由 UniConv 团队用 ❤️ 制作**
+### 支持项目
 
-[⭐ 在 GitHub 上为我们点星](https://github.com/hesphoros/UniConv) | [🐛 报告错误](https://github.com/hesphoros/UniConv/issues) | [💡 请求功能](https://github.com/hesphoros/UniConv/discussions)
+如果 UniConv 对您有帮助，请考虑：
 
-</div>
+- ⭐ [在 GitHub 上给我们一个星标](https://github.com/hesphoros/UniConv)
+- 🐛 [报告问题或建议](https://github.com/hesphoros/UniConv/issues)
+- 💡 [参与功能讨论](https://github.com/hesphoros/UniConv/discussions)
+- 🤝 [贡献代码](https://github.com/hesphoros/UniConv/pulls)
+
+### 版本历程
+
+- **v2.0.0** (2025): 现代化重构，CMake 构建系统，自动化测试
+- **v1.x** (2025): 初始版本，基础编码转换功能
 
 ---
 
-*最后更新: 2025年6月1日*
+## 📄 更新日志
+
+### v2.0.0-stable (2025-09-19)
+
+- ✨ **重大更新**: 完全重构的 CMake 构建系统
+- 🚀 **自动化改进**: 自动 DLL 复制和测试数据部署
+- 🧪 **测试增强**: CTest 集成，完整的自动化测试套件
+- 📦 **依赖内嵌**: GNU libiconv 源码完全内嵌
+- 🔧 **开发体验**: 智能路径处理，详细调试信息
+- 📝 **文档完善**: 更新所有文档和使用示例
+
