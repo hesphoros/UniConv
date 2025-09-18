@@ -51,6 +51,9 @@ if(UNICONV_BUILD_SHARED)
     set_target_properties(UniConv PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     )
+    # Define UNICONV_DLL for shared library build
+    target_compile_definitions(UniConv PRIVATE UNICONV_DLL)
+    target_compile_definitions(UniConv INTERFACE UNICONV_DLL_IMPORT)
 else()
     add_library(UniConv STATIC ${UNICONV_SOURCES})
     set_target_properties(UniConv PROPERTIES
