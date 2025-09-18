@@ -98,7 +98,7 @@ target_compile_definitions(UniConv PRIVATE
 # Optional: Build tests
 if(UNICONV_BUILD_TESTS)
     # Check if AllTests.cpp exists
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/AllTests.cpp)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test/AllTests.cpp)
         # Create a simple common.h for tests
         file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/common.h
 "#pragma once
@@ -139,7 +139,7 @@ inline LightLogWriteImpl& GetLogger() { static LightLogWriteImpl logger; return 
 #define LOGOK(msg)    glogger.WriteLog(\"OK\", msg)
 ")
         
-        add_executable(UniConvTests ${CMAKE_CURRENT_SOURCE_DIR}/AllTests.cpp)
+        add_executable(UniConvTests ${CMAKE_CURRENT_SOURCE_DIR}/test/AllTests.cpp)
         
         # Set executable output directory
         set_target_properties(UniConvTests PROPERTIES
@@ -164,7 +164,7 @@ inline LightLogWriteImpl& GetLogger() { static LightLogWriteImpl logger; return 
         
         message(STATUS "UniConv tests target created: UniConvTests")
     else()
-        message(WARNING "AllTests.cpp not found, skipping test target creation")
+        message(WARNING "AllTests.cpp not found in test/ directory, skipping test target creation")
     endif()
 endif()
 
@@ -184,8 +184,47 @@ install(FILES ${UNICONV_HEADERS}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
 )
 
+# Install encodings.inc (required by UniConv.h)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/encodings.inc
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
+)
+
+# Install iconv.h to the main include directory (since UniConv.h includes <iconv.h>)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv/iconv.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv/iconv
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Export targets for CMake
+install(EXPORT UniConvTargets
+    FILE UniConvTargets.cmake
+    NAMESPACE UniConv::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UniConv
+)
+
+# Create and install package configuration files
+include(CMakePackageConfigHelpers)
+
+# Generate the config file that includes the exports
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/UniConvConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/UniConvConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UniConv
+    NO_SET_AND_CHECK_MACRO
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+# Generate the version file for the config file
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/UniConvConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY AnyNewerVersion
+)
+
+# Install the configuration files
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/UniConvConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/UniConvConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UniConv
 )
 
 # Print configuration summary
