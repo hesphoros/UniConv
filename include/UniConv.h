@@ -581,35 +581,41 @@ public:
 /***************************************************************************/
 
 	/**
-	 * @brief Convert a string to a wide string.
-	 * @param sInput The input string to be converted.
+	 * @brief Convert a locale string to a wide string.
+	 * @param input The input locale string to be converted.
 	 * @return The converted wide string.
-	 * @retval val std::wstring
 	 */
-	std::wstring         LocaleToWideString(const std::string& sInput);
+	std::wstring         ToWideStringFromLocale(const std::string& input);
 
 	/**
-	 * @brief Convert a C-style string to a wide string.
-	 * @param sInput The C-style string to be converted.
+	 * @brief Convert a C-style locale string to a wide string.
+	 * @param input The C-style locale string to be converted.
 	 * @return The converted wide string.
-	 * @retval val std::wstring
 	 */
-	std::wstring         LocaleToWideString(const char* sInput);
+	std::wstring         ToWideStringFromLocale(const char* input);
 
 	/**
 	 * @brief Convert a wide string to a string in the current locale encoding.
-	 * @param sInput The wide string to be converted.
+	 * @param input The wide string to be converted.
 	 * @return The converted string in the current locale encoding.
-	 * @retval val std::string
 	 */
-	std::string          LocaleToNarrowString(const std::wstring& sInput);
+	std::string          ToLocaleFromWideString(const std::wstring& input);
 
 	/**
 	 * @brief Convert a C-style wide string to a string in the current locale encoding.
-	 * @param sInput The C-style wide string to be converted.
+	 * @param input The C-style wide string to be converted.
 	 * @return The converted string in the current locale encoding.
-	 * @retval val std::string
 	 */
+	std::string          ToLocaleFromWideString(const wchar_t* input);
+
+	// Deprecated methods - use ToWideStringFromLocale and ToLocaleFromWideString instead
+	[[deprecated("Use ToWideStringFromLocale instead")]]
+	std::wstring         LocaleToWideString(const std::string& sInput);
+	[[deprecated("Use ToWideStringFromLocale instead")]]
+	std::wstring         LocaleToWideString(const char* sInput);
+	[[deprecated("Use ToLocaleFromWideString instead")]]
+	std::string          LocaleToNarrowString(const std::wstring& sInput);
+	[[deprecated("Use ToLocaleFromWideString instead")]]
 	std::string          LocaleToNarrowString(const wchar_t* sInput);
 
 /** Test Suceess */
@@ -670,54 +676,83 @@ public:
 	std::u16string       ToUtf16LEFromUtf32LE(const char32_t* sInput);
 
 	/**
-	 * @brief Convert a UTF-32 string to UTF-16BE.
-	 * @param sInput The UTF-32 string to be converted.
+	 * @brief Convert a UTF-32LE string to UTF-16BE.
+	 * @param input The UTF-32LE string to be converted.
 	 * @return The converted UTF-16BE string.
-	 * @retval val std::u16string
 	 */
+	std::u16string       ToUtf16BEFromUtf32LE(const std::u32string& input);
+	std::u16string       ToUtf16BEFromUtf32LE(const char32_t* input);
+
+	// Deprecated methods - use ToUtf16BEFromUtf32LE instead
+	[[deprecated("Use ToUtf16BEFromUtf32LE instead")]]
 	std::u16string       Utf32LEConvertToUtf16BE(const std::u32string& sInput);
+	[[deprecated("Use ToUtf16BEFromUtf32LE instead")]]
 	std::u16string       Utf32LEConvertToUtf16BE(const char32_t* sInput);
 
 	/**
-	 * @brief Convert UTF-8 string to UTF-32.
-	 * @param sInput The UTF-8 string to be converted.
-	 * @return The converted UTF-32 string.
-	 * @retval val std::u32string
+	 * @brief Convert UTF-8 string to UTF-32LE.
+	 * @param input The UTF-8 string to be converted.
+	 * @return The converted UTF-32LE string.
 	 */
+	std::u32string       ToUtf32LEFromUtf8(const std::string& input);
+	std::u32string       ToUtf32LEFromUtf8(const char* input);
+
+	// Deprecated methods - use ToUtf32LEFromUtf8 instead
+	[[deprecated("Use ToUtf32LEFromUtf8 instead")]]
 	std::u32string       Utf8ConvertToUtf32LE(const std::string& sInput);
+	[[deprecated("Use ToUtf32LEFromUtf8 instead")]]
 	std::u32string       Utf8ConvertToUtf32LE(const char* sInput);
 
 	/**
-	 * @brief Convert a UTF-16LE string to UTF-32.
-	 * @param sInput The UTF-16LE string to be converted.
-	 * @return The converted UTF-32 string.
-	 * @retval val std::u32string
+	 * @brief Convert a UTF-16LE string to UTF-32LE.
+	 * @param input The UTF-16LE string to be converted.
+	 * @return The converted UTF-32LE string.
 	 */
+	std::u32string       ToUtf32LEFromUtf16LE(const std::u16string& input);
+	std::u32string       ToUtf32LEFromUtf16LE(const char16_t* input);
+
+	// Deprecated methods - use ToUtf32LEFromUtf16LE instead
+	[[deprecated("Use ToUtf32LEFromUtf16LE instead")]]
 	std::u32string       Utf16LEConvertToUtf32LE(const std::u16string& sInput);
+	[[deprecated("Use ToUtf32LEFromUtf16LE instead")]]
 	std::u32string       Utf16LEConvertToUtf32LE(const char16_t* sInput);
 
 	/**
-	 * @brief Convert a UTF-16BE string to UTF-32.
-	 * @param sInput The UTF-16BE string to be converted.
-	 * @return The converted UTF-32 string.
-	 * @retval val std::u32string
+	 * @brief Convert a UTF-16BE string to UTF-32LE.
+	 * @param input The UTF-16BE string to be converted.
+	 * @return The converted UTF-32LE string.
 	 */
+	std::u32string       ToUtf32LEFromUtf16BE(const std::u16string& input);
+	std::u32string       ToUtf32LEFromUtf16BE(const char16_t* input);
+
+	// Deprecated methods - use ToUtf32LEFromUtf16BE instead
+	[[deprecated("Use ToUtf32LEFromUtf16BE instead")]]
 	std::u32string       Utf16BEConvertToUtf32LE(const std::u16string& sInput);
+	[[deprecated("Use ToUtf32LEFromUtf16BE instead")]]
 	std::u32string       Utf16BEConvertToUtf32LE(const char16_t* sInput);
 
+    /**
+     * @brief Convert a UCS-4 (std::wstring, platform dependent) string to UTF-8 encoded std::string.
+     * @details This function converts a wide string (std::wstring), which is typically UCS-4 on Linux (wchar_t = 4 bytes)
+     *          and UTF-16 on Windows (wchar_t = 2 bytes), to a UTF-8 encoded std::string.
+     *          The conversion assumes the input is UCS-4 (i.e., each wchar_t is a Unicode code point).
+     * @param input The input wide string (UCS-4 encoded).
+     * @return The converted UTF-8 encoded string.
+     */
+	std::string          ToUtf8FromUcs4(const std::wstring& input);
+
 	/**
-    * @brief Convert a UCS-4 (std::wstring, platform dependent) string to UTF-8 encoded std::string.
-    * @details This function converts a wide string (std::wstring), which is typically UCS-4 on Linux (wchar_t = 4 bytes)
-    *          and UTF-16 on Windows (wchar_t = 2 bytes), to a UTF-8 encoded std::string.
-    *          The conversion assumes the input is UCS-4 (i.e., each wchar_t is a Unicode code point).
-    * @param wstr The input wide string (UCS-4 encoded).
-    * @return The converted UTF-8 encoded string.
-    */
+	 * @brief Convert UTF-8 string to UCS-4 (std::wstring, platform dependent).
+	 * @param input The input UTF-8 encoded string.
+	 * @return The converted wide string (UCS-4 encoded).
+	 */
+	std::wstring         ToUcs4FromUtf8(const std::string& input);
+
+	// Deprecated methods - use ToUtf8FromUcs4 and ToUcs4FromUtf8 instead
+	[[deprecated("Use ToUtf8FromUcs4 instead")]]
 	std::string          Ucs4ConvertToUtf8(const std::wstring& wstr);
-
+	[[deprecated("Use ToUcs4FromUtf8 instead")]]
 	std::wstring         Utf8ConvertsToUcs4(const std::string& utf8str);
-
-
 	std::wstring         U16StringToWString(const std::u16string& u16str);
 	std::wstring		 U16StringToWString(const char16_t* u16str);
 

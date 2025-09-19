@@ -361,7 +361,7 @@ void TestToLocaleFromUtf16LE() {
     std::string content = ReadFileBytes(inputFile);
     std::u16string utf16le_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
 
-    auto convert = g_conv->ToLocalFromUtf16LE(utf16le_content);
+    auto convert = g_conv->ToLocaleFromUtf16LE(utf16le_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -391,7 +391,7 @@ void TestToLocaleFromUtf16LEWithBOM() {
     std::string cleaned_content(content_view.data(), content_view.size());
     std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
 
-    auto convert = g_conv->ToLocalFromUtf16LE(u16_cleaned_content);
+    auto convert = g_conv->ToLocaleFromUtf16LE(u16_cleaned_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;

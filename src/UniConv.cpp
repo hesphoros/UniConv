@@ -619,10 +619,11 @@ std::u16string UniConv::ToUtf16LEFromUtf16BE(const char16_t* input) {
     return ToUtf16LEFromUtf16BE(std::u16string(input, len));
 }
 
-std::wstring UniConv::LocaleToWideString(const std::string& sInput) {
-    if (sInput.empty()) return std::wstring{};
+// New standardized method implementations
+std::wstring UniConv::ToWideStringFromLocale(const std::string& input) {
+    if (input.empty()) return std::wstring{};
     std::string currentEncoding = this->GetCurrentSystemEncoding();
-    auto result = this->ConvertEncoding(sInput, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str());
+    auto result = this->ConvertEncoding(input, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str());
     if (!result.IsSuccess()) return std::wstring{};
     // Remove the BOM (if any)
     const char* data = result.conv_result_str.data();
@@ -632,28 +633,48 @@ std::wstring UniConv::LocaleToWideString(const std::string& sInput) {
         size -= 2;
     }
     return std::wstring(reinterpret_cast<const wchar_t*>(data), size / sizeof(wchar_t));
+}
 
+std::wstring UniConv::ToWideStringFromLocale(const char* input) {
+	if (!input) return std::wstring{};
+	return this->ToWideStringFromLocale(std::string(input));
+}
+
+// Deprecated method implementations - call new methods
+std::wstring UniConv::LocaleToWideString(const std::string& sInput) {
+    return ToWideStringFromLocale(sInput);
 }
 
 std::wstring UniConv::LocaleToWideString(const char* sInput) {
-	if (!sInput) return std::wstring{};
-	return this->LocaleToWideString(std::string(sInput));
+	return ToWideStringFromLocale(sInput);
 }
 
-std::string UniConv::LocaleToNarrowString(const std::wstring& sInput)
+// New standardized method implementations
+std::string UniConv::ToLocaleFromWideString(const std::wstring& input)
 {
-	if (sInput.empty()) return std::string{};
+	if (input.empty()) return std::string{};
 	std::string currentEncoding = this->GetCurrentSystemEncoding();
 	auto result = this->ConvertEncoding
-           (std::string(reinterpret_cast<const char*>(sInput.data()), sInput.size() * sizeof(wchar_t)),
+           (std::string(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t)),
                ToString(Encoding::wchar_t_encoding).c_str(),
                currentEncoding.c_str());
 	return result.IsSuccess() ? result.conv_result_str : std::string{};
 }
 
+std::string UniConv::ToLocaleFromWideString(const wchar_t* input)
+{
+	return input ? this->ToLocaleFromWideString(std::wstring(input)) : std::string{};
+}
+
+// Deprecated method implementations - call new methods
+std::string UniConv::LocaleToNarrowString(const std::wstring& sInput)
+{
+	return ToLocaleFromWideString(sInput);
+}
+
 std::string UniConv::LocaleToNarrowString(const wchar_t* sInput)
 {
-	return sInput ? this->LocaleToNarrowString(std::wstring(sInput)) : std::string{};
+	return ToLocaleFromWideString(sInput);
 }
 
 // UTF-16LE -> Local
@@ -723,26 +744,39 @@ std::u16string UniConv::ToUtf16LEFromUtf32LE(const char32_t* sInput)
 	return ToUtf16LEFromUtf32LE(std::u32string(sInput));
 }
 
-std::u16string UniConv::Utf32LEConvertToUtf16BE(const std::u32string& sInput)
+// New standardized method implementations
+std::u16string UniConv::ToUtf16BEFromUtf32LE(const std::u32string& input)
 {
-	if (sInput.empty()) return std::u16string{};
-	std::string input_bytes(reinterpret_cast<const char*>(sInput.data()), sInput.size() * sizeof(char32_t));
+	if (input.empty()) return std::u16string{};
+	std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char32_t));
     auto result = this->ConvertEncoding(input_bytes, ToString(Encoding::utf_32le).c_str(), ToString(Encoding::utf_16be).c_str());
     return result.IsSuccess() && result.conv_result_str.size() % 2 == 0 ? 
            std::u16string(reinterpret_cast<const char16_t*>(result.conv_result_str.data()), 
 			   result.conv_result_str.size() / sizeof(char16_t)) : std::u16string{};
 }
 
-std::u16string UniConv::Utf32LEConvertToUtf16BE(const char32_t* sInput)
+std::u16string UniConv::ToUtf16BEFromUtf32LE(const char32_t* input)
 {
-   if (!sInput) return std::u16string{};
-   return Utf32LEConvertToUtf16BE(std::u32string(sInput));
+   if (!input) return std::u16string{};
+   return ToUtf16BEFromUtf32LE(std::u32string(input));
 }
 
-std::u32string UniConv::Utf8ConvertToUtf32LE(const std::string& sInput)
+// Deprecated method implementations - call new methods
+std::u16string UniConv::Utf32LEConvertToUtf16BE(const std::u32string& sInput)
 {
-	if (sInput.empty()) return std::u32string{};
-	auto result = this->ConvertEncoding(sInput, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_32le).c_str());
+	return ToUtf16BEFromUtf32LE(sInput);
+}
+
+std::u16string UniConv::Utf32LEConvertToUtf16BE(const char32_t* sInput)
+{
+   return ToUtf16BEFromUtf32LE(sInput);
+}
+
+// New standardized method implementations
+std::u32string UniConv::ToUtf32LEFromUtf8(const std::string& input)
+{
+	if (input.empty()) return std::u32string{};
+	auto result = this->ConvertEncoding(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_32le).c_str());
     if (result.IsSuccess() && result.conv_result_str.size() % 4 == 0) {
         return std::u32string(reinterpret_cast<const char32_t*>(result.conv_result_str.data()), 
                              result.conv_result_str.size() / sizeof(char32_t));
@@ -750,16 +784,28 @@ std::u32string UniConv::Utf8ConvertToUtf32LE(const std::string& sInput)
 	return std::u32string{};
 }
 
-std::u32string UniConv::Utf8ConvertToUtf32LE(const char* sInput)
+std::u32string UniConv::ToUtf32LEFromUtf8(const char* input)
 {
-	if (!sInput) return std::u32string{};
-	return Utf8ConvertToUtf32LE(std::string(sInput));
+	if (!input) return std::u32string{};
+	return ToUtf32LEFromUtf8(std::string(input));
 }
 
-std::u32string UniConv::Utf16LEConvertToUtf32LE(const std::u16string& sInput)
+// Deprecated method implementations - call new methods
+std::u32string UniConv::Utf8ConvertToUtf32LE(const std::string& sInput)
 {
-	if (sInput.empty()) return std::u32string{};
-	std::string input_bytes(reinterpret_cast<const char*>(sInput.data()), sInput.size() * sizeof(char16_t));
+	return ToUtf32LEFromUtf8(sInput);
+}
+
+std::u32string UniConv::Utf8ConvertToUtf32LE(const char* sInput)
+{
+	return ToUtf32LEFromUtf8(sInput);
+}
+
+// New standardized method implementations
+std::u32string UniConv::ToUtf32LEFromUtf16LE(const std::u16string& input)
+{
+	if (input.empty()) return std::u32string{};
+	std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     auto result = this->ConvertEncoding(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_32le).c_str());
     if (result.IsSuccess() && result.conv_result_str.size() % 4 == 0) {
         return std::u32string(reinterpret_cast<const char32_t*>(result.conv_result_str.data()), 
@@ -768,42 +814,65 @@ std::u32string UniConv::Utf16LEConvertToUtf32LE(const std::u16string& sInput)
 	return std::u32string{};
 }
 
-std::u32string UniConv::Utf16LEConvertToUtf32LE(const char16_t* sInput)
+std::u32string UniConv::ToUtf32LEFromUtf16LE(const char16_t* input)
 {
-	if (sInput == nullptr) return std::u32string{};
-	return Utf16LEConvertToUtf32LE(std::u16string(sInput));
+	if (input == nullptr) return std::u32string{};
+	return ToUtf32LEFromUtf16LE(std::u16string(input));
 }
 
-std::u32string UniConv::Utf16BEConvertToUtf32LE(const std::u16string& sInput)
+// Deprecated method implementations - call new methods
+std::u32string UniConv::Utf16LEConvertToUtf32LE(const std::u16string& sInput)
 {
-	if (sInput.empty()) return std::u32string{};
-    std::string input_bytes(reinterpret_cast<const char*>(sInput.data()), sInput.size() * sizeof(char16_t));
+	return ToUtf32LEFromUtf16LE(sInput);
+}
+
+std::u32string UniConv::Utf16LEConvertToUtf32LE(const char16_t* sInput)
+{
+	return ToUtf32LEFromUtf16LE(sInput);
+}
+
+// New standardized method implementations
+std::u32string UniConv::ToUtf32LEFromUtf16BE(const std::u16string& input)
+{
+	if (input.empty()) return std::u32string{};
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     auto result = this->ConvertEncoding(input_bytes, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_32le).c_str());
     if (result.IsSuccess() && result.conv_result_str.size() % 4 == 0) {
         return std::u32string(reinterpret_cast<const char32_t*>(result.conv_result_str.data()), 
                              result.conv_result_str.size() / sizeof(char32_t));
 	}
 	return std::u32string{};
+}
 
+std::u32string UniConv::ToUtf32LEFromUtf16BE(const char16_t* input)
+{
+	if (input == nullptr) return std::u32string{};
+	return ToUtf32LEFromUtf16BE(std::u16string(input));
+}
+
+// Deprecated method implementations - call new methods
+std::u32string UniConv::Utf16BEConvertToUtf32LE(const std::u16string& sInput)
+{
+	return ToUtf32LEFromUtf16BE(sInput);
 }
 
 std::u32string UniConv::Utf16BEConvertToUtf32LE(const char16_t* sInput)
 {
-	if (sInput == nullptr) return std::u32string{};
-	return  Utf16BEConvertToUtf32LE(std::u16string(sInput));
+	return ToUtf32LEFromUtf16BE(sInput);
 }
 
-std::string UniConv::Ucs4ConvertToUtf8(const std::wstring& wstr)
+// New standardized method implementations
+std::string UniConv::ToUtf8FromUcs4(const std::wstring& input)
 {
     #if defined(_WIN32)
         // Windows platform：Use Windows API WideCharToMultiByte
-        if (wstr.empty()) return std::string();
+        if (input.empty()) return std::string();
     
         int sizeRequired = WideCharToMultiByte(
             CP_UTF8, 
             0,
-            wstr.data(), 
-            (int)wstr.size(),
+            input.data(), 
+            (int)input.size(),
             nullptr, 
             0, 
             nullptr,
@@ -814,27 +883,38 @@ std::string UniConv::Ucs4ConvertToUtf8(const std::wstring& wstr)
     		return std::string{}; // Error or empty string
         }
         std::vector<char> utf8Buffer(sizeRequired);
-        WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), utf8Buffer.data(), sizeRequired, nullptr, nullptr);
+        WideCharToMultiByte(CP_UTF8, 0, input.data(), (int)input.size(), utf8Buffer.data(), sizeRequired, nullptr, nullptr);
         return std::string(utf8Buffer.begin(), utf8Buffer.end());
 
     #else defined(__linux__) || defined(__APPLE__)
-        if (wstr.empty()) return std::string();
-        std::string utf8_str = reinterpret_cast<const char*>(wstr.data());
+        if (input.empty()) return std::string();
+        std::string utf8_str = reinterpret_cast<const char*>(input.data());
         auto result = ConvertEncoding(utf8_str, ToString(Encoding::wchar_t_encoding).c_str(), ToString(Encoding::utf_8).c_str());
         return result.IsSuccess() ? result.conv_result_str : std::string{};
     #endif
 }
 
-std::wstring UniConv::Utf8ConvertsToUcs4(const std::string& utf8str)
+std::wstring UniConv::ToUcs4FromUtf8(const std::string& input)
 {
-    if (utf8str.empty()) return std::wstring{};
+    if (input.empty()) return std::wstring{};
     // Convert UTF-8 to UCS-4 (wide string)
-    auto result = ConvertEncoding(utf8str, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16le).c_str());
+    auto result = ConvertEncoding(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16le).c_str());
     if (result.IsSuccess() && result.conv_result_str.size() % sizeof(wchar_t) == 0) {
         return std::wstring(reinterpret_cast<const wchar_t*>(result.conv_result_str.data()),
             result.conv_result_str.size() / sizeof(wchar_t));
     }
     return std::wstring{};
+}
+
+// Deprecated method implementations - call new methods
+std::string UniConv::Ucs4ConvertToUtf8(const std::wstring& wstr)
+{
+    return ToUtf8FromUcs4(wstr);
+}
+
+std::wstring UniConv::Utf8ConvertsToUcs4(const std::string& utf8str)
+{
+    return ToUcs4FromUtf8(utf8str);
 }
 
 std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
