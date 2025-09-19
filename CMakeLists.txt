@@ -19,6 +19,10 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+
+# Configure cross-platform config.h
+include(cmake/ConfigureConfig.cmake)
+
 # Configure compiler-specific settings
 if(MSVC)
     # Set UTF-8 encoding for MSVC

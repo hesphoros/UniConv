@@ -1,10 +1,14 @@
 #include "UniConv.h"
 #include <iostream>
 #include <string>
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
 
 int main() {
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+#endif
     
     std::cout << "=== Testing Error Handling Consistency ===" << std::endl;
     
@@ -82,6 +86,8 @@ int main() {
         return 1;
     }
     
-    system("pause");
+#ifdef _WIN32
+    (void)system("pause");
+#endif
     return 0;
 }

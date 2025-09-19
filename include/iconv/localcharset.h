@@ -28,13 +28,18 @@
 #endif
 */
 
-#ifdef LIBICONV_EXPORTS
-#define LIBCHARSET_DLL_EXPORTED __declspec(dllexport)
-#elif USING_STATIC_LIBICONV
-#define LIBCHARSET_DLL_EXPORTED
+
+#ifdef _WIN32
+  #ifdef LIBICONV_EXPORTS
+    #define LIBCHARSET_DLL_EXPORTED __declspec(dllexport)
+  #elif USING_STATIC_LIBICONV
+    #define LIBCHARSET_DLL_EXPORTED
+  #else
+    #define LIBCHARSET_DLL_EXPORTED __declspec(dllimport)
+  #endif
 #else
-#define LIBCHARSET_DLL_EXPORTED __declspec(dllimport)
-#endif//µÚ36ÐÐ
+  #define LIBCHARSET_DLL_EXPORTED
+#endif
 
 #ifdef __cplusplus
 extern "C" {

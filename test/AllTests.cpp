@@ -9,13 +9,43 @@
 #include <iomanip>
 #include <sstream>
 #include <fstream>
-#include <windows.h>
 #include <assert.h>
-#include <io.h>
-#include <fcntl.h>
 #include <vector>
 #include <direct.h>
 #include <utility>
+
+#ifdef _WIN32
+    #include <windows.h>
+    #include <io.h>
+    #include <fcntl.h>
+    #include <direct.h>
+#else
+    #include <unistd.h>
+    #include <sys/stat.h>
+    #include <dirent.h>
+#endif
+
+
+#ifdef __linux__
+
+    // Simple logging macros for Linux compatibility
+    #define LOGINFO(msg) std::cout << "[INFO] " << msg << std::endl
+    #define LOGOK(msg) std::cout << "[OK] " << msg << std::endl
+    #define LOGERROR(msg) std::cerr << "[ERROR] " << msg << std::endl
+    #define LOGDEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
+
+    // Simple logger class
+    class SimpleLogger {
+    public:
+        void SetLogsFileName(const std::string& filename) {
+            // For simplicity, we'll just use console output on Linux
+        }
+    };
+
+SimpleLogger glogger;
+
+#endif // __linux__
+
 
 // Removed global variables to avoid static destruction order problems
 // auto g_conv = UniConv::GetInstance();
@@ -648,8 +678,14 @@ void GenerateTestFiles() {
 
 // Batch convert files test implementation
 void BatchConvertFiles() {
-    system("chcp 65001"); // Set console encoding to UTF-8
-    system("cls"); // Clear screen
+
+#ifdef _WIN32
+    (void)system("chcp 65001"); // Set console encoding to UTF-8
+    (void)system("cls"); // Clear screen
+#else
+    // Linux console typically uses UTF-8 by default
+    (void)system("clear");
+#endif
 
     LOGINFO("=== Starting batch file conversion test ===");
     
@@ -863,7 +899,9 @@ void RunAllTests() {
 // ========== Main Function ==========
 
 int main() {
+#ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+#endif
     InitializeLogging();
 
     // Run individual API tests from main.cpp
@@ -899,6 +937,11 @@ int main() {
     RunAllTests();
 
     LOGINFO("=== All tests completed successfully ===");
-    system("pause");
+#ifdef _WIN32
+    (void)system("pause");
+#else
+    std::cout << "Press Enter to continue...";
+    std::cin.get();
+#endif
     return 0;
 }
