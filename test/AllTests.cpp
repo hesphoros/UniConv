@@ -11,7 +11,7 @@
 #include <fstream>
 #include <assert.h>
 #include <vector>
-#include <direct.h>
+
 #include <utility>
 
 #ifdef _WIN32
@@ -24,27 +24,6 @@
     #include <sys/stat.h>
     #include <dirent.h>
 #endif
-
-
-#ifdef __linux__
-
-    // Simple logging macros for Linux compatibility
-    #define LOGINFO(msg) std::cout << "[INFO] " << msg << std::endl
-    #define LOGOK(msg) std::cout << "[OK] " << msg << std::endl
-    #define LOGERROR(msg) std::cerr << "[ERROR] " << msg << std::endl
-    #define LOGDEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
-
-    // Simple logger class
-    class SimpleLogger {
-    public:
-        void SetLogsFileName(const std::string& filename) {
-            // For simplicity, we'll just use console output on Linux
-        }
-    };
-
-SimpleLogger glogger;
-
-#endif // __linux__
 
 
 // Removed global variables to avoid static destruction order problems
@@ -123,10 +102,14 @@ std::string BytesToHex(const std::string& data) {
 
 // Create necessary directories
 void CreateDirectories(const std::string& path) {
+    #ifdef  _WIN32
     _mkdir("testdata");
     _mkdir("testdata\\output");
+    #elif __linux__
+    mkdir("testdata", 0755);
+    mkdir("testdata/output", 0755);
+    #endif 
 }
-
 // Check file encoding and remove BOM if exists
 std::pair<std::string, std::string> DetectEncodingAndRemoveBOM(const std::string& data) {
     if (data.empty()) {
