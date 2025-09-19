@@ -55,6 +55,7 @@
 #include <algorithm>
 #include <functional>
 #include <cstdlib>        // 替换 malloc.h
+#include <type_traits>    // for CompactResult
 
 #ifdef _WIN32
 #include <io.h>           // 仅在 Windows 需要时包含
@@ -122,6 +123,278 @@ inline constexpr std::string_view current_cpp_standard() {
 #endif
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+// === High-Performance Error Handling System ===
+//----------------------------------------------------------------------------------------------------------------------
+
+// 轻量级错误码枚举，仅占1字节
+enum class ErrorCode : uint8_t {
+    Success = 0,
+    InvalidParameter = 1,
+    InvalidSourceEncoding = 2,
+    InvalidTargetEncoding = 3,
+    ConversionFailed = 4,
+    IncompleteSequence = 5,
+    InvalidSequence = 6,
+    OutOfMemory = 7,
+    BufferTooSmall = 8,
+    FileNotFound = 9,
+    FileReadError = 10,
+    FileWriteError = 11,
+    InternalError = 12,
+    EncodingNotFound = 13,
+    SystemError = 14
+};
+
+// 编译时错误信息映射，零运行时开销
+namespace detail {
+    constexpr const char* GetErrorMessage(ErrorCode code) noexcept {
+        switch (code) {
+            case ErrorCode::Success: return "Success";
+            case ErrorCode::InvalidParameter: return "Invalid parameter";
+            case ErrorCode::InvalidSourceEncoding: return "Invalid source encoding";
+            case ErrorCode::InvalidTargetEncoding: return "Invalid target encoding";
+            case ErrorCode::ConversionFailed: return "Conversion failed";
+            case ErrorCode::IncompleteSequence: return "Incomplete multibyte sequence";
+            case ErrorCode::InvalidSequence: return "Invalid multibyte sequence";
+            case ErrorCode::OutOfMemory: return "Out of memory";
+            case ErrorCode::BufferTooSmall: return "Buffer too small";
+            case ErrorCode::FileNotFound: return "File not found";
+            case ErrorCode::FileReadError: return "File read error";
+            case ErrorCode::FileWriteError: return "File write error";
+            case ErrorCode::InternalError: return "Internal error";
+            case ErrorCode::EncodingNotFound: return "Encoding not found";
+            case ErrorCode::SystemError: return "System error";
+            default: return "Unknown error";
+        }
+    }
+}
+
+// 高性能CompactResult模板类
+template<typename T>
+class [[nodiscard]] CompactResult {
+private:
+    union {
+        T value_;
+        ErrorCode error_code_;
+    };
+    bool has_value_;  // 状态标志
+    
+public:
+    // 成功构造 - 零开销
+    explicit CompactResult(T&& value) noexcept(std::is_nothrow_move_constructible_v<T>)
+        : value_(std::move(value)), has_value_(true) {}
+    
+    // 从const引用构造
+    explicit CompactResult(const T& value) noexcept(std::is_nothrow_copy_constructible_v<T>)
+        : value_(value), has_value_(true) {}
+    
+    // 错误构造 - 极小开销
+    explicit CompactResult(ErrorCode error) noexcept 
+        : error_code_(error), has_value_(false) {}
+    
+    // 移动构造
+    CompactResult(CompactResult&& other) noexcept 
+        : has_value_(other.has_value_) {
+        if (has_value_) {
+            new(&value_) T(std::move(other.value_));
+        } else {
+            error_code_ = other.error_code_;
+        }
+    }
+    
+    // 移动赋值
+    CompactResult& operator=(CompactResult&& other) noexcept {
+        if (this != &other) {
+            if (has_value_) {
+                value_.~T();
+            }
+            has_value_ = other.has_value_;
+            if (has_value_) {
+                new(&value_) T(std::move(other.value_));
+            } else {
+                error_code_ = other.error_code_;
+            }
+        }
+        return *this;
+    }
+    
+    // 拷贝构造
+    CompactResult(const CompactResult& other) noexcept(std::is_nothrow_copy_constructible_v<T>)
+        : has_value_(other.has_value_) {
+        if (has_value_) {
+            new(&value_) T(other.value_);
+        } else {
+            error_code_ = other.error_code_;
+        }
+    }
+    
+    // 拷贝赋值
+    CompactResult& operator=(const CompactResult& other) noexcept(std::is_nothrow_copy_constructible_v<T>) {
+        if (this != &other) {
+            if (has_value_) {
+                value_.~T();
+            }
+            has_value_ = other.has_value_;
+            if (has_value_) {
+                new(&value_) T(other.value_);
+            } else {
+                error_code_ = other.error_code_;
+            }
+        }
+        return *this;
+    }
+    
+    ~CompactResult() {
+        if (has_value_) {
+            value_.~T();
+        }
+    }
+    
+    // 热路径优化：内联+分支预测
+    [[nodiscard]] bool IsSuccess() const noexcept {
+        return has_value_; 
+    }
+    
+    // 显式bool转换
+    explicit operator bool() const noexcept {
+        return IsSuccess();
+    }
+    
+    // 快速访问，无额外检查（性能优先）
+    T&& GetValue() && noexcept { 
+        return std::move(value_); 
+    }
+    
+    const T& GetValue() const& noexcept { 
+        return value_; 
+    }
+    
+    T& GetValue() & noexcept {
+        return value_;
+    }
+    
+    // 错误信息获取（编译时字符串，零分配）
+    constexpr const char* GetErrorMessage() const noexcept {
+        return has_value_ ? "Success" : detail::GetErrorMessage(error_code_);
+    }
+    
+    ErrorCode GetErrorCode() const noexcept {
+        return has_value_ ? ErrorCode::Success : error_code_;
+    }
+    
+    // 提供默认值的安全访问
+    template<typename U>
+    T ValueOr(U&& default_value) const& {
+        return has_value_ ? value_ : static_cast<T>(std::forward<U>(default_value));
+    }
+    
+    template<typename U>
+    T ValueOr(U&& default_value) && {
+        return has_value_ ? std::move(value_) : static_cast<T>(std::forward<U>(default_value));
+    }
+    
+    // 静态工厂方法
+    static CompactResult Success(T&& value) {
+        return CompactResult(std::move(value));
+    }
+    
+    static CompactResult Success(const T& value) {
+        return CompactResult(value);
+    }
+    
+    static CompactResult Failure(ErrorCode error) {
+        return CompactResult(error);
+    }
+};
+
+// std::string特化版本，优化内存使用
+template<>
+class [[nodiscard]] CompactResult<std::string> {
+private:
+    std::string value_;     // 使用空字符串表示可能的错误状态
+    ErrorCode error_code_;  // 仅1字节
+    
+public:
+    // 成功构造
+    explicit CompactResult(std::string&& value) noexcept
+        : value_(std::move(value)), error_code_(ErrorCode::Success) {}
+        
+    explicit CompactResult(const std::string& value) 
+        : value_(value), error_code_(ErrorCode::Success) {}
+        
+    // 错误构造 - 使用空字符串，避免额外分配
+    explicit CompactResult(ErrorCode error) noexcept 
+        : error_code_(error) {}  // value_ 默认构造为空字符串
+    
+    // 默认移动和拷贝
+    CompactResult(CompactResult&&) noexcept = default;
+    CompactResult& operator=(CompactResult&&) noexcept = default;
+    CompactResult(const CompactResult&) = default;
+    CompactResult& operator=(const CompactResult&) = default;
+    
+    // 超快速成功检查
+    [[nodiscard]] bool IsSuccess() const noexcept { 
+        return error_code_ == ErrorCode::Success; 
+    }
+    
+    explicit operator bool() const noexcept {
+        return IsSuccess();
+    }
+    
+    // 直接返回引用，零拷贝
+    std::string&& GetValue() && noexcept { 
+        return std::move(value_); 
+    }
+    
+    const std::string& GetValue() const& noexcept { 
+        return value_; 
+    }
+    
+    std::string& GetValue() & noexcept {
+        return value_;
+    }
+    
+    ErrorCode GetErrorCode() const noexcept { 
+        return error_code_; 
+    }
+    
+    constexpr const char* GetErrorMessage() const noexcept {
+        return error_code_ == ErrorCode::Success ? "Success" : detail::GetErrorMessage(error_code_);
+    }
+    
+    // 提供默认值
+    template<typename U>
+    std::string ValueOr(U&& default_value) const& {
+        return IsSuccess() ? value_ : std::string(std::forward<U>(default_value));
+    }
+    
+    template<typename U>
+    std::string ValueOr(U&& default_value) && {
+        return IsSuccess() ? std::move(value_) : std::string(std::forward<U>(default_value));
+    }
+    
+    // 静态工厂方法
+    static CompactResult Success(std::string&& value) {
+        return CompactResult(std::move(value));
+    }
+    
+    static CompactResult Success(const std::string& value) {
+        return CompactResult(value);
+    }
+    
+    static CompactResult Failure(ErrorCode error) {
+        return CompactResult(error);
+    }
+};
+
+// 便利的类型别名
+using StringResult = CompactResult<std::string>;
+using StringViewResult = CompactResult<std::string_view>;
+using IntResult = CompactResult<int>;
+using BoolResult = CompactResult<bool>;
+
+//----------------------------------------------------------------------------------------------------------------------
 
 template <typename T>
 class Singleton {
@@ -152,6 +425,9 @@ std::shared_ptr<T> Singleton<T>::_instance = nullptr;
 
 class EncodingNames;
 
+// 前向声明
+enum class ErrorCode : uint8_t;
+template<typename T> class CompactResult;
 
 class UNICONV_EXPORT UniConv : public Singleton<UniConv>
 {
@@ -192,7 +468,7 @@ private:
 
 public:
 
-   void SetDefaultEncoding(const std::string& encoding);
+   void SetDefaultEncoding(const std::string& encoding) noexcept;
 
 	//---------------------------------------------------------------------------
 	// Bom encodings @{
@@ -273,25 +549,25 @@ public:
 		 * @return True if the conversion was successful, false otherwise.
 		 * @return bool
 		 */
-		bool IsSuccess() const {
+		bool IsSuccess() const noexcept {
 			return error_code == 0;
 		}
 
-		explicit operator bool() const {
+		explicit operator bool() const noexcept {
 			return IsSuccess();
 		}
-		bool operator!() const {
+		bool operator!() const noexcept {
 			return !IsSuccess();
 		}
-		bool operator==(int code) const {
+		bool operator==(int code) const noexcept {
 			return error_code == code;
 		}
 
-		bool operator!=(int code) const {
+		bool operator!=(int code) const noexcept {
 			return error_code != code;
 		}
 
-		const char* c_str() const {
+		const char* c_str() const noexcept {
 			return IsSuccess() ? conv_result_str.c_str() : error_msg.data();
 		}
 	};
@@ -312,7 +588,7 @@ public:
 	 * @retval "UTF-16LE" if the system encoding is UTF-16LE.
 	 * @note finished test on windows
 	 */
-	static std::string     GetCurrentSystemEncoding();
+	static std::string     GetCurrentSystemEncoding() noexcept;
 
 
 	/**
@@ -322,7 +598,7 @@ public:
 	 * @retval -1  it not on windows or Linux
 	 * @note finished test on windows
 	 */
-	static std::uint16_t   GetCurrentSystemEncodingCodePage();
+	static std::uint16_t   GetCurrentSystemEncodingCodePage() noexcept;
 
 	/**
 	 * @brief Get the encoding name by code page.
@@ -331,7 +607,7 @@ public:
 	 * @retval std::string
 	 * @note finished test on windows
 	 */
-	static std::string     GetEncodingNameByCodePage(std::uint16_t codePage);
+	static std::string     GetEncodingNameByCodePage(std::uint16_t codePage) noexcept;
 
 /** Test Success */ 
 /***************************************************************************/
@@ -608,15 +884,7 @@ public:
 	 */
 	std::string          ToLocaleFromWideString(const wchar_t* input);
 
-	// Deprecated methods - use ToWideStringFromLocale and ToLocaleFromWideString instead
-	[[deprecated("Use ToWideStringFromLocale instead")]]
-	std::wstring         LocaleToWideString(const std::string& sInput);
-	[[deprecated("Use ToWideStringFromLocale instead")]]
-	std::wstring         LocaleToWideString(const char* sInput);
-	[[deprecated("Use ToLocaleFromWideString instead")]]
-	std::string          LocaleToNarrowString(const std::wstring& sInput);
-	[[deprecated("Use ToLocaleFromWideString instead")]]
-	std::string          LocaleToNarrowString(const wchar_t* sInput);
+
 
 /** Test Suceess */
 /***************************************************************************/
@@ -683,11 +951,7 @@ public:
 	std::u16string       ToUtf16BEFromUtf32LE(const std::u32string& input);
 	std::u16string       ToUtf16BEFromUtf32LE(const char32_t* input);
 
-	// Deprecated methods - use ToUtf16BEFromUtf32LE instead
-	[[deprecated("Use ToUtf16BEFromUtf32LE instead")]]
-	std::u16string       Utf32LEConvertToUtf16BE(const std::u32string& sInput);
-	[[deprecated("Use ToUtf16BEFromUtf32LE instead")]]
-	std::u16string       Utf32LEConvertToUtf16BE(const char32_t* sInput);
+
 
 	/**
 	 * @brief Convert UTF-8 string to UTF-32LE.
@@ -697,11 +961,7 @@ public:
 	std::u32string       ToUtf32LEFromUtf8(const std::string& input);
 	std::u32string       ToUtf32LEFromUtf8(const char* input);
 
-	// Deprecated methods - use ToUtf32LEFromUtf8 instead
-	[[deprecated("Use ToUtf32LEFromUtf8 instead")]]
-	std::u32string       Utf8ConvertToUtf32LE(const std::string& sInput);
-	[[deprecated("Use ToUtf32LEFromUtf8 instead")]]
-	std::u32string       Utf8ConvertToUtf32LE(const char* sInput);
+
 
 	/**
 	 * @brief Convert a UTF-16LE string to UTF-32LE.
@@ -711,11 +971,7 @@ public:
 	std::u32string       ToUtf32LEFromUtf16LE(const std::u16string& input);
 	std::u32string       ToUtf32LEFromUtf16LE(const char16_t* input);
 
-	// Deprecated methods - use ToUtf32LEFromUtf16LE instead
-	[[deprecated("Use ToUtf32LEFromUtf16LE instead")]]
-	std::u32string       Utf16LEConvertToUtf32LE(const std::u16string& sInput);
-	[[deprecated("Use ToUtf32LEFromUtf16LE instead")]]
-	std::u32string       Utf16LEConvertToUtf32LE(const char16_t* sInput);
+
 
 	/**
 	 * @brief Convert a UTF-16BE string to UTF-32LE.
@@ -725,11 +981,7 @@ public:
 	std::u32string       ToUtf32LEFromUtf16BE(const std::u16string& input);
 	std::u32string       ToUtf32LEFromUtf16BE(const char16_t* input);
 
-	// Deprecated methods - use ToUtf32LEFromUtf16BE instead
-	[[deprecated("Use ToUtf32LEFromUtf16BE instead")]]
-	std::u32string       Utf16BEConvertToUtf32LE(const std::u16string& sInput);
-	[[deprecated("Use ToUtf32LEFromUtf16BE instead")]]
-	std::u32string       Utf16BEConvertToUtf32LE(const char16_t* sInput);
+
 
     /**
      * @brief Convert a UCS-4 (std::wstring, platform dependent) string to UTF-8 encoded std::string.
@@ -748,11 +1000,7 @@ public:
 	 */
 	std::wstring         ToUcs4FromUtf8(const std::string& input);
 
-	// Deprecated methods - use ToUtf8FromUcs4 and ToUcs4FromUtf8 instead
-	[[deprecated("Use ToUtf8FromUcs4 instead")]]
-	std::string          Ucs4ConvertToUtf8(const std::wstring& wstr);
-	[[deprecated("Use ToUcs4FromUtf8 instead")]]
-	std::wstring         Utf8ConvertsToUcs4(const std::string& utf8str);
+
 	std::wstring         U16StringToWString(const std::u16string& u16str);
 	std::wstring		 U16StringToWString(const char16_t* u16str);
 
@@ -760,7 +1008,7 @@ public:
 	 * @brief Encoding to string
 	 *
 	 */
-	static std::string ToString(UniConv::Encoding enc);
+	static std::string ToString(UniConv::Encoding enc) noexcept;
 
 	/**
 	 * @brief Convert between any two encodings using iconv
@@ -770,6 +1018,41 @@ public:
 	 * @return Conversion result
 	 */
 	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === High-Performance Methods using CompactResult ===
+	//----------------------------------------------------------------------------------------------------------------------
+	
+	/**
+	 * @brief High-performance encoding conversion using CompactResult
+	 * @param input Input string data
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name  
+	 * @return CompactResult containing converted string or error
+	 */
+	StringResult ConvertEncodingFast(const std::string& input, 
+	                                const char* fromEncoding, 
+	                                const char* toEncoding) noexcept;
+	
+	/**
+	 * @brief Fast encoding name lookup by codepage (zero-allocation)
+	 * @param codepage The codepage to lookup
+	 * @return Pointer to encoding name, or nullptr if not found
+	 */
+	const char* GetEncodingNamePtr(int codepage) noexcept;
+	
+	/**
+	 * @brief Fast encoding name lookup using CompactResult
+	 * @param codepage The codepage to lookup
+	 * @return CompactResult containing encoding name or error
+	 */
+	StringViewResult GetEncodingNameFast(int codepage) noexcept;
+	
+	/**
+	 * @brief Fast system codepage retrieval
+	 * @return CompactResult containing system codepage or error
+	 */
+	IntResult GetSystemCodePageFast() noexcept;
 
 private:
 
@@ -820,9 +1103,9 @@ private:
 
 	UniConv(const UniConv&) = delete;
 	UniConv& operator=(const UniConv&) = delete;
-public:
-
 };
+
+
 
 #endif // UNICONV_H__
 

@@ -17,7 +17,9 @@
 #include <direct.h>
 #include <utility>
 
-auto g_conv = UniConv::GetInstance();
+// Removed global variables to avoid static destruction order problems
+// auto g_conv = UniConv::GetInstance();
+// std::string UTF8 = UniConv::ToString(UniConv::Encoding::utf_8);
 
 // Conversion task structure
 struct ConversionTask {
@@ -38,11 +40,11 @@ enum class BomEncoding {
     UTF32_BE
 };
 
-// Encoding string constants
-std::string UTF8    = UniConv::ToString(UniConv::Encoding::utf_8);
-std::string GBK     = UniConv::ToString(UniConv::Encoding::gbk);
-std::string UTF16LE = UniConv::ToString(UniConv::Encoding::utf_16le);
-std::string UTF16BE = UniConv::ToString(UniConv::Encoding::utf_16be);
+// Helper function to get encoding strings safely
+inline std::string GetUTF8String() { return UniConv::ToString(UniConv::Encoding::utf_8); }
+inline std::string GetGBKString() { return UniConv::ToString(UniConv::Encoding::gbk); }
+inline std::string GetUTF16LEString() { return UniConv::ToString(UniConv::Encoding::utf_16le); }
+inline std::string GetUTF16BEString() { return UniConv::ToString(UniConv::Encoding::utf_16be); }
 
 // Test task configuration
 ConversionTask task_gb2312_to_utf8 = {
@@ -152,7 +154,8 @@ void InitializeLogging() {
 /// Test GetCurrentSystemEncoding API
 /// </summary>
 void TestGetCurrentSystemEncoding() {
-    std::string sCurSysEnc = g_conv->GetCurrentSystemEncoding();
+    auto conv = UniConv::GetInstance();
+    std::string sCurSysEnc = conv->GetCurrentSystemEncoding();
     LOGINFO("Current system encoding:\t" + sCurSysEnc);
 }
 
@@ -160,7 +163,7 @@ void TestGetCurrentSystemEncoding() {
 /// Test GetCurrentSystemEncodingCodePage API
 /// </summary>
 void TestGetCurrentSystemEncodingCodePage() {
-    int nCurSysEncCodePage = g_conv->GetCurrentSystemEncodingCodePage();
+    int nCurSysEncCodePage = UniConv::GetInstance()->GetCurrentSystemEncodingCodePage();
     LOGINFO("Current system codepage:\t" + std::to_string(nCurSysEncCodePage));
 }
 
@@ -168,11 +171,11 @@ void TestGetCurrentSystemEncodingCodePage() {
 /// Test API GetEncodingNameByCodePage
 /// </summary>
 void TestGetEncodingNameByCodePage() {
-    int codepage = g_conv->GetCurrentSystemEncodingCodePage();
+    int codepage = UniConv::GetInstance()->GetCurrentSystemEncodingCodePage();
     LOGINFO("Current system codepage:\t" + std::to_string(codepage));
-    std::string encodingName = g_conv->GetEncodingNameByCodePage(codepage);
+    std::string encodingName = UniConv::GetInstance()->GetEncodingNameByCodePage(codepage);
     LOGINFO("Encoding name for codepage " + std::to_string(codepage) + ":\t" + encodingName);
-    std::string convResult = g_conv->GetEncodingNameByCodePage(codepage);
+    std::string convResult = UniConv::GetInstance()->GetEncodingNameByCodePage(codepage);
     if (convResult != encodingName) {
         LOGERROR("Encoding name mismatch for codepage " + std::to_string(codepage) + ": expected '" + encodingName + "', got '" + convResult + "'");
     } else {
@@ -201,7 +204,7 @@ void TestToLocaleFromUtf8() {
     std::string outputFile = "testdata/output/output_utf-8_to_local.txt";
     std::string content = ReadFileBytes(inputFile);
 
-    std::string convert = g_conv->ToLocaleFromUtf8(content);
+    std::string convert = UniConv::GetInstance()->ToLocaleFromUtf8(content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -233,7 +236,7 @@ void TestToLocaleFromUtf8WithBOM() {
     }
 
     std::string cleaned_content(content_view.data(), content_view.size());
-    auto convert = g_conv->ToLocaleFromUtf8(cleaned_content);
+    auto convert = UniConv::GetInstance()->ToLocaleFromUtf8(cleaned_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -252,7 +255,7 @@ void TestToUtf8FromLocale() {
     std::string outputFile = "testdata/output/output_gb2312_to_utf-8_2.txt";
     std::string content = ReadFileBytes(inputFile);
 
-    std::string convert = g_conv->ToUtf8FromLocale(content);
+    std::string convert = UniConv::GetInstance()->ToUtf8FromLocale(content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -273,7 +276,7 @@ void TestToUtf16LEFromLocale() {
     std::string outputFile = "testdata/output/output_gb2312_to_utf-16le.txt";
     std::string content = ReadFileBytes(inputFile);
 
-    std::u16string convert = g_conv->ToUtf16LEFromLocale(content);
+    std::u16string convert = UniConv::GetInstance()->ToUtf16LEFromLocale(content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -292,7 +295,7 @@ void TestToUtf16BEFromLocale() {
     std::string inputFile = "testdata/input_gb2312.txt";
     std::string outputFile = "testdata/output/output_gb2312_to_utf-16be.txt";
     std::string content = ReadFileBytes(inputFile);
-    std::u16string convert = g_conv->ToUtf16BEFromLocale(content);
+    std::u16string convert = UniConv::GetInstance()->ToUtf16BEFromLocale(content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -312,7 +315,7 @@ void TestToLocaleFromUtf16BE() {
     std::string content = ReadFileBytes(inputFile);
     std::u16string utf16be_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
 
-    auto convert = g_conv->ToLocaleFromUtf16BE(utf16be_content);
+    auto convert = UniConv::GetInstance()->ToLocaleFromUtf16BE(utf16be_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -342,7 +345,7 @@ void TestToLocaleFromUtf16BE_WithBOM() {
     std::string cleaned_content(content_view.data(), content_view.size());
     std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
 
-    auto convert = g_conv->ToLocaleFromUtf16BE(u16_cleaned_content);
+    auto convert = UniConv::GetInstance()->ToLocaleFromUtf16BE(u16_cleaned_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -361,7 +364,7 @@ void TestToLocaleFromUtf16LE() {
     std::string content = ReadFileBytes(inputFile);
     std::u16string utf16le_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
 
-    auto convert = g_conv->ToLocaleFromUtf16LE(utf16le_content);
+    auto convert = UniConv::GetInstance()->ToLocaleFromUtf16LE(utf16le_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -391,7 +394,7 @@ void TestToLocaleFromUtf16LEWithBOM() {
     std::string cleaned_content(content_view.data(), content_view.size());
     std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
 
-    auto convert = g_conv->ToLocaleFromUtf16LE(u16_cleaned_content);
+    auto convert = UniConv::GetInstance()->ToLocaleFromUtf16LE(u16_cleaned_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -410,7 +413,7 @@ void TestToUtf8FromUtf16LE() {
     std::string outputFile = "testdata/output/output_utf-16le_to_utf-8.txt";
     std::string content = ReadFileBytes(inputFile);
     std::u16string utf16le_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
-    auto convert = g_conv->ToUtf8FromUtf16LE(utf16le_content);
+    auto convert = UniConv::GetInstance()->ToUtf8FromUtf16LE(utf16le_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -439,7 +442,7 @@ void TestToUtf8FromUtf16LEWithBOM() {
     std::string cleaned_content(content_view.data(), content_view.size());
     std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
 
-    auto convert = g_conv->ToUtf8FromUtf16LE(u16_cleaned_content);
+    auto convert = UniConv::GetInstance()->ToUtf8FromUtf16LE(u16_cleaned_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -457,7 +460,7 @@ void TestToUtf8FromUtf16BE() {
     std::string outputFile = "testdata/output/output_utf-16be_to_utf-8.txt";
     std::string content = ReadFileBytes(inputFile);
     std::u16string utf16be_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
-    auto convert = g_conv->ToUtf8FromUtf16BE(utf16be_content);
+    auto convert = UniConv::GetInstance()->ToUtf8FromUtf16BE(utf16be_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -485,7 +488,7 @@ void TestToUtf8FromUtf16BEWithBOM() {
     }
     std::string cleaned_content(content_view.data(), content_view.size());
     std::u16string u16_cleaned_content(reinterpret_cast<const char16_t*>(cleaned_content.data()), cleaned_content.size() / sizeof(char16_t));
-    auto convert = g_conv->ToUtf8FromUtf16BE(u16_cleaned_content);
+    auto convert = UniConv::GetInstance()->ToUtf8FromUtf16BE(u16_cleaned_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -502,7 +505,7 @@ void TestToUtf16LEFromUtf8() {
     std::string inputFile = "testdata/input_utf8.txt";
     std::string outputFile = "testdata/output/output_utf-8_to_utf-16le.txt";
     std::string content = ReadFileBytes(inputFile);
-    std::u16string convert = g_conv->ToUtf16LEFromUtf8(content);
+    std::u16string convert = UniConv::GetInstance()->ToUtf16LEFromUtf8(content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -519,7 +522,7 @@ void TestToUtf16BEFromUtf8() {
     std::string inputFile = "testdata/input_utf8.txt";
     std::string outputFile = "testdata/output/output_utf-8_to_utf-16be.txt";
     std::string content = ReadFileBytes(inputFile);
-    std::u16string convert = g_conv->ToUtf16BEFromUtf8(content);
+    std::u16string convert = UniConv::GetInstance()->ToUtf16BEFromUtf8(content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -537,7 +540,7 @@ void TestToUtf16BEFromUtf16LE() {
     std::string outputFile = "testdata/output/output_utf-16le_to_utf-16be.txt";
     std::string content = ReadFileBytes(inputFile);
     std::u16string utf16le_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
-    std::u16string convert = g_conv->ToUtf16BEFromUtf16LE(utf16le_content);
+    std::u16string convert = UniConv::GetInstance()->ToUtf16BEFromUtf16LE(utf16le_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -555,7 +558,7 @@ void TestToUtf16LEFromUtf16BE() {
     std::string outputFile = "testdata/output/output_utf-16be_to_utf-16le.txt";
     std::string content = ReadFileBytes(inputFile);
     std::u16string utf16be_content(reinterpret_cast<const char16_t*>(content.data()), content.size() / sizeof(char16_t));
-    std::u16string convert = g_conv->ToUtf16LEFromUtf16BE(utf16be_content);
+    std::u16string convert = UniConv::GetInstance()->ToUtf16LEFromUtf16BE(utf16be_content);
     if (convert.empty()) {
         LOGERROR("Conversion failed for file: " + inputFile);
         std::cout << "Conversion failed for file: " + inputFile << std::endl;
@@ -566,22 +569,22 @@ void TestToUtf16LEFromUtf16BE() {
 }
 
 /// <summary>
-/// Test API LocaleToWideString
+/// Test API ToWideStringFromLocale
 /// </summary>
-void TestLocaleToWideString() {
+void TestToWideStringFromLocale() {
     std::string inputFile = "testdata/input_gb2312.txt";
 
     std::string content = ReadFileBytes(inputFile);
     std::cout << "Content size: " << content.size() << " bytes" << std::endl;
     std::cout << "Content : " << content << std::endl;
-    std::wstring wideResult = g_conv->LocaleToWideString(content);
+    std::wstring wideResult = UniConv::GetInstance()->ToWideStringFromLocale(content);
     assert(!wideResult.empty());
 
     std::string outputFile = "testdata/output/output_gbk_to_wide.txt";
     WriteFileBytes(outputFile, std::string(reinterpret_cast<const char*>(wideResult.data()), wideResult.size() * sizeof(wchar_t)));
-    std::cout << "[Test_LocaleToWideString] wideResult size: " << wideResult.size() << " characters" << std::endl;
+    std::cout << "[Test_ToWideStringFromLocale] wideResult size: " << wideResult.size() << " characters" << std::endl;
     std::wcout.imbue(std::locale(""));
-    std::wcout << L"[Test_LocaleToWideString] wideResult: " << wideResult << std::endl;
+    std::wcout << L"[Test_ToWideStringFromLocale] wideResult: " << wideResult << std::endl;
     LOGINFO("Converted content written to: " + outputFile);
 }
 
@@ -821,7 +824,7 @@ int main() {
     TestToUtf16BEFromUtf8();
     TestToUtf16BEFromUtf16LE();  // OK
     TestToUtf16LEFromUtf16BE();  // OK
-    TestLocaleToWideString();
+    TestToWideStringFromLocale();
     TestTostring();
 
     // Run comprehensive tests from Test.cpp

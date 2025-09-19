@@ -30,8 +30,9 @@
 *  <Date>     | <Version> | <Author>       | <Description>
 *  2025/9/18  | 1.0.0.2   | hesphoros      | Add ConvertEncoding API
 *****************************************************************************/
-#define _CRT_SECURE_NO_WARNINGS
+
 #include "UniConv.h"
+#include <algorithm>
 
 
 
@@ -40,7 +41,6 @@
 const std::string UniConv::m_encodingNames[] = {
     #define X(name, str) str,
     #include "encodings.inc"
-    #include <algorithm>
     #undef X
 };
 
@@ -217,14 +217,14 @@ const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePa
 
 
 
-void UniConv::SetDefaultEncoding(const std::string& encoding)
+void UniConv::SetDefaultEncoding(const std::string& encoding) noexcept
 {
     this->m_defaultEncoding = encoding;
 }
 
 
 // ===================== System encoding related functions =====================
-std::string UniConv::GetCurrentSystemEncoding()
+std::string UniConv::GetCurrentSystemEncoding() noexcept
 {
     if (!m_defaultEncoding.empty()) {
         return m_defaultEncoding;
@@ -396,7 +396,7 @@ UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const ch
 }
 
 
-std::uint16_t UniConv::GetCurrentSystemEncodingCodePage() {
+std::uint16_t UniConv::GetCurrentSystemEncodingCodePage() noexcept {
 #ifdef _WIN32
 	UINT codePage = GetACP();
 	return static_cast<std::uint16_t>(codePage);
@@ -421,7 +421,7 @@ std::uint16_t UniConv::GetCurrentSystemEncodingCodePage() {
 	return -1; // Default return value if not found
 }
 
-std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage)
+std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage) noexcept
 {
 	auto it = m_encodingMap.find(codePage);
 	if (it != m_encodingMap.end())
@@ -640,14 +640,7 @@ std::wstring UniConv::ToWideStringFromLocale(const char* input) {
 	return this->ToWideStringFromLocale(std::string(input));
 }
 
-// Deprecated method implementations - call new methods
-std::wstring UniConv::LocaleToWideString(const std::string& sInput) {
-    return ToWideStringFromLocale(sInput);
-}
 
-std::wstring UniConv::LocaleToWideString(const char* sInput) {
-	return ToWideStringFromLocale(sInput);
-}
 
 // New standardized method implementations
 std::string UniConv::ToLocaleFromWideString(const std::wstring& input)
@@ -666,16 +659,7 @@ std::string UniConv::ToLocaleFromWideString(const wchar_t* input)
 	return input ? this->ToLocaleFromWideString(std::wstring(input)) : std::string{};
 }
 
-// Deprecated method implementations - call new methods
-std::string UniConv::LocaleToNarrowString(const std::wstring& sInput)
-{
-	return ToLocaleFromWideString(sInput);
-}
 
-std::string UniConv::LocaleToNarrowString(const wchar_t* sInput)
-{
-	return ToLocaleFromWideString(sInput);
-}
 
 // UTF-16LE -> Local
 std::string UniConv::ToLocaleFromUtf16LE(const std::u16string& input) {
@@ -761,16 +745,7 @@ std::u16string UniConv::ToUtf16BEFromUtf32LE(const char32_t* input)
    return ToUtf16BEFromUtf32LE(std::u32string(input));
 }
 
-// Deprecated method implementations - call new methods
-std::u16string UniConv::Utf32LEConvertToUtf16BE(const std::u32string& sInput)
-{
-	return ToUtf16BEFromUtf32LE(sInput);
-}
 
-std::u16string UniConv::Utf32LEConvertToUtf16BE(const char32_t* sInput)
-{
-   return ToUtf16BEFromUtf32LE(sInput);
-}
 
 // New standardized method implementations
 std::u32string UniConv::ToUtf32LEFromUtf8(const std::string& input)
@@ -790,16 +765,7 @@ std::u32string UniConv::ToUtf32LEFromUtf8(const char* input)
 	return ToUtf32LEFromUtf8(std::string(input));
 }
 
-// Deprecated method implementations - call new methods
-std::u32string UniConv::Utf8ConvertToUtf32LE(const std::string& sInput)
-{
-	return ToUtf32LEFromUtf8(sInput);
-}
 
-std::u32string UniConv::Utf8ConvertToUtf32LE(const char* sInput)
-{
-	return ToUtf32LEFromUtf8(sInput);
-}
 
 // New standardized method implementations
 std::u32string UniConv::ToUtf32LEFromUtf16LE(const std::u16string& input)
@@ -820,16 +786,7 @@ std::u32string UniConv::ToUtf32LEFromUtf16LE(const char16_t* input)
 	return ToUtf32LEFromUtf16LE(std::u16string(input));
 }
 
-// Deprecated method implementations - call new methods
-std::u32string UniConv::Utf16LEConvertToUtf32LE(const std::u16string& sInput)
-{
-	return ToUtf32LEFromUtf16LE(sInput);
-}
 
-std::u32string UniConv::Utf16LEConvertToUtf32LE(const char16_t* sInput)
-{
-	return ToUtf32LEFromUtf16LE(sInput);
-}
 
 // New standardized method implementations
 std::u32string UniConv::ToUtf32LEFromUtf16BE(const std::u16string& input)
@@ -850,16 +807,7 @@ std::u32string UniConv::ToUtf32LEFromUtf16BE(const char16_t* input)
 	return ToUtf32LEFromUtf16BE(std::u16string(input));
 }
 
-// Deprecated method implementations - call new methods
-std::u32string UniConv::Utf16BEConvertToUtf32LE(const std::u16string& sInput)
-{
-	return ToUtf32LEFromUtf16BE(sInput);
-}
 
-std::u32string UniConv::Utf16BEConvertToUtf32LE(const char16_t* sInput)
-{
-	return ToUtf32LEFromUtf16BE(sInput);
-}
 
 // New standardized method implementations
 std::string UniConv::ToUtf8FromUcs4(const std::wstring& input)
@@ -906,16 +854,7 @@ std::wstring UniConv::ToUcs4FromUtf8(const std::string& input)
     return std::wstring{};
 }
 
-// Deprecated method implementations - call new methods
-std::string UniConv::Ucs4ConvertToUtf8(const std::wstring& wstr)
-{
-    return ToUtf8FromUcs4(wstr);
-}
 
-std::wstring UniConv::Utf8ConvertsToUcs4(const std::string& utf8str)
-{
-    return ToUcs4FromUtf8(utf8str);
-}
 
 std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
 {
@@ -1055,9 +994,131 @@ void UniConv::CleanupIconvCache() {
     #endif
 }
 
-std::string UniConv::ToString(UniConv::Encoding  enc) {
+std::string UniConv::ToString(UniConv::Encoding  enc) noexcept {
     int idx = static_cast<int>(enc);
     if (idx >= 0 && idx < static_cast<int>(Encoding::count))
         return m_encodingNames[idx];
     return {};
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+// === High-Performance Methods Implementation ===
+//----------------------------------------------------------------------------------------------------------------------
+
+StringResult UniConv::ConvertEncodingFast(const std::string& input, 
+                                  const char* fromEncoding, 
+                                  const char* toEncoding) noexcept {
+    // 快速参数检查
+    if (!fromEncoding || !toEncoding) {
+        return StringResult::Failure(ErrorCode::InvalidParameter);
+    }
+    
+    if (input.empty()) {
+        return StringResult::Success(std::string{});
+    }
+    
+    // 直接创建iconv描述符，避免缓存复杂性
+    iconv_t cd = iconv_open(toEncoding, fromEncoding);
+    if (cd == reinterpret_cast<iconv_t>(-1)) {
+        return StringResult::Failure(ErrorCode::ConversionFailed);
+    }
+    
+    // RAII管理iconv描述符
+    struct IconvGuard {
+        iconv_t cd_;
+        ~IconvGuard() { if (cd_ != reinterpret_cast<iconv_t>(-1)) iconv_close(cd_); }
+    } guard{cd};
+    
+    // 输入缓冲区设置
+    const char* inbuf_ptr = input.data();
+    std::size_t inbuf_left = input.size();
+    
+    // 预分配输出缓冲区，经验预估避免多次重分配
+    std::string result;
+    result.reserve(input.size() * 2);
+    
+    // 使用临时缓冲区进行转换
+    std::size_t buffer_size = (std::max)(static_cast<std::size_t>(4096), input.size() * 2);
+    std::vector<char> temp_buffer(buffer_size);
+    
+    // 转换循环，限制最大迭代次数防止死循环
+    constexpr int max_iterations = 100;
+    int iteration_count = 0;
+    
+    while (inbuf_left > 0 && iteration_count++ < max_iterations) {
+        char* outbuf_ptr = temp_buffer.data();
+        std::size_t outbuf_left = temp_buffer.size();
+        
+        // 执行转换
+        std::size_t ret = iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+        
+        // 计算转换的字节数
+        std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
+        if (converted_bytes > 0) {
+            result.append(temp_buffer.data(), converted_bytes);
+        }
+        
+        // 错误处理
+        if (static_cast<std::size_t>(-1) == ret) {
+            int current_errno = errno;
+            switch (current_errno) {
+                case E2BIG:
+                    // 输出缓冲区太小，扩容继续
+                    if (temp_buffer.size() >= 1048576 * 10) { // 10MB限制
+                        return StringResult::Failure(ErrorCode::BufferTooSmall);
+                    }
+                    temp_buffer.resize(temp_buffer.size() * 2);
+                    continue;
+                case EILSEQ:
+                    return StringResult::Failure(ErrorCode::InvalidSequence);
+                case EINVAL:
+                    return StringResult::Failure(ErrorCode::IncompleteSequence);
+                default:
+                    return StringResult::Failure(ErrorCode::ConversionFailed);
+            }
+        } else {
+            // 转换成功完成
+            break;
+        }
+    }
+    
+    if (iteration_count >= max_iterations) {
+        return StringResult::Failure(ErrorCode::InternalError);
+    }
+    
+    return StringResult::Success(std::move(result));
+}
+
+const char* UniConv::GetEncodingNamePtr(int codepage) noexcept {
+    auto it = m_encodingMap.find(static_cast<std::uint16_t>(codepage));
+    return it != m_encodingMap.end() ? it->second.dotNetName.c_str() : nullptr;
+}
+
+StringViewResult UniConv::GetEncodingNameFast(int codepage) noexcept {
+    auto it = m_encodingMap.find(static_cast<std::uint16_t>(codepage));
+    if (it != m_encodingMap.end()) {
+        return StringViewResult::Success(std::string_view{it->second.dotNetName});
+    } else {
+        return StringViewResult::Failure(ErrorCode::EncodingNotFound);
+    }
+}
+
+IntResult UniConv::GetSystemCodePageFast() noexcept {
+#ifdef _WIN32
+    UINT codepage = GetACP();
+    return IntResult::Success(static_cast<int>(codepage));
+#elif defined(__linux__)
+    // Linux下的实现
+    setlocale(LC_ALL, "");
+    char* encoding = nl_langinfo(CODESET);
+    if (encoding) {
+        auto it = m_encodingToCodePageMap.find(encoding);
+        if (it != m_encodingToCodePageMap.end()) {
+            return IntResult::Success(static_cast<int>(it->second));
+        }
+    }
+    return IntResult::Failure(ErrorCode::SystemError);
+#else
+    return IntResult::Failure(ErrorCode::SystemError);
+#endif
 }
