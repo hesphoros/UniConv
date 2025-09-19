@@ -780,6 +780,70 @@ void TestAllConversions() {
     LOGINFO("=== All encoding conversion tests completed ===");
 }
 
+// Test enhanced convenience methods with detailed error handling
+void TestEnhancedConvenienceMethods() {
+    std::cout << "[INFO] === Testing Enhanced Convenience Methods ===" << std::endl;
+    
+    auto conv = UniConv::GetInstance();
+    std::string testInput = "Hello World! Test Chinese: 测试中文字符";
+    
+    // Test ToUtf8FromLocaleEx
+    std::cout << "[INFO] 1. Testing ToUtf8FromLocaleEx:" << std::endl;
+    auto result1 = conv->ToUtf8FromLocaleEx(testInput);
+    if (result1.IsSuccess()) {
+        std::cout << "[INFO]    Success: " << result1.GetValue() << std::endl;
+    } else {
+        std::cout << "[INFO]    Error: " << result1.GetErrorMessage() << std::endl;
+    }
+    
+    // Test ToLocaleFromUtf8Ex  
+    std::cout << "[INFO] 2. Testing ToLocaleFromUtf8Ex:" << std::endl;
+    auto result2 = conv->ToLocaleFromUtf8Ex(testInput);
+    if (result2.IsSuccess()) {
+        std::cout << "[INFO]    Success: " << result2.GetValue() << std::endl;
+    } else {
+        std::cout << "[INFO]    Error: " << result2.GetErrorMessage() << std::endl;
+    }
+    
+    // Test error handling with invalid encoding
+    std::cout << "[INFO] 3. Testing error handling with invalid encoding:" << std::endl;
+    auto resultInvalid = conv->ConvertEncodingFast(testInput, "INVALID_ENCODING", "UTF-8");
+    if (resultInvalid.IsSuccess()) {
+        std::cout << "[INFO]    Unexpected success" << std::endl;
+    } else {
+        std::cout << "[INFO]    Expected error: " << resultInvalid.GetErrorMessage() << std::endl;
+        std::cout << "[INFO]    Error code: " << static_cast<int>(resultInvalid.GetErrorCode()) << std::endl;
+    }
+    
+    // Test empty input
+    std::cout << "[INFO] 4. Testing empty input:" << std::endl;
+    auto resultEmpty = conv->ToUtf8FromLocaleEx("");
+    if (resultEmpty.IsSuccess()) {
+        std::cout << "[INFO]    Success with empty result (length: " << resultEmpty.GetValue().size() << ")" << std::endl;
+    } else {
+        std::cout << "[INFO]    Error: " << resultEmpty.GetErrorMessage() << std::endl;
+    }
+    
+    // Test UTF-16 conversion methods
+    std::cout << "[INFO] 5. Testing UTF-16 conversions:" << std::endl;
+    auto result16LE = conv->ToUtf16LEFromLocaleEx(testInput);
+    if (result16LE.IsSuccess()) {
+        std::cout << "[INFO]    UTF-16LE conversion success (length: " << result16LE.GetValue().size() << " chars)" << std::endl;
+        
+        // Test conversion back to UTF-8
+        auto resultBack = conv->ToUtf8FromUtf16LEEx(result16LE.GetValue());
+        if (resultBack.IsSuccess()) {
+            std::cout << "[INFO]    UTF-16LE -> UTF-8 conversion success: " << resultBack.GetValue() << std::endl;
+        } else {
+            std::cout << "[INFO]    UTF-16LE -> UTF-8 conversion error: " << resultBack.GetErrorMessage() << std::endl;
+        }
+    } else {
+        std::cout << "[INFO]    UTF-16LE conversion error: " << result16LE.GetErrorMessage() << std::endl;
+    }
+    
+    std::cout << "[INFO] === Enhanced Convenience Methods Test Complete ===" << std::endl;
+}
+
 // Run all test functions
 void RunAllTests() {
     LOGINFO("=== Starting to run all tests ===");
@@ -826,6 +890,9 @@ int main() {
     TestToUtf16LEFromUtf16BE();  // OK
     TestToWideStringFromLocale();
     TestTostring();
+
+    // Test enhanced convenience methods
+    TestEnhancedConvenienceMethods();
 
     // Run comprehensive tests from Test.cpp
     LOGINFO("=== Running Comprehensive Test Suite ===");

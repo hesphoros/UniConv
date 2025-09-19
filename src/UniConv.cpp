@@ -249,150 +249,63 @@ std::string UniConv::GetCurrentSystemEncoding() noexcept
 	return ss.str();
 }
 
+// ===================== Error handling adapters =====================
+/**
+ * Convert StringResult to IConvResult for backward compatibility
+ */
+UniConv::IConvResult UniConv::StringResultToIConvResult(const CompactResult<std::string>& stringResult) {
+    IConvResult result;
+    
+    if (stringResult.IsSuccess()) {
+        result.error_code = 0;
+        result.error_msg.clear();
+        result.conv_result_str = stringResult.GetValue();
+    } else {
+        result.error_code = static_cast<int>(stringResult.GetErrorCode());
+        result.error_msg = stringResult.GetErrorMessage();
+        result.conv_result_str.clear();
+    }
+    
+    return result;
+}
+
+/**
+ * Convert IConvResult to StringResult for unified internal processing
+ */
+CompactResult<std::string> UniConv::IConvResultToStringResult(const IConvResult& iconvResult) {
+    if (iconvResult.error_code == 0) {
+        return CompactResult<std::string>::Success(iconvResult.conv_result_str);
+    } else {
+        // Map common errno values to ErrorCode
+        ErrorCode errorCode = ErrorCode::ConversionFailed; // Default fallback
+        
+        switch (iconvResult.error_code) {
+            case EINVAL:
+                errorCode = ErrorCode::InvalidParameter;
+                break;
+            case EILSEQ:
+                errorCode = ErrorCode::InvalidSequence;
+                break;
+            case E2BIG:
+                errorCode = ErrorCode::BufferTooSmall;
+                break;
+            case ENOMEM:
+                errorCode = ErrorCode::OutOfMemory;
+                break;
+            default:
+                errorCode = ErrorCode::SystemError;
+                break;
+        }
+        
+        return CompactResult<std::string>::Failure(errorCode);
+    }
+}
+
 // ===================== General convert functions =====================
 UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding) {
-    // Convert result
-    IConvResult iconv_result;
-
-    if (!fromEncoding || !toEncoding) {
-        iconv_result.error_code = EINVAL;
-        iconv_result.error_msg = "Invalid encoding parameters";
-        return iconv_result;
-    }
-
-    if (input.empty())
-    {
-        iconv_result.error_code = 0;
-        iconv_result.error_msg = "Input is empty";
-        iconv_result.conv_result_str = "";
-        return iconv_result;
-    }
-
-	// Get iconv convert descriptors
-	auto cd = GetIconvDescriptor(fromEncoding, toEncoding);
-
-    // check the iconv_t descriptors
-	if (!cd || (cd.get() == reinterpret_cast<iconv_t>(-1))) {
-		iconv_result.error_code = errno;
-		iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
-		return iconv_result;
-	}
-
-    // Input
-	const char* inbuf_ptr = input.data();  // input ptr
-	std::size_t inbuf_left = input.size(); // Remaining length of the input cache
-
-	// Out put
-    std::size_t initial_buffer_size = (std::max)(static_cast<std::size_t>(4096), input.size() * 2);
-
-	std::vector<char> out_buffer(initial_buffer_size);
-	std::string converted_result;  // Convert result string
-
-    // Pre allocation
-    std::size_t estimated_size = input.size() * 4;
-    if (estimated_size > 1048576) estimated_size = 1048576; // 限制最大预分配
-    converted_result.reserve(estimated_size);
-
-    // The maximum number of cycles prevents dead loops
-    constexpr int max_iterations = 100;
-    int iteration_count  = 0;
-
-	while ( inbuf_left > 0 && iteration_count++ < max_iterations ) {
-		char*       out_ptr  = out_buffer.data();
-		std::size_t out_left = out_buffer.size();
-
-		// Perform the conversion
-		std::size_t ret = iconv(cd.get(), &inbuf_ptr, &inbuf_left, &out_ptr, &out_left);
-
-        // Write the converted data
-        std::size_t converted_bytes = out_buffer.size() - out_left;
-
-        if (converted_bytes > 0) {
-            converted_result.append(out_buffer.data(), converted_bytes);
-        }
-
-        // Step3. Error handling
-        if ( static_cast<std::size_t>(-1) == ret ) {
-            int current_errno = errno;
-            /**
-             *  For the E2BIG error,
-             * * continue processing instead of returning the error immediately
-             */
-            if ( current_errno == E2BIG ) {
-                // The out_buffer is too small and needs to be expanded
-                if ( out_buffer.size() >= 1048576*10 ) // MAX for 10MB limit
-                {
-                    iconv_result.error_code = E2BIG;
-                    iconv_result.error_msg = "Output buffer size limit exceeded";
-                    break;
-                }
-                // 普通 E2BIG 扩容场景
-                iconv_result.error_code = 0;
-                iconv_result.error_msg.clear();
-                out_buffer.resize(out_buffer.size() *2);
-                continue;
-            } else {
-                // Other error
-                iconv_result.error_code = current_errno;
-                std::cerr << "iconv failed, errno = " << current_errno << " (" << strerror(current_errno) << ")\n";
-                
-                iconv_result.error_msg = GetIconvErrorString(current_errno);
-                break;
-            }
-        }
-
-        // If output buffer is getting full, expand it
-        if ( out_left < 128 && inbuf_left > 0 ) {
-            if (out_buffer.size() >= 1048576*10) { // 最大10MB限制
-                // 如果还有输入未处理但缓冲区已达上限，这是异常情况
-                iconv_result.error_code = E2BIG;
-                iconv_result.error_msg = "Output buffer size limit exceeded";
-                break;
-            }
-            out_buffer.resize(out_buffer.size() * 2);
-            continue;
-        }
-
-
-	}
-
-    //  Check whether the input has been processed
-    if ( inbuf_left == 0 && iconv_result.error_code == 0 ) {
-        // Refresh the internal state of the iconv descriptor
-        char* out_ptr = out_buffer.data();
-        std::size_t out_left = out_buffer.size();
-
-        std::size_t ret = iconv(cd.get(), nullptr, nullptr, &out_ptr, &out_left);
-        std::size_t final_converted = out_buffer.size() - out_left;
-
-        if (final_converted > 0) {
-            converted_result.append(out_buffer.data(), final_converted);
-        }
-
-        if (static_cast<std::size_t>(-1) == ret) {
-            iconv_result.error_code = errno;
-            iconv_result.error_msg = GetIconvErrorString(iconv_result.error_code);
-        }
-
-    }
-
-
-        // 10. 检查是否因为循环次数限制而退出
-    if ( iteration_count >= max_iterations && inbuf_left > 0 ) {
-        iconv_result.error_code = ELOOP;
-        iconv_result.error_msg = "Maximum conversion iterations exceeded";
-        #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-        std::cerr << "Too many cycles in thr iconv convert" << std::endl;
-        #endif //UNICONV_DEBUG_MODE
-    }
-
-	// 返回转换结果
-	if (iconv_result.error_code == 0) {
-		converted_result.shrink_to_fit();
-        iconv_result.conv_result_str = std::move(converted_result);
-	}
-
-	return iconv_result;
+    // Use the new high-performance ConvertEncodingFast internally and convert the result
+    auto result = ConvertEncodingFast(input, fromEncoding, toEncoding);
+    return StringResultToIConvResult(result);
 }
 
 
@@ -1458,4 +1371,120 @@ UniConv::PoolStats UniConv::GetPoolStatistics() const {
     }
     
     return stats;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+// === Enhanced convenience methods with detailed error handling ===
+//----------------------------------------------------------------------------------------------------------------------
+
+CompactResult<std::string> UniConv::ToUtf8FromLocaleEx(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<std::string>::Success(std::string{});
+    }
+    
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    return ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_8).c_str());
+}
+
+CompactResult<std::string> UniConv::ToLocaleFromUtf8Ex(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<std::string>::Success(std::string{});
+    }
+    
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    return ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), currentEncoding.c_str());
+}
+
+CompactResult<std::u16string> UniConv::ToUtf16LEFromLocaleEx(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<std::u16string>::Success(std::u16string{});
+    }
+    
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str());
+    
+    if (!result.IsSuccess()) {
+        return CompactResult<std::u16string>::Failure(result.GetErrorCode());
+    }
+    
+    // Convert std::string to std::u16string
+    const std::string& str = result.GetValue();
+    if (str.size() % 2 != 0) {
+        return CompactResult<std::u16string>::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    std::u16string u16str;
+    u16str.reserve(str.size() / 2);
+    
+    for (size_t i = 0; i < str.size(); i += 2) {
+        char16_t ch = static_cast<char16_t>(static_cast<unsigned char>(str[i])) |
+                      (static_cast<char16_t>(static_cast<unsigned char>(str[i + 1])) << 8);
+        u16str.push_back(ch);
+    }
+    
+    return CompactResult<std::u16string>::Success(std::move(u16str));
+}
+
+CompactResult<std::u16string> UniConv::ToUtf16BEFromLocaleEx(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<std::u16string>::Success(std::u16string{});
+    }
+    
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16be).c_str());
+    
+    if (!result.IsSuccess()) {
+        return CompactResult<std::u16string>::Failure(result.GetErrorCode());
+    }
+    
+    // Convert std::string to std::u16string (big-endian)
+    const std::string& str = result.GetValue();
+    if (str.size() % 2 != 0) {
+        return CompactResult<std::u16string>::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    std::u16string u16str;
+    u16str.reserve(str.size() / 2);
+    
+    for (size_t i = 0; i < str.size(); i += 2) {
+        char16_t ch = (static_cast<char16_t>(static_cast<unsigned char>(str[i])) << 8) |
+                      static_cast<char16_t>(static_cast<unsigned char>(str[i + 1]));
+        u16str.push_back(ch);
+    }
+    
+    return CompactResult<std::u16string>::Success(std::move(u16str));
+}
+
+CompactResult<std::string> UniConv::ToUtf8FromUtf16LEEx(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<std::string>::Success(std::string{});
+    }
+    
+    // Convert std::u16string to std::string for iconv processing
+    std::string inputStr;
+    inputStr.reserve(input.size() * 2);
+    
+    for (char16_t ch : input) {
+        inputStr.push_back(static_cast<char>(ch & 0xFF));
+        inputStr.push_back(static_cast<char>((ch >> 8) & 0xFF));
+    }
+    
+    return ConvertEncodingFast(inputStr, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_8).c_str());
+}
+
+CompactResult<std::string> UniConv::ToUtf8FromUtf16BEEx(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<std::string>::Success(std::string{});
+    }
+    
+    // Convert std::u16string to std::string for iconv processing (big-endian)
+    std::string inputStr;
+    inputStr.reserve(input.size() * 2);
+    
+    for (char16_t ch : input) {
+        inputStr.push_back(static_cast<char>((ch >> 8) & 0xFF));
+        inputStr.push_back(static_cast<char>(ch & 0xFF));
+    }
+    
+    return ConvertEncodingFast(inputStr, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_8).c_str());
 }

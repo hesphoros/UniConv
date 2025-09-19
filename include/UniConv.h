@@ -899,6 +899,20 @@ public:
 		}
 	};
 
+	// ===================== Error handling adapters =====================
+	/**
+	 * @brief Convert StringResult to IConvResult for backward compatibility
+	 * @param stringResult The StringResult to convert
+	 * @return Equivalent IConvResult
+	 */
+	static IConvResult StringResultToIConvResult(const CompactResult<std::string>& stringResult);
+	
+	/**
+	 * @brief Convert IConvResult to StringResult for unified internal processing
+	 * @param iconvResult The IConvResult to convert
+	 * @return Equivalent StringResult
+	 */
+	static CompactResult<std::string> IConvResultToStringResult(const IConvResult& iconvResult);
 
 	~UniConv() {
 		// 清理资源
@@ -1177,6 +1191,52 @@ public:
 	 * @return
 	 */
 	std::u16string ToUtf16LEFromUtf16BE(const char16_t* input);
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Enhanced convenience methods with detailed error handling ===
+	//----------------------------------------------------------------------------------------------------------------------
+	
+	/**
+	 * @brief Convert from system locale encoding to UTF-8 with detailed error handling
+	 * @param input System locale encoded input string
+	 * @return CompactResult<std::string> with conversion result or error details
+	 */
+	CompactResult<std::string> ToUtf8FromLocaleEx(const std::string& input);
+	
+	/**
+	 * @brief Convert from UTF-8 to system locale encoding with detailed error handling
+	 * @param input UTF-8 encoded input string  
+	 * @return CompactResult<std::string> with conversion result or error details
+	 */
+	CompactResult<std::string> ToLocaleFromUtf8Ex(const std::string& input);
+	
+	/**
+	 * @brief Convert from system locale to UTF-16LE with detailed error handling
+	 * @param input System locale encoded input string
+	 * @return CompactResult<std::u16string> with conversion result or error details
+	 */
+	CompactResult<std::u16string> ToUtf16LEFromLocaleEx(const std::string& input);
+	
+	/**
+	 * @brief Convert from system locale to UTF-16BE with detailed error handling
+	 * @param input System locale encoded input string
+	 * @return CompactResult<std::u16string> with conversion result or error details
+	 */
+	CompactResult<std::u16string> ToUtf16BEFromLocaleEx(const std::string& input);
+	
+	/**
+	 * @brief Convert from UTF-16LE to UTF-8 with detailed error handling
+	 * @param input UTF-16LE encoded input string
+	 * @return CompactResult<std::string> with conversion result or error details
+	 */
+	CompactResult<std::string> ToUtf8FromUtf16LEEx(const std::u16string& input);
+	
+	/**
+	 * @brief Convert from UTF-16BE to UTF-8 with detailed error handling
+	 * @param input UTF-16BE encoded input string
+	 * @return CompactResult<std::string> with conversion result or error details
+	 */
+	CompactResult<std::string> ToUtf8FromUtf16BEEx(const std::u16string& input);
 
 /*Test Success */
 /***************************************************************************/

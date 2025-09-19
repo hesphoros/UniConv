@@ -155,6 +155,41 @@ inline LightLogWriteImpl& GetLogger() { static LightLogWriteImpl logger; return 
             ${CMAKE_CURRENT_BINARY_DIR}  # For generated common.h
         )
         
+        # Additional test executables for error handling validation
+        
+        # Simple test for enhanced methods
+        add_executable(SimpleTest ${CMAKE_CURRENT_SOURCE_DIR}/test/simple_test.cpp)
+        set_target_properties(SimpleTest PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        )
+        target_link_libraries(SimpleTest PRIVATE UniConv)
+        target_include_directories(SimpleTest PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_BINARY_DIR}
+        )
+        
+        # Error handling consistency test
+        add_executable(ErrorTest ${CMAKE_CURRENT_SOURCE_DIR}/test/error_test.cpp)
+        set_target_properties(ErrorTest PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        )
+        target_link_libraries(ErrorTest PRIVATE UniConv)
+        target_include_directories(ErrorTest PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_BINARY_DIR}
+        )
+        
+        # Diagnosis test for error handling analysis
+        add_executable(DiagnoseTest ${CMAKE_CURRENT_SOURCE_DIR}/test/diagnose_test.cpp)
+        set_target_properties(DiagnoseTest PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+        )
+        target_link_libraries(DiagnoseTest PRIVATE UniConv)
+        target_include_directories(DiagnoseTest PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_BINARY_DIR}
+        )
+        
         # Auto-copy DLL to test executable directory when building shared library
         if(UNICONV_BUILD_SHARED AND WIN32)
             add_custom_command(TARGET UniConvTests POST_BUILD
