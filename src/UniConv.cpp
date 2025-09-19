@@ -888,54 +888,69 @@ std::string UniConv::GetIconvErrorString(int err_code) {
 
 UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
 {
-	if(!fromcode || !tocode)
+	// 参数有效性检查 - 预测参数通常有效
+	if (UNICONV_UNLIKELY(!fromcode || !tocode)) {
+        m_cacheMissCount.fetch_add(1, std::memory_order_relaxed);
         return nullptr;
+    }
 
+    // 构建缓存键，优化字符串构造
     std::string key;
-    key.reserve((strlen(fromcode) + strlen(tocode) + 1));
-    key = fromcode, key += ">", key += tocode;
+    const size_t from_len = strlen(fromcode);
+    const size_t to_len = strlen(tocode);
+    key.reserve(from_len + to_len + 1);
+    key.assign(fromcode, from_len);
+    key.push_back('>');
+    key.append(tocode, to_len);
 
-    // Read lock (only find the cached descriptor)
+    // 快速读取路径 - 预测大多数情况下能命中缓存
     {
         std::shared_lock<std::shared_mutex> read_lock(m_iconvCacheMutex);
         auto it = m_iconvDescriptorCacheMap.find(key);
-        if (it != m_iconvDescriptorCacheMap.end()) {
-            return it->second; // return cached descriptor
+        if (UNICONV_LIKELY(it != m_iconvDescriptorCacheMap.end())) {
+            // 缓存命中，更新访问时间和统计
+            it->second.UpdateAccess();
+            m_cacheHitCount.fetch_add(1, std::memory_order_relaxed);
+            return it->second.descriptor;
         }
     }
 
-    // Write lock (create a new descriptor if not found)
+    // 缓存未命中，需要创建新描述符
+    m_cacheMissCount.fetch_add(1, std::memory_order_relaxed);
+    
+    // 写锁 - 双重检查模式
     std::unique_lock<std::shared_mutex> write_lock(m_iconvCacheMutex);
+    
+    // 双重检查：可能在等待写锁期间其他线程已经创建了
+    auto it = m_iconvDescriptorCacheMap.find(key);
+    if (UNICONV_UNLIKELY(it != m_iconvDescriptorCacheMap.end())) {
+        it->second.UpdateAccess();
+        return it->second.descriptor;
+    }
 
-	auto it = m_iconvDescriptorCacheMap.find(key);
-	if (it != m_iconvDescriptorCacheMap.end()) {
-		return it->second; // return cached descriptor
-	}
-
-    // Create a new iconv descriptor
-    // Use iconv_open to create a new conversion descriptor
-	iconv_t cd = iconv_open(tocode, fromcode);
-	if (cd == reinterpret_cast<iconv_t>(-1)) {
+    // 创建新的iconv描述符
+    iconv_t cd = iconv_open(tocode, fromcode);
+    if (UNICONV_UNLIKELY(cd == reinterpret_cast<iconv_t>(-1))) {
         #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-		std::cout << "iconv_open error" << std::endl;
+        std::cout << "iconv_open error for " << key << std::endl;
         #endif
-		return nullptr;
-	}
-    // Create a shared pointer to manage the iconv descriptor
-    // Use a custom deleter to close the iconv descriptor when the shared pointer is destroyed
-	auto iconvPtr = std::shared_ptr<std::remove_pointer_t<iconv_t>>(cd, IconvDeleter());
-	
-	// 缓存大小管理
-	if (m_iconvDescriptorCacheMap.size() >= MAX_CACHE_SIZE) {
-		// 简单的清理策略：清理一半缓存
-		auto half_point = std::next(m_iconvDescriptorCacheMap.begin(), MAX_CACHE_SIZE / 2);
-		m_iconvDescriptorCacheMap.erase(m_iconvDescriptorCacheMap.begin(), half_point);
-	}
-	
-	m_iconvDescriptorCacheMap.emplace(key, iconvPtr);
+        return nullptr;
+    }
+
+    // 创建智能指针管理描述符
+    auto iconvPtr = std::shared_ptr<std::remove_pointer_t<iconv_t>>(cd, IconvDeleter());
+    
+    // LRU缓存大小管理
+    if (UNICONV_UNLIKELY(m_iconvDescriptorCacheMap.size() >= MAX_CACHE_SIZE)) {
+        EvictLRUCacheEntries();
+    }
+    
+    // 插入新缓存条目
+    IconvCacheEntry entry(iconvPtr);
+    m_iconvDescriptorCacheMap.emplace(std::move(key), std::move(entry));
 
     #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-        std::cout << "Create and cached iconv descriptor: " << key << std::endl;
+    std::cout << "Create and cached iconv descriptor: " << fromcode << ">" << tocode << std::endl;
     #endif
 
     return iconvPtr;
@@ -1008,26 +1023,26 @@ std::string UniConv::ToString(UniConv::Encoding  enc) noexcept {
 StringResult UniConv::ConvertEncodingFast(const std::string& input, 
                                   const char* fromEncoding, 
                                   const char* toEncoding) noexcept {
-    // 快速参数检查
-    if (!fromEncoding || !toEncoding) {
+    // 快速参数检查 - 预测参数通常有效
+    if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
         return StringResult::Failure(ErrorCode::InvalidParameter);
     }
     
-    if (input.empty()) {
+    // 预测输入通常不为空
+    if (UNICONV_UNLIKELY(input.empty())) {
         return StringResult::Success(std::string{});
     }
     
-    // 直接创建iconv描述符，避免缓存复杂性
-    iconv_t cd = iconv_open(toEncoding, fromEncoding);
-    if (cd == reinterpret_cast<iconv_t>(-1)) {
+    // 预取输入数据到缓存
+    UNICONV_PREFETCH(input.data(), 0, 3);
+    
+    // 使用LRU缓存的iconv描述符
+    auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
+    if (UNICONV_UNLIKELY(!descriptor)) {
         return StringResult::Failure(ErrorCode::ConversionFailed);
     }
     
-    // RAII管理iconv描述符
-    struct IconvGuard {
-        iconv_t cd_;
-        ~IconvGuard() { if (cd_ != reinterpret_cast<iconv_t>(-1)) iconv_close(cd_); }
-    } guard{cd};
+    iconv_t cd = descriptor.get();
     
     // 输入缓冲区设置
     const char* inbuf_ptr = input.data();
@@ -1041,30 +1056,34 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,
     std::size_t buffer_size = (std::max)(static_cast<std::size_t>(4096), input.size() * 2);
     std::vector<char> temp_buffer(buffer_size);
     
-    // 转换循环，限制最大迭代次数防止死循环
+    // 转换循环，限制最大迭代次数防止死循环 - 预测通常一次转换成功
     constexpr int max_iterations = 100;
     int iteration_count = 0;
     
-    while (inbuf_left > 0 && iteration_count++ < max_iterations) {
+    // 预测大多数情况下单次转换即可完成
+    while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
         char* outbuf_ptr = temp_buffer.data();
         std::size_t outbuf_left = temp_buffer.size();
+        
+        // 预取临时缓冲区到缓存
+        UNICONV_PREFETCH(temp_buffer.data(), 1, 2);
         
         // 执行转换
         std::size_t ret = iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
         
-        // 计算转换的字节数
+        // 计算转换的字节数 - 预测通常有数据被转换
         std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
-        if (converted_bytes > 0) {
+        if (UNICONV_LIKELY(converted_bytes > 0)) {
             result.append(temp_buffer.data(), converted_bytes);
         }
         
-        // 错误处理
-        if (static_cast<std::size_t>(-1) == ret) {
+        // 错误处理 - 预测大多数情况下转换成功
+        if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
             int current_errno = errno;
             switch (current_errno) {
                 case E2BIG:
-                    // 输出缓冲区太小，扩容继续
-                    if (temp_buffer.size() >= 1048576 * 10) { // 10MB限制
+                    // 输出缓冲区太小，扩容继续 - 预测不会超过限制
+                    if (UNICONV_UNLIKELY(temp_buffer.size() >= 1048576 * 10)) { // 10MB限制
                         return StringResult::Failure(ErrorCode::BufferTooSmall);
                     }
                     temp_buffer.resize(temp_buffer.size() * 2);
@@ -1077,12 +1096,13 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,
                     return StringResult::Failure(ErrorCode::ConversionFailed);
             }
         } else {
-            // 转换成功完成
+            // 转换成功完成 - 最常见的情况
             break;
         }
     }
     
-    if (iteration_count >= max_iterations) {
+    // 预测很少会达到最大迭代次数
+    if (UNICONV_UNLIKELY(iteration_count >= max_iterations)) {
         return StringResult::Failure(ErrorCode::InternalError);
     }
     
@@ -1090,13 +1110,15 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,
 }
 
 const char* UniConv::GetEncodingNamePtr(int codepage) noexcept {
+    // 预测codepage存在于映射中
     auto it = m_encodingMap.find(static_cast<std::uint16_t>(codepage));
-    return it != m_encodingMap.end() ? it->second.dotNetName.c_str() : nullptr;
+    return UNICONV_LIKELY(it != m_encodingMap.end()) ? it->second.dotNetName.c_str() : nullptr;
 }
 
 StringViewResult UniConv::GetEncodingNameFast(int codepage) noexcept {
+    // 预测codepage存在于映射中
     auto it = m_encodingMap.find(static_cast<std::uint16_t>(codepage));
-    if (it != m_encodingMap.end()) {
+    if (UNICONV_LIKELY(it != m_encodingMap.end())) {
         return StringViewResult::Success(std::string_view{it->second.dotNetName});
     } else {
         return StringViewResult::Failure(ErrorCode::EncodingNotFound);
@@ -1121,4 +1143,319 @@ IntResult UniConv::GetSystemCodePageFast() noexcept {
 #else
     return IntResult::Failure(ErrorCode::SystemError);
 #endif
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+// === High-Performance Internal Methods Implementation ===
+//----------------------------------------------------------------------------------------------------------------------
+
+size_t UniConv::EstimateOutputSize(size_t input_size, 
+                                  const char* from_encoding, 
+                                  const char* to_encoding) noexcept {
+    // 获取编码的最大字节倍数
+    int from_multiplier = GetEncodingMultiplier(from_encoding);
+    int to_multiplier = GetEncodingMultiplier(to_encoding);
+    
+    // 基础估算：根据编码特性计算扩展比例
+    double expansion_factor = static_cast<double>(to_multiplier) / from_multiplier;
+    
+    // 特殊情况优化
+    std::string_view from_enc{from_encoding};
+    std::string_view to_enc{to_encoding};
+    
+    // UTF-8 to UTF-16: 通常扩展1.5-2倍
+    if (from_enc.find("UTF-8") != std::string_view::npos && 
+        to_enc.find("UTF-16") != std::string_view::npos) {
+        expansion_factor = 2.0;
+    }
+    // UTF-16 to UTF-8: 通常收缩0.75倍
+    else if (from_enc.find("UTF-16") != std::string_view::npos && 
+             to_enc.find("UTF-8") != std::string_view::npos) {
+        expansion_factor = 0.75;
+    }
+    // ASCII兼容编码之间转换
+    else if ((from_enc.find("UTF-8") != std::string_view::npos || 
+              from_enc.find("ASCII") != std::string_view::npos) &&
+             (to_enc.find("UTF-8") != std::string_view::npos || 
+              to_enc.find("ASCII") != std::string_view::npos)) {
+        expansion_factor = 1.0;  // 通常大小相同
+    }
+    
+    // 计算估算大小，添加安全边距
+    size_t estimated = static_cast<size_t>(input_size * expansion_factor * 1.25);
+    
+    // 设置合理的最小和最大值
+    constexpr size_t MIN_BUFFER_SIZE = 512;
+    constexpr size_t MAX_REASONABLE_SIZE = 32 * 1024 * 1024; // 32MB上限
+    
+    return std::clamp(estimated, MIN_BUFFER_SIZE, MAX_REASONABLE_SIZE);
+}
+
+constexpr int UniConv::GetEncodingMultiplier(const char* encoding) noexcept {
+    if (!encoding) return 4;
+    
+    std::string_view enc{encoding};
+    
+    // UTF编码
+    if (enc.find("UTF-32") != std::string_view::npos || 
+        enc.find("UCS-4") != std::string_view::npos) return 4;
+    if (enc.find("UTF-16") != std::string_view::npos || 
+        enc.find("UCS-2") != std::string_view::npos) return 4;  // 考虑代理对
+    if (enc.find("UTF-8") != std::string_view::npos) return 4;
+    
+    // 中文编码
+    if (enc.find("GBK") != std::string_view::npos || 
+        enc.find("GB2312") != std::string_view::npos ||
+        enc.find("GB18030") != std::string_view::npos) return 4;  // GB18030可达4字节
+    if (enc.find("Big5") != std::string_view::npos) return 2;
+    
+    // 欧洲编码
+    if (enc.find("ISO-8859") != std::string_view::npos) return 1;
+    if (enc.find("CP1252") != std::string_view::npos) return 1;
+    
+    // 日文编码
+    if (enc.find("SHIFT_JIS") != std::string_view::npos ||
+        enc.find("EUC-JP") != std::string_view::npos) return 3;
+    
+    // 默认保守估计
+    return 4;
+}
+
+StringResult UniConv::ConvertEncodingInternal(const std::string& input,
+                                             const char* fromEncoding,
+                                             const char* toEncoding,
+                                             StringBufferPool::BufferLease& buffer_lease,
+                                             size_t estimated_size) noexcept {
+    // 更新统计
+    m_totalConversions.fetch_add(1, std::memory_order_relaxed);
+    
+    // 获取缓冲区
+    std::string& result = buffer_lease.get();
+    result.clear();
+    
+    // 预分配容量
+    try {
+        result.reserve(estimated_size);
+    } catch (...) {
+        return StringResult::Failure(ErrorCode::OutOfMemory);
+    }
+    
+    // 获取iconv描述符
+    auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
+    if (!descriptor) {
+        return StringResult::Failure(ErrorCode::InvalidSourceEncoding);
+    }
+    
+    // 准备转换参数
+    const char* inbuf = input.data();
+    size_t inbytesleft = input.size();
+    
+    // 使用栈分配的临时缓冲区进行分块转换
+    constexpr size_t CHUNK_SIZE = 8192;  // 8KB块大小
+    char temp_chunk[CHUNK_SIZE];
+    
+    // 转换循环
+    constexpr int MAX_ITERATIONS = 1000;  // 防止无限循环
+    int iteration_count = 0;
+    
+    while (inbytesleft > 0 && iteration_count < MAX_ITERATIONS) {
+        char* outbuf = temp_chunk;
+        size_t outbytesleft = CHUNK_SIZE;
+        
+        size_t converted = iconv(descriptor.get(), 
+                               &inbuf, &inbytesleft,
+                               &outbuf, &outbytesleft);
+        
+        // 添加已转换的数据到结果
+        size_t chunk_converted = CHUNK_SIZE - outbytesleft;
+        if (chunk_converted > 0) {
+            try {
+                result.append(temp_chunk, chunk_converted);
+            } catch (...) {
+                return StringResult::Failure(ErrorCode::OutOfMemory);
+            }
+        }
+        
+        if (converted == (size_t)-1) {
+            switch (errno) {
+                case E2BIG:
+                    // 输出缓冲区满，继续下一轮
+                    continue;
+                case EILSEQ:
+                    return StringResult::Failure(ErrorCode::InvalidSequence);
+                case EINVAL:
+                    return StringResult::Failure(ErrorCode::IncompleteSequence);
+                default:
+                    return StringResult::Failure(ErrorCode::ConversionFailed);
+            }
+        }
+        
+        ++iteration_count;
+    }
+    
+    if (iteration_count >= MAX_ITERATIONS) {
+        return StringResult::Failure(ErrorCode::InternalError);
+    }
+    
+    // 成功，返回结果
+    return StringResult::Success(std::move(result));
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+// === Advanced High-Performance Methods Implementation ===
+//----------------------------------------------------------------------------------------------------------------------
+
+StringResult UniConv::ConvertEncodingFastWithHint(const std::string& input,
+                                                  const char* fromEncoding,
+                                                  const char* toEncoding,
+                                                  size_t estimatedSize) noexcept {
+    // 空输入快速返回 - 预测输入通常不为空
+    if (UNICONV_UNLIKELY(input.empty())) {
+        return StringResult::Success(std::string{});
+    }
+    
+    // 参数验证 - 预测参数通常有效
+    if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
+        return StringResult::Failure(ErrorCode::InvalidParameter);
+    }
+    
+    // 预取输入数据
+    UNICONV_PREFETCH(input.data(), 0, 3);
+    
+    // 使用提供的估算大小，或自动估算 - 预测通常提供estimatedSize
+    size_t estimated = UNICONV_LIKELY(estimatedSize > 0) ? 
+                      estimatedSize : 
+                      EstimateOutputSize(input.size(), fromEncoding, toEncoding);
+    
+    // 获取缓冲区 - 预测通常能成功获取
+    auto buffer_lease = m_stringBufferPool.acquire();
+    if (UNICONV_UNLIKELY(!buffer_lease.valid())) {
+        return StringResult::Failure(ErrorCode::OutOfMemory);
+    }
+    
+    // 调用内部实现
+    return ConvertEncodingInternal(input, fromEncoding, toEncoding, buffer_lease, estimated);
+}
+
+std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::string>& inputs,
+                                                       const char* fromEncoding,
+                                                       const char* toEncoding) noexcept {
+    std::vector<StringResult> results;
+    results.reserve(inputs.size());
+    
+    // 参数验证 - 预测参数通常有效
+    if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
+        // 为所有输入返回错误结果
+        UNICONV_UNROLL_LOOP(4)  // 展开小批量错误处理循环
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            results.emplace_back(StringResult::Failure(ErrorCode::InvalidParameter));
+        }
+        return results;
+    }
+    
+    // 预取inputs数据到缓存
+    if (UNICONV_LIKELY(!inputs.empty())) {
+        UNICONV_PREFETCH(inputs.data(), 0, 2);
+    }
+    
+    // 预先获取iconv描述符以避免重复创建 - 预测通常能成功获取
+    auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
+    if (UNICONV_UNLIKELY(!descriptor)) {
+        // 为所有输入返回错误结果
+        UNICONV_UNROLL_LOOP(4)
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            results.emplace_back(StringResult::Failure(ErrorCode::InvalidSourceEncoding));
+        }
+        return results;
+    }
+    
+    // 批量处理每个输入
+    for (const auto& input : inputs) {
+        if (input.empty()) {
+            results.emplace_back(StringResult::Success(std::string{}));
+            continue;
+        }
+        
+        // 估算输出大小
+        size_t estimated = EstimateOutputSize(input.size(), fromEncoding, toEncoding);
+        
+        // 获取缓冲区
+        auto buffer_lease = m_stringBufferPool.acquire();
+        if (!buffer_lease.valid()) {
+            results.emplace_back(StringResult::Failure(ErrorCode::OutOfMemory));
+            continue;
+        }
+        
+        // 转换并添加结果
+        results.emplace_back(ConvertEncodingInternal(input, fromEncoding, toEncoding, buffer_lease, estimated));
+    }
+    
+    return results;
+}
+
+void UniConv::EvictLRUCacheEntries()
+{
+    // 假设已经持有写锁
+    if (m_iconvDescriptorCacheMap.empty()) {
+        return;
+    }
+    
+    constexpr size_t TARGET_SIZE = MAX_CACHE_SIZE * 3 / 4;  // 清理到75%容量
+    
+    // 收集所有条目及其访问时间和键名
+    std::vector<std::pair<uint64_t, std::string>> entries;
+    entries.reserve(m_iconvDescriptorCacheMap.size());
+    
+    for (const auto& [key, entry] : m_iconvDescriptorCacheMap) {
+        entries.emplace_back(entry.last_used.load(std::memory_order_relaxed), key);
+    }
+    
+    // 按访问时间排序（最旧的在前）
+    std::sort(entries.begin(), entries.end());
+    
+    // 删除最旧的条目直到达到目标大小
+    size_t to_remove = m_iconvDescriptorCacheMap.size() - TARGET_SIZE;
+    for (size_t i = 0; i < to_remove && i < entries.size(); ++i) {
+        m_iconvDescriptorCacheMap.erase(entries[i].second);
+        m_cacheEvictionCount.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+UniConv::PoolStats UniConv::GetPoolStatistics() const {
+    PoolStats stats;
+    stats.active_buffers = m_stringBufferPool.GetActiveBuffers();
+    stats.total_conversions = m_totalConversions.load(std::memory_order_relaxed);
+    stats.cache_hits = m_poolCacheHits.load(std::memory_order_relaxed);
+    
+    // 计算缓存命中率
+    if (stats.total_conversions > 0) {
+        stats.hit_rate = static_cast<double>(stats.cache_hits) / stats.total_conversions;
+    } else {
+        stats.hit_rate = 0.0;
+    }
+    
+    // 更新iconv缓存统计（需要获取锁）
+    std::shared_lock<std::shared_mutex> cache_lock(m_iconvCacheMutex);
+    stats.iconv_cache_size = m_iconvDescriptorCacheMap.size();
+    stats.iconv_cache_hits = m_cacheHitCount.load(std::memory_order_relaxed);
+    stats.iconv_cache_misses = m_cacheMissCount.load(std::memory_order_relaxed);
+    stats.iconv_cache_evictions = m_cacheEvictionCount.load(std::memory_order_relaxed);
+    
+    // 计算iconv命中率
+    const uint64_t total_iconv_requests = stats.iconv_cache_hits + stats.iconv_cache_misses;
+    stats.iconv_cache_hit_rate = (total_iconv_requests > 0) ? 
+        (static_cast<double>(stats.iconv_cache_hits) / total_iconv_requests) : 0.0;
+    
+    // 计算平均命中次数
+    if (stats.iconv_cache_size > 0) {
+        uint64_t total_hit_count = 0;
+        for (const auto& [key, entry] : m_iconvDescriptorCacheMap) {
+            total_hit_count += entry.hit_count.load(std::memory_order_relaxed);
+        }
+        stats.iconv_avg_hit_count = static_cast<double>(total_hit_count) / stats.iconv_cache_size;
+    } else {
+        stats.iconv_avg_hit_count = 0.0;
+    }
+    
+    return stats;
 }

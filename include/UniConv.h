@@ -30,6 +30,9 @@
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
+// 屏蔽字符编码警告，确保跨平台编码一致性
+#pragma warning(push)
+#pragma warning(disable: 4819)  // 字符编码警告
 #endif
 
 #ifndef __UNICONV_H__
@@ -54,11 +57,18 @@
 #include <memory>
 #include <algorithm>
 #include <functional>
-#include <cstdlib>        // 替换 malloc.h
-#include <type_traits>    // for CompactResult
+#include <cstdlib>
+#include <type_traits>
+#include <array>
+#include <atomic>
+#include <future>
+#include <thread>
+#include <queue>
+#include <condition_variable>
+#include <chrono>  // for timestamp in LRU cache
 
 #ifdef _WIN32
-#include <io.h>           // 仅在 Windows 需要时包含
+#include <io.h>
 #include <fcntl.h>
 #endif
 
@@ -92,6 +102,98 @@
 #else                                     // Release Mode
 #define UNICONV_DEBUG_MODE 0
 #endif
+
+//----------------------------------------------------------------------------------------------------------------------
+// === Compile-Time Optimizations and Branch Prediction ===
+//----------------------------------------------------------------------------------------------------------------------
+
+// Branch prediction hints for better performance
+#if defined(__GNUC__) || defined(__clang__)
+    #define UNICONV_LIKELY(x)    __builtin_expect(!!(x), 1)
+    #define UNICONV_UNLIKELY(x)  __builtin_expect(!!(x), 0)
+    #define UNICONV_PURE         __attribute__((pure))
+    #define UNICONV_CONST        __attribute__((const))
+    #define UNICONV_NOINLINE     __attribute__((noinline))
+    #define UNICONV_ALWAYS_INLINE __attribute__((always_inline)) inline
+    #define UNICONV_HOT          __attribute__((hot))
+    #define UNICONV_COLD         __attribute__((cold))
+    #define UNICONV_FLATTEN      __attribute__((flatten))
+    #define UNICONV_PREFETCH(addr, rw, locality) __builtin_prefetch((addr), (rw), (locality))
+#elif defined(_MSC_VER)
+    #define UNICONV_LIKELY(x)    (x)
+    #define UNICONV_UNLIKELY(x)  (x)
+    #define UNICONV_PURE         
+    #define UNICONV_CONST        
+    #define UNICONV_NOINLINE     __declspec(noinline)
+    #define UNICONV_ALWAYS_INLINE __forceinline
+    #define UNICONV_HOT          
+    #define UNICONV_COLD         
+    #define UNICONV_FLATTEN      
+    #define UNICONV_PREFETCH(addr, rw, locality) _mm_prefetch((const char*)(addr), _MM_HINT_T0)
+    // Include intrinsics for prefetch
+    #include <immintrin.h>
+#else
+    #define UNICONV_LIKELY(x)    (x)
+    #define UNICONV_UNLIKELY(x)  (x)
+    #define UNICONV_PURE         
+    #define UNICONV_CONST        
+    #define UNICONV_NOINLINE     
+    #define UNICONV_ALWAYS_INLINE inline
+    #define UNICONV_HOT          
+    #define UNICONV_COLD         
+    #define UNICONV_FLATTEN      
+    #define UNICONV_PREFETCH(addr, rw, locality) ((void)0)
+#endif
+
+// Fast math optimizations (use with caution)
+#if defined(__GNUC__) || defined(__clang__)
+    #define UNICONV_FAST_MATH __attribute__((optimize("fast-math")))
+#else
+    #define UNICONV_FAST_MATH
+#endif
+
+// Template specialization hints
+#define UNICONV_TEMPLATE_LIKELY template<bool Condition = true> \
+    std::enable_if_t<Condition, void>
+
+// Constexpr evaluation forcing
+#if defined(__cpp_consteval) && __cpp_consteval >= 201811L
+    #define UNICONV_CONSTEVAL consteval
+#else
+    #define UNICONV_CONSTEVAL constexpr
+#endif
+
+// Loop optimization hints
+#if defined(__clang__)
+    #define UNICONV_UNROLL_LOOP(n) _Pragma("clang loop unroll_count(" #n ")")
+    #define UNICONV_VECTORIZE_LOOP _Pragma("clang loop vectorize(enable)")
+#elif defined(__GNUC__)
+    #define UNICONV_UNROLL_LOOP(n) _Pragma("GCC unroll " #n)
+    #define UNICONV_VECTORIZE_LOOP _Pragma("GCC ivdep")
+#else
+    #define UNICONV_UNROLL_LOOP(n)
+    #define UNICONV_VECTORIZE_LOOP
+#endif
+
+// Cache-friendly alignment
+#define UNICONV_CACHE_ALIGNED alignas(64)
+#define UNICONV_PAGE_ALIGNED alignas(4096)
+
+// Compile-time string hashing for fast encoding lookup
+namespace detail {
+    UNICONV_CONSTEVAL uint32_t fnv1a_hash(const char* str, size_t len) noexcept {
+        uint32_t hash = 2166136261u;
+        for (size_t i = 0; i < len; ++i) {
+            hash ^= static_cast<uint32_t>(str[i]);
+            hash *= 16777619u;
+        }
+        return hash;
+    }
+    
+    UNICONV_CONSTEVAL uint32_t operator""_hash(const char* str, size_t len) noexcept {
+        return fnv1a_hash(str, len);
+    }
+}
 
 // C++ standard version detection
 #if defined(_MSC_VER)
@@ -251,47 +353,52 @@ public:
         }
     }
     
-    // 热路径优化：内联+分支预测
-    [[nodiscard]] bool IsSuccess() const noexcept {
-        return has_value_; 
+    // 热路径优化：内联+分支预测 (成功情况更常见)
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT 
+    bool IsSuccess() const noexcept {
+        return UNICONV_LIKELY(has_value_); 
     }
     
-    // 显式bool转换
+    // 显式bool转换 - 热路径优化
+    UNICONV_ALWAYS_INLINE UNICONV_HOT
     explicit operator bool() const noexcept {
         return IsSuccess();
     }
     
-    // 快速访问，无额外检查（性能优先）
+    // 快速访问，无额外检查（性能优先）- 热路径优化
+    UNICONV_ALWAYS_INLINE UNICONV_HOT
     T&& GetValue() && noexcept { 
         return std::move(value_); 
     }
     
+    UNICONV_ALWAYS_INLINE UNICONV_HOT
     const T& GetValue() const& noexcept { 
         return value_; 
     }
     
+    UNICONV_ALWAYS_INLINE UNICONV_HOT
     T& GetValue() & noexcept {
         return value_;
     }
     
-    // 错误信息获取（编译时字符串，零分配）
-    constexpr const char* GetErrorMessage() const noexcept {
-        return has_value_ ? "Success" : detail::GetErrorMessage(error_code_);
+    // 错误信息获取（编译时字符串，零分配）- 冷路径
+    UNICONV_COLD constexpr const char* GetErrorMessage() const noexcept {
+        return UNICONV_LIKELY(has_value_) ? "Success" : detail::GetErrorMessage(error_code_);
     }
     
-    ErrorCode GetErrorCode() const noexcept {
-        return has_value_ ? ErrorCode::Success : error_code_;
+    UNICONV_ALWAYS_INLINE ErrorCode GetErrorCode() const noexcept {
+        return UNICONV_LIKELY(has_value_) ? ErrorCode::Success : error_code_;
     }
     
-    // 提供默认值的安全访问
+    // 提供默认值的安全访问 - 成功路径优化
     template<typename U>
-    T ValueOr(U&& default_value) const& {
-        return has_value_ ? value_ : static_cast<T>(std::forward<U>(default_value));
+    UNICONV_ALWAYS_INLINE T ValueOr(U&& default_value) const& {
+        return UNICONV_LIKELY(has_value_) ? value_ : static_cast<T>(std::forward<U>(default_value));
     }
     
     template<typename U>
-    T ValueOr(U&& default_value) && {
-        return has_value_ ? std::move(value_) : static_cast<T>(std::forward<U>(default_value));
+    UNICONV_ALWAYS_INLINE T ValueOr(U&& default_value) && {
+        return UNICONV_LIKELY(has_value_) ? std::move(value_) : static_cast<T>(std::forward<U>(default_value));
     }
     
     // 静态工厂方法
@@ -308,74 +415,294 @@ public:
     }
 };
 
-// std::string特化版本，优化内存使用
+// 高性能字符串缓冲池类
+class StringBufferPool {
+private:
+    struct Buffer {
+        std::string data;
+        std::atomic<bool> in_use{false};
+        
+        Buffer() { 
+            data.reserve(4096);  // 预分配4KB，减少动态扩容
+        }
+    };
+    
+    static constexpr size_t POOL_SIZE = 16;  // 池大小，平衡内存使用和并发性能
+    std::array<Buffer, POOL_SIZE> buffers_;
+    std::atomic<size_t> next_index_{0};
+    
+public:
+    // RAII缓冲区租用器
+    class BufferLease {
+        Buffer* buffer_;
+        StringBufferPool* pool_;
+        
+    public:
+        BufferLease(Buffer* buf, StringBufferPool* pool) noexcept 
+            : buffer_(buf), pool_(pool) {}
+            
+        ~BufferLease() noexcept { 
+            if (buffer_) {
+                buffer_->in_use.store(false, std::memory_order_release); 
+            }
+        }
+        
+        // 移动构造和赋值
+        BufferLease(BufferLease&& other) noexcept 
+            : buffer_(other.buffer_), pool_(other.pool_) {
+            other.buffer_ = nullptr;
+        }
+        
+        BufferLease& operator=(BufferLease&& other) noexcept {
+            if (this != &other) {
+                if (buffer_) {
+                    buffer_->in_use.store(false, std::memory_order_release);
+                }
+                buffer_ = other.buffer_;
+                pool_ = other.pool_;
+                other.buffer_ = nullptr;
+            }
+            return *this;
+        }
+        
+        // 禁用拷贝
+        BufferLease(const BufferLease&) = delete;
+        BufferLease& operator=(const BufferLease&) = delete;
+        
+        // 获取缓冲区引用
+        [[nodiscard]] std::string& get() noexcept { 
+            return buffer_->data; 
+        }
+        
+        [[nodiscard]] const std::string& get() const noexcept { 
+            return buffer_->data; 
+        }
+        
+        // 检查是否有效
+        [[nodiscard]] bool valid() const noexcept { 
+            return buffer_ != nullptr; 
+        }
+    };
+    
+    // 获取缓冲区租用器 - 热路径优化，分支预测
+    [[nodiscard]] UNICONV_HOT UNICONV_FLATTEN BufferLease acquire() noexcept {
+        constexpr int max_attempts = POOL_SIZE * 2;
+        
+        // 预取下一个可能的索引位置，提升缓存性能
+        size_t current_index = next_index_.load(std::memory_order_relaxed);
+        UNICONV_PREFETCH(&buffers_[current_index % POOL_SIZE], 0, 1);
+        
+        UNICONV_UNROLL_LOOP(8)  // 展开前8次尝试的循环
+        for (int attempt = 0; UNICONV_LIKELY(attempt < max_attempts); ++attempt) {
+            size_t index = next_index_.fetch_add(1, std::memory_order_relaxed) % POOL_SIZE;
+            
+            bool expected = false;
+            if (UNICONV_LIKELY(buffers_[index].in_use.compare_exchange_weak(
+                    expected, true, std::memory_order_acquire))) {
+                // 获取成功，清理缓冲区准备使用
+                buffers_[index].data.clear();
+                return BufferLease(&buffers_[index], this);
+            }
+            
+            // 预取下一个可能的缓冲区位置
+            if (UNICONV_LIKELY(attempt + 1 < max_attempts)) {
+                size_t next_index = (index + 1) % POOL_SIZE;
+                UNICONV_PREFETCH(&buffers_[next_index], 0, 1);
+            }
+        }
+        
+        // 池满时的回退策略：使用线程本地临时缓冲区（罕见情况）
+        static thread_local Buffer temp_buffer;
+        temp_buffer.data.clear();
+        temp_buffer.in_use.store(true);
+        return BufferLease(&temp_buffer, nullptr);  // nullptr表示临时缓冲区
+    }
+    
+    // 获取池统计信息（调试用）
+    [[nodiscard]] size_t GetActiveBuffers() const noexcept {
+        size_t count = 0;
+        for (const auto& buffer : buffers_) {
+            if (buffer.in_use.load(std::memory_order_relaxed)) {
+                ++count;
+            }
+        }
+        return count;
+    }
+};
+
+// std::string特化版本，进一步优化内存使用和性能
 template<>
 class [[nodiscard]] CompactResult<std::string> {
 private:
-    std::string value_;     // 使用空字符串表示可能的错误状态
-    ErrorCode error_code_;  // 仅1字节
+    std::string value_;
+    ErrorCode error_code_;
+    
+    // SSO优化：利用标准库的小字符串优化
+    static constexpr size_t SSO_THRESHOLD = 23;  // 大多数标准库的SSO阈值
     
 public:
-    // 成功构造
+    // 基础构造函数
     explicit CompactResult(std::string&& value) noexcept
         : value_(std::move(value)), error_code_(ErrorCode::Success) {}
         
     explicit CompactResult(const std::string& value) 
         : value_(value), error_code_(ErrorCode::Success) {}
         
-    // 错误构造 - 使用空字符串，避免额外分配
     explicit CompactResult(ErrorCode error) noexcept 
-        : error_code_(error) {}  // value_ 默认构造为空字符串
+        : error_code_(error) {}
     
-    // 默认移动和拷贝
+    // 预留容量构造（避免后续扩容）
+    static CompactResult WithReservedCapacity(size_t capacity) noexcept {
+        CompactResult result(ErrorCode::Success);
+        try {
+            result.value_.reserve(capacity);
+        } catch (...) {
+            return CompactResult(ErrorCode::OutOfMemory);
+        }
+        return result;
+    }
+    
+    // 就地构造，避免临时对象
+    template<typename... Args>
+    static CompactResult EmplaceSuccess(Args&&... args) noexcept {
+        try {
+            CompactResult result(ErrorCode::Success);
+            // Construct string by concatenating all arguments
+            std::ostringstream oss;
+            (oss << ... << args);
+            result.value_ = oss.str();
+            return result;
+        } catch (...) {
+            return CompactResult(ErrorCode::OutOfMemory);
+        }
+    }
+    
+    // 从C字符串快速构造
+    static CompactResult FromCString(const char* str, size_t len) noexcept {
+        if (!str) {
+            return CompactResult(ErrorCode::InvalidParameter);
+        }
+        try {
+            return CompactResult(std::string(str, len));
+        } catch (...) {
+            return CompactResult(ErrorCode::OutOfMemory);
+        }
+    }
+    
+    // 默认移动和拷贝（编译器优化友好）
     CompactResult(CompactResult&&) noexcept = default;
     CompactResult& operator=(CompactResult&&) noexcept = default;
     CompactResult(const CompactResult&) = default;
     CompactResult& operator=(const CompactResult&) = default;
     
-    // 超快速成功检查
-    [[nodiscard]] bool IsSuccess() const noexcept { 
-        return error_code_ == ErrorCode::Success; 
+    // 超快速成功检查 - 热路径优化，预测成功情况更常见
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT 
+    bool IsSuccess() const noexcept { 
+        return UNICONV_LIKELY(error_code_ == ErrorCode::Success); 
     }
     
+    UNICONV_ALWAYS_INLINE UNICONV_HOT
     explicit operator bool() const noexcept {
         return IsSuccess();
     }
     
-    // 直接返回引用，零拷贝
+    // 零拷贝访问方法 - 热路径优化
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     std::string&& GetValue() && noexcept { 
         return std::move(value_); 
     }
     
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     const std::string& GetValue() const& noexcept { 
         return value_; 
     }
     
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     std::string& GetValue() & noexcept {
         return value_;
     }
     
-    ErrorCode GetErrorCode() const noexcept { 
+    // 高性能追加操作（避免多次分配）- 热路径优化
+    UNICONV_ALWAYS_INLINE UNICONV_HOT
+    void AppendUnsafe(const char* data, size_t len) noexcept {
+        // 注意：调用者必须确保对象处于成功状态
+        // 预取数据以提升缓存性能
+        UNICONV_PREFETCH(data, 0, 1);
+        value_.append(data, len);
+    }
+    
+    UNICONV_ALWAYS_INLINE UNICONV_HOT
+    void AppendUnsafe(std::string_view sv) noexcept {
+        UNICONV_PREFETCH(sv.data(), 0, 1);
+        value_.append(sv);
+    }
+    
+    // 获取可写缓冲区（高级用法）- 预测成功路径
+    UNICONV_HOT char* GetWritableBuffer(size_t size) {
+        if (UNICONV_UNLIKELY(error_code_ != ErrorCode::Success)) {
+            return nullptr;
+        }
+        try {
+            value_.resize(size);
+            return value_.data();
+        } catch (...) {
+            error_code_ = ErrorCode::OutOfMemory;
+            return nullptr;
+        }
+    }
+    
+    // 预留更多容量 - 预测成功情况
+    UNICONV_ALWAYS_INLINE bool Reserve(size_t capacity) noexcept {
+        if (UNICONV_UNLIKELY(error_code_ != ErrorCode::Success)) {
+            return false;
+        }
+        try {
+            value_.reserve(capacity);
+            return true;
+        } catch (...) {
+            error_code_ = ErrorCode::OutOfMemory;
+            return false;
+        }
+    }
+    
+    // 获取当前容量和大小 - 热路径优化
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT 
+    size_t GetCapacity() const noexcept {
+        return value_.capacity();
+    }
+    
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT 
+    size_t GetSize() const noexcept {
+        return value_.size();
+    }
+    
+    // 检查是否使用了SSO
+    [[nodiscard]] bool IsSmallString() const noexcept {
+        return value_.size() <= SSO_THRESHOLD;
+    }
+    
+    // 错误处理
+    [[nodiscard]] ErrorCode GetErrorCode() const noexcept { 
         return error_code_; 
     }
     
-    constexpr const char* GetErrorMessage() const noexcept {
+    [[nodiscard]] constexpr const char* GetErrorMessage() const noexcept {
         return error_code_ == ErrorCode::Success ? "Success" : detail::GetErrorMessage(error_code_);
     }
     
-    // 提供默认值
+    // 提供默认值的安全访问
     template<typename U>
-    std::string ValueOr(U&& default_value) const& {
+    [[nodiscard]] std::string ValueOr(U&& default_value) const& {
         return IsSuccess() ? value_ : std::string(std::forward<U>(default_value));
     }
     
     template<typename U>
-    std::string ValueOr(U&& default_value) && {
+    [[nodiscard]] std::string ValueOr(U&& default_value) && {
         return IsSuccess() ? std::move(value_) : std::string(std::forward<U>(default_value));
     }
     
     // 静态工厂方法
-    static CompactResult Success(std::string&& value) {
+    static CompactResult Success(std::string&& value) noexcept {
         return CompactResult(std::move(value));
     }
     
@@ -383,7 +710,7 @@ public:
         return CompactResult(value);
     }
     
-    static CompactResult Failure(ErrorCode error) {
+    static CompactResult Failure(ErrorCode error) noexcept {
         return CompactResult(error);
     }
 };
@@ -1030,7 +1357,7 @@ public:
 	 * @param toEncoding Target encoding name  
 	 * @return CompactResult containing converted string or error
 	 */
-	StringResult ConvertEncodingFast(const std::string& input, 
+	UNICONV_HOT StringResult ConvertEncodingFast(const std::string& input, 
 	                                const char* fromEncoding, 
 	                                const char* toEncoding) noexcept;
 	
@@ -1039,20 +1366,66 @@ public:
 	 * @param codepage The codepage to lookup
 	 * @return Pointer to encoding name, or nullptr if not found
 	 */
-	const char* GetEncodingNamePtr(int codepage) noexcept;
+	UNICONV_HOT UNICONV_PURE const char* GetEncodingNamePtr(int codepage) noexcept;
 	
 	/**
 	 * @brief Fast encoding name lookup using CompactResult
 	 * @param codepage The codepage to lookup
 	 * @return CompactResult containing encoding name or error
 	 */
-	StringViewResult GetEncodingNameFast(int codepage) noexcept;
+	UNICONV_HOT UNICONV_PURE StringViewResult GetEncodingNameFast(int codepage) noexcept;
 	
 	/**
 	 * @brief Fast system codepage retrieval
 	 * @return CompactResult containing system codepage or error
 	 */
-	IntResult GetSystemCodePageFast() noexcept;
+	UNICONV_HOT IntResult GetSystemCodePageFast() noexcept;
+	
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Advanced High-Performance Methods ===
+	//----------------------------------------------------------------------------------------------------------------------
+	
+	/**
+	 * @brief 高性能转换，使用预分配缓冲区
+	 * @param input 输入字符串数据
+	 * @param fromEncoding 源编码名称
+	 * @param toEncoding 目标编码名称
+	 * @param estimatedSize 预估输出大小（可选，用于优化分配）
+	 * @return 包含转换结果的CompactResult
+	 */
+	UNICONV_HOT StringResult ConvertEncodingFastWithHint(const std::string& input,
+	                                        const char* fromEncoding,
+	                                        const char* toEncoding,
+	                                        size_t estimatedSize = 0) noexcept;
+	
+	/**
+	 * @brief 批量转换优化接口
+	 * @param inputs 输入字符串列表
+	 * @param fromEncoding 源编码名称
+	 * @param toEncoding 目标编码名称
+	 * @return 转换结果列表
+	 */
+	UNICONV_FLATTEN std::vector<StringResult> ConvertEncodingBatch(const std::vector<std::string>& inputs,
+	                                              const char* fromEncoding,
+	                                              const char* toEncoding) noexcept;
+	
+	/**
+	 * @brief 获取字符串缓冲池和iconv缓存统计信息
+	 * @return 包含池状态的统计信息
+	 */
+	struct PoolStats {
+		size_t active_buffers;           // StringBufferPool活跃缓冲区数
+		size_t total_conversions;        // 总转换次数
+		size_t cache_hits;               // 缓冲池缓存命中次数
+		double hit_rate;                 // 缓冲池命中率
+		size_t iconv_cache_size;         // iconv描述符缓存大小
+		size_t iconv_cache_hits;         // iconv缓存命中次数
+		size_t iconv_cache_misses;       // iconv缓存未命中次数
+		size_t iconv_cache_evictions;    // iconv缓存清理次数
+		double iconv_cache_hit_rate;     // iconv缓存命中率
+		double iconv_avg_hit_count;      // iconv平均命中次数
+	};
+	PoolStats GetPoolStatistics() const;
 
 private:
 
@@ -1063,10 +1436,75 @@ private:
 	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
 	mutable std::shared_mutex                                    m_iconvCacheMutex;            /*!< Iconv cache mutex      */
 	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;              /*!< Iconv error messages   */
-	mutable std::unordered_map<std::string, IconvSharedPtr>      m_iconvDescriptorCacheMap;    /*!< Iconv descriptor cache */
-	static constexpr size_t                                      MAX_CACHE_SIZE = 100;         /*!< Iconv max cache number */
+	
+	// 改进的LRU缓存结构
+	struct IconvCacheEntry {
+		IconvSharedPtr descriptor;
+		mutable std::atomic<uint64_t> last_used{0};     // 最后使用时间戳
+		mutable std::atomic<uint32_t> hit_count{0};     // 命中次数
+		
+		IconvCacheEntry() = default;
+		
+		IconvCacheEntry(IconvSharedPtr desc) : descriptor(std::move(desc)) {
+			last_used.store(GetCurrentTimestamp(), std::memory_order_relaxed);
+		}
+		
+		// 复制构造函数
+		IconvCacheEntry(const IconvCacheEntry& other) : descriptor(other.descriptor) {
+			last_used.store(other.last_used.load(), std::memory_order_relaxed);
+			hit_count.store(other.hit_count.load(), std::memory_order_relaxed);
+		}
+		
+		// 移动构造函数
+		IconvCacheEntry(IconvCacheEntry&& other) noexcept : descriptor(std::move(other.descriptor)) {
+			last_used.store(other.last_used.load(), std::memory_order_relaxed);
+			hit_count.store(other.hit_count.load(), std::memory_order_relaxed);
+		}
+		
+		// 复制赋值运算符
+		IconvCacheEntry& operator=(const IconvCacheEntry& other) {
+			if (this != &other) {
+				descriptor = other.descriptor;
+				last_used.store(other.last_used.load(), std::memory_order_relaxed);
+				hit_count.store(other.hit_count.load(), std::memory_order_relaxed);
+			}
+			return *this;
+		}
+		
+		// 移动赋值运算符
+		IconvCacheEntry& operator=(IconvCacheEntry&& other) noexcept {
+			if (this != &other) {
+				descriptor = std::move(other.descriptor);
+				last_used.store(other.last_used.load(), std::memory_order_relaxed);
+				hit_count.store(other.hit_count.load(), std::memory_order_relaxed);
+			}
+			return *this;
+		}
+		
+		static uint64_t GetCurrentTimestamp() noexcept {
+			return static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+		}
+		
+		void UpdateAccess() const noexcept {
+			last_used.store(GetCurrentTimestamp(), std::memory_order_relaxed);
+			hit_count.fetch_add(1, std::memory_order_relaxed);
+		}
+	};
+	
+	mutable std::unordered_map<std::string, IconvCacheEntry>     m_iconvDescriptorCacheMap;    /*!< Iconv descriptor cache with LRU */
+	static constexpr size_t                                      MAX_CACHE_SIZE = 128;         /*!< Increased cache size for better hit rate */
+	mutable std::atomic<uint64_t>                                m_cacheHitCount{0};           /*!< Cache hit statistics */
+	mutable std::atomic<uint64_t>                                m_cacheMissCount{0};          /*!< Cache miss statistics */
+	mutable std::atomic<uint64_t>                                m_cacheEvictionCount{0};      /*!< Cache eviction statistics */
 	static const  std::string                                    m_encodingNames[];            /*!< Encoding map           */
 	static std::string                                           m_defaultEncoding;            /*!< Current encoding       */
+	
+	// 高性能字符串缓冲池
+	mutable StringBufferPool                                     m_stringBufferPool;           /*!< String buffer pool for fast conversions */
+	
+	// 性能统计（调试和优化用）
+	mutable std::atomic<size_t>                                  m_totalConversions{0};        /*!< Total conversion count */
+	mutable std::atomic<size_t>                                  m_poolCacheHits{0};           /*!< Pool cache hit count   */
 	//----------------------------------------------------------------------------------------------------------------------
 	/// @} ! Private members
 	//----------------------------------------------------------------------------------------------------------------------
@@ -1084,7 +1522,44 @@ private:
 	 * @return A string containing the description of the error associated with the given error code.
 	 * @retval If the error code is not found in the map,return a generic error message
 	 */
-	static std::string                  GetIconvErrorString(int err_code);
+	static std::string                        GetIconvErrorString(int err_code);
+	
+	//----------------------------------------------------------------------------------------------------------------------
+	// === High-Performance Internal Methods ===
+	//----------------------------------------------------------------------------------------------------------------------
+	
+	/**
+	 * @brief 智能估算输出缓冲区大小
+	 * @param input_size 输入数据大小
+	 * @param from_encoding 源编码
+	 * @param to_encoding 目标编码
+	 * @return 估算的输出大小
+	 */
+	static size_t EstimateOutputSize(size_t input_size, 
+	                                const char* from_encoding, 
+	                                const char* to_encoding) noexcept;
+	
+	/**
+	 * @brief 获取编码的字节倍数系数
+	 * @param encoding 编码名称
+	 * @return 最大字节倍数
+	 */
+	static constexpr int GetEncodingMultiplier(const char* encoding) noexcept;
+	
+	/**
+	 * @brief 内部高性能转换实现
+	 * @param input 输入数据
+	 * @param fromEncoding 源编码
+	 * @param toEncoding 目标编码
+	 * @param buffer_lease 缓冲区租用器
+	 * @param estimated_size 预估大小
+	 * @return 转换结果
+	 */
+	UNICONV_HOT UNICONV_FLATTEN StringResult ConvertEncodingInternal(const std::string& input,
+	                                   const char* fromEncoding,
+	                                   const char* toEncoding,
+	                                   StringBufferPool::BufferLease& buffer_lease,
+	                                   size_t estimated_size) noexcept;
 
 	/**
 	 * @brief Get the iconv descriptor.
@@ -1092,7 +1567,8 @@ private:
 	 * @param tocode The target encoding.
 	 * @return The iconv descriptor as an IconvSharedPtr.
 	 */
-	IconvSharedPtr                            GetIconvDescriptor(const char* fromcode, const char* tocode);
+	UNICONV_HOT IconvSharedPtr                            GetIconvDescriptor(const char* fromcode, const char* tocode);
+	void                                      EvictLRUCacheEntries();
 	void                                      CleanupIconvCache();
 
 	std::pair<BomEncoding, std::string_view>  DetectAndRemoveBom(const std::string_view& data);
@@ -1105,7 +1581,9 @@ private:
 	UniConv& operator=(const UniConv&) = delete;
 };
 
-
+#if _MSC_VER >= 1600
+#pragma warning(pop)  // 恢复警告设置
+#endif
 
 #endif // UNICONV_H__
 
