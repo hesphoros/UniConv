@@ -122,26 +122,26 @@
 #elif defined(_MSC_VER)
     #define UNICONV_LIKELY(x)    (x)
     #define UNICONV_UNLIKELY(x)  (x)
-    #define UNICONV_PURE         
-    #define UNICONV_CONST        
+    #define UNICONV_PURE
+    #define UNICONV_CONST
     #define UNICONV_NOINLINE     __declspec(noinline)
     #define UNICONV_ALWAYS_INLINE __forceinline
-    #define UNICONV_HOT          
-    #define UNICONV_COLD         
-    #define UNICONV_FLATTEN      
+    #define UNICONV_HOT
+    #define UNICONV_COLD
+    #define UNICONV_FLATTEN
     #define UNICONV_PREFETCH(addr, rw, locality) _mm_prefetch((const char*)(addr), _MM_HINT_T0)
     // Include intrinsics for prefetch
     #include <immintrin.h>
 #else
     #define UNICONV_LIKELY(x)    (x)
     #define UNICONV_UNLIKELY(x)  (x)
-    #define UNICONV_PURE         
-    #define UNICONV_CONST        
-    #define UNICONV_NOINLINE     
+    #define UNICONV_PURE
+    #define UNICONV_CONST
+    #define UNICONV_NOINLINE
     #define UNICONV_ALWAYS_INLINE inline
-    #define UNICONV_HOT          
-    #define UNICONV_COLD         
-    #define UNICONV_FLATTEN      
+    #define UNICONV_HOT
+    #define UNICONV_COLD
+    #define UNICONV_FLATTEN
     #define UNICONV_PREFETCH(addr, rw, locality) ((void)0)
 #endif
 
@@ -168,8 +168,10 @@
     #define UNICONV_UNROLL_LOOP(n) _Pragma("clang loop unroll_count(" #n ")")
     #define UNICONV_VECTORIZE_LOOP _Pragma("clang loop vectorize(enable)")
 #elif defined(__GNUC__)
-    #define UNICONV_UNROLL_LOOP(n) _Pragma("GCC unroll " #n)
-    #define UNICONV_VECTORIZE_LOOP _Pragma("GCC ivdep")
+    #define UNICONV_STRINGIFY(x) #x
+    #define UNICONV_PRAGMA(x) _Pragma(UNICONV_STRINGIFY(x))
+    #define UNICONV_UNROLL_LOOP(n) UNICONV_PRAGMA(GCC unroll n)
+    #define UNICONV_VECTORIZE_LOOP UNICONV_PRAGMA(GCC ivdep)
 #else
     #define UNICONV_UNROLL_LOOP(n)
     #define UNICONV_VECTORIZE_LOOP
@@ -492,7 +494,7 @@ public:
         size_t current_index = next_index_.load(std::memory_order_relaxed);
         UNICONV_PREFETCH(&buffers_[current_index % POOL_SIZE], 0, 1);
         
-        UNICONV_UNROLL_LOOP(8)  // 展开前8次尝试的循环
+        // 尝试获取缓冲区
         for (int attempt = 0; UNICONV_LIKELY(attempt < max_attempts); ++attempt) {
             size_t index = next_index_.fetch_add(1, std::memory_order_relaxed) % POOL_SIZE;
             

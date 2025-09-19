@@ -10,3 +10,4 @@ interface_naming_fix_plan.md
 UniConv_接口规范分析报告.md
 noexcept_方案分析.md
 test_destruction_order.cpp
+.idea/

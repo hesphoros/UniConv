@@ -320,9 +320,9 @@ std::uint16_t UniConv::GetCurrentSystemEncodingCodePage() noexcept {
 	setlocale(LC_ALL, "");
 	char* locstr = setlocale(LC_CTYPE, NULL);
 	char* encoding = nl_langinfo(CODESET);
-	auto it = m_encodingToCodePage.find(encoding);
+	auto it = m_encodingToCodePageMap.find(encoding);
 
-	if (it != m_encodingToCodePage.end())
+	if (it != m_encodingToCodePageMap.end())
         return it->second;
     else
     {
@@ -600,9 +600,26 @@ std::string UniConv::WideStringToLocale(const std::wstring& sInput) {
     std::string result(bytes_needed - 1, '\0');
     WideCharToMultiByte(CP_ACP, 0, sInput.c_str(), -1, &result[0], bytes_needed, nullptr, nullptr);    return result;
 #else
-    // Linux implementation
-    std::wstring_convert<std::codecvt_byname<wchar_t, char, std::mbstate_t>> converter(new std::codecvt_byname<wchar_t, char, std::mbstate_t>(""));
-    return converter.to_bytes(sInput);
+    // Linux implementation - use iconv for conversion
+    if (sInput.empty()) return std::string();
+    
+    // Convert wstring to UTF-32LE byte representation first
+    std::string utf32_bytes;
+    utf32_bytes.reserve(sInput.size() * 4);
+    
+    for (wchar_t wc : sInput) {
+        // Convert each wchar_t to UTF-32LE bytes
+        uint32_t codepoint = static_cast<uint32_t>(wc);
+        utf32_bytes.push_back(static_cast<char>(codepoint & 0xFF));
+        utf32_bytes.push_back(static_cast<char>((codepoint >> 8) & 0xFF));
+        utf32_bytes.push_back(static_cast<char>((codepoint >> 16) & 0xFF));
+        utf32_bytes.push_back(static_cast<char>((codepoint >> 24) & 0xFF));
+    }
+    
+    // Use iconv to convert UTF-32LE to locale encoding
+    std::string currentEncoding = GetCurrentSystemEncoding(); 
+    auto result = ConvertEncodingFast(utf32_bytes, "UTF-32LE", currentEncoding.c_str());
+    return result.IsSuccess() ? result.GetValue() : std::string{};
 #endif
 }
 
@@ -747,7 +764,7 @@ std::string UniConv::ToUtf8FromUcs4(const std::wstring& input)
         WideCharToMultiByte(CP_UTF8, 0, input.data(), (int)input.size(), utf8Buffer.data(), sizeRequired, nullptr, nullptr);
         return std::string(utf8Buffer.begin(), utf8Buffer.end());
 
-    #else defined(__linux__) || defined(__APPLE__)
+    #elif defined(__linux__) || defined(__APPLE__)
         if (input.empty()) return std::string();
         std::string utf8_str = reinterpret_cast<const char*>(input.data());
         auto result = ConvertEncoding(utf8_str, ToString(Encoding::wchar_t_encoding).c_str(), ToString(Encoding::utf_8).c_str());
@@ -1259,7 +1276,6 @@ std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::s
     // 参数验证 - 预测参数通常有效
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
         // 为所有输入返回错误结果
-        UNICONV_UNROLL_LOOP(4)  // 展开小批量错误处理循环
         for (size_t i = 0; i < inputs.size(); ++i) {
             results.emplace_back(StringResult::Failure(ErrorCode::InvalidParameter));
         }
@@ -1275,7 +1291,6 @@ std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::s
     auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
         // 为所有输入返回错误结果
-        UNICONV_UNROLL_LOOP(4)
         for (size_t i = 0; i < inputs.size(); ++i) {
             results.emplace_back(StringResult::Failure(ErrorCode::InvalidSourceEncoding));
         }
