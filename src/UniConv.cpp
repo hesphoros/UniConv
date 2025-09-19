@@ -215,7 +215,6 @@ const std::unordered_map<std::string, std::uint16_t> UniConv::m_encodingToCodePa
     {"VISCII1.1-HYBRID",       1258},     // Vietnamese (VISCII 1.1 Hybrid)
 };
 
-std::unordered_map<std::string, UniConv::IconvSharedPtr> UniConv::m_iconvDescriptorCacheMapS = {};
 
 
 void UniConv::SetDefaultEncoding(const std::string& encoding)
@@ -658,7 +657,7 @@ std::string UniConv::LocaleToNarrowString(const wchar_t* sInput)
 }
 
 // UTF-16LE -> Local
-std::string UniConv::ToLocalFromUtf16LE(const std::u16string& input) {
+std::string UniConv::ToLocaleFromUtf16LE(const std::u16string& input) {
     if (input.empty()) return "";
     
     std::string currentEncoding = this->GetCurrentSystemEncoding();
@@ -667,9 +666,9 @@ std::string UniConv::ToLocalFromUtf16LE(const std::u16string& input) {
     return result.IsSuccess() ? result.conv_result_str : "";
 }
 
-std::string UniConv::ToLocalFromUtf16LE(const char16_t* input) {
+std::string UniConv::ToLocaleFromUtf16LE(const char16_t* input) {
     if (!input) return "";
-    return this->ToLocalFromUtf16LE(std::u16string(input));
+    return this->ToLocaleFromUtf16LE(std::u16string(input));
 }
 
 // ===================== Helper Functions =====================
@@ -880,8 +879,8 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     // Read lock (only find the cached descriptor)
     {
         std::shared_lock<std::shared_mutex> read_lock(m_iconvCacheMutex);
-        auto it = this->m_iconvDescriptorCacheMapS.find(key);
-        if (it != this->m_iconvDescriptorCacheMapS.end()) {
+        auto it = m_iconvDescriptorCacheMap.find(key);
+        if (it != m_iconvDescriptorCacheMap.end()) {
             return it->second; // return cached descriptor
         }
     }
@@ -889,8 +888,8 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     // Write lock (create a new descriptor if not found)
     std::unique_lock<std::shared_mutex> write_lock(m_iconvCacheMutex);
 
-	auto it = m_iconvDescriptorCacheMapS.find(key);
-	if (it != m_iconvDescriptorCacheMapS.end()) {
+	auto it = m_iconvDescriptorCacheMap.find(key);
+	if (it != m_iconvDescriptorCacheMap.end()) {
 		return it->second; // return cached descriptor
 	}
 
@@ -900,13 +899,21 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
 	if (cd == reinterpret_cast<iconv_t>(-1)) {
         #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
 		std::cout << "iconv_open error" << std::endl;
-        #endif 
+        #endif
 		return nullptr;
 	}
     // Create a shared pointer to manage the iconv descriptor
     // Use a custom deleter to close the iconv descriptor when the shared pointer is destroyed
 	auto iconvPtr = std::shared_ptr<std::remove_pointer_t<iconv_t>>(cd, IconvDeleter());
-	m_iconvDescriptorCacheMapS.emplace(key, iconvPtr);
+	
+	// 缓存大小管理
+	if (m_iconvDescriptorCacheMap.size() >= MAX_CACHE_SIZE) {
+		// 简单的清理策略：清理一半缓存
+		auto half_point = std::next(m_iconvDescriptorCacheMap.begin(), MAX_CACHE_SIZE / 2);
+		m_iconvDescriptorCacheMap.erase(m_iconvDescriptorCacheMap.begin(), half_point);
+	}
+	
+	m_iconvDescriptorCacheMap.emplace(key, iconvPtr);
 
     #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
         std::cout << "Create and cached iconv descriptor: " << key << std::endl;
@@ -958,6 +965,15 @@ std::pair<UniConv::BomEncoding, std::wstring_view> UniConv::DetectAndRemoveBom(c
     return { BomEncoding::None, data };
 }
 
+
+void UniConv::CleanupIconvCache() {
+    std::unique_lock<std::shared_mutex> write_lock(m_iconvCacheMutex);
+    m_iconvDescriptorCacheMap.clear();
+    
+    #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
+        std::cout << "iconv descriptor cache cleared" << std::endl;
+    #endif
+}
 
 std::string UniConv::ToString(UniConv::Encoding  enc) {
     int idx = static_cast<int>(enc);

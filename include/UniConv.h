@@ -17,7 +17,7 @@
 *
 *  @author   hesphoros
 *  @email    hesphoros@gmail.com
-*  @version  1.0.0.1
+*  @version  2.0.0.1
 *  @date     2025/03/10
 *  @license  GNU General Public License (GPL)
 *---------------------------------------------------------------------------*
@@ -38,7 +38,6 @@
 #include "iconv.h"
 #include <iostream>
 #include <string>
-#include <malloc.h>
 #include <unordered_map>
 #include <cwchar>
 #include <clocale>
@@ -55,8 +54,12 @@
 #include <memory>
 #include <algorithm>
 #include <functional>
-#include <io.h>
+#include <cstdlib>        // 替换 malloc.h
+
+#ifdef _WIN32
+#include <io.h>           // 仅在 Windows 需要时包含
 #include <fcntl.h>
+#endif
 
 
 
@@ -254,12 +257,17 @@ public:
 		int                error_code;       /*!< Error code               */
 		std::string        error_msg;        /*!< Error message            */
 
-		IConvResult() {
-			/** Initialize the members */
-			conv_result_str = "";
-			error_code = 0;
-			error_msg = "";
-		}
+		IConvResult() noexcept 
+			: conv_result_str{}, error_code{0}, error_msg{} 
+		{}
+		
+		// 移动构造函数和赋值操作符
+		IConvResult(IConvResult&&) noexcept = default;
+		IConvResult& operator=(IConvResult&&) noexcept = default;
+		
+		// 复制构造函数和赋值操作符
+		IConvResult(const IConvResult&) = default;
+		IConvResult& operator=(const IConvResult&) = default;
 		/**
 		 * @brief Check if the conversion was successful.
 		 * @return True if the conversion was successful, false otherwise.
@@ -290,6 +298,8 @@ public:
 
 
 	~UniConv() {
+		// 清理资源
+		CleanupIconvCache();
 	}
 /** Test Success */
 /***************************************************************************/
@@ -328,32 +338,32 @@ public:
 /*=================== Locale <-> UTF-8 Conversion Interface =========================*/
 /***************************************************************************/
 	/**
-	 * @brief Convert a string from system local encoding to UTF-8 string
-	 * @param  input System local encoding input string
+	 * @brief Convert a string from system locale encoding to UTF-8 string
+	 * @param  input System locale encoding input string
 	 * @return Converted UTF-8 string
 	 * @todo test
 	 */
 	std::string ToUtf8FromLocale(const std::string& input);
 
 	/**
-	 * @brief Convert a C string from system local encoding to UTF-8 string
-	 * @param  input System local encoding C string
+	 * @brief Convert a C string from system locale encoding to UTF-8 string
+	 * @param  input System locale encoding C string
 	 * @return Converted UTF-8 string
 	 * @todo test
 	 */
 	std::string ToUtf8FromLocale(const char* input);
 
 	/**
-	 * @brief Convert UTF-8 string to system local encoding string
+	 * @brief Convert UTF-8 string to system locale encoding string
 	 * @param  input UTF-8 encoded input string
-	 * @return Converted system local encoding string
+	 * @return Converted system locale encoding string
 	 */
 	std::string ToLocaleFromUtf8(const std::string& input);
 
 	/**
-	 * @brief Convert UTF-8 C string to system local encoding string
+	 * @brief Convert UTF-8 C string to system locale encoding string
 	 * @param  input UTF-8 encoded C string
-	 * @return Converted system local encoding string
+	 * @return Converted system locale encoding string
 	 */
 	std::string ToLocaleFromUtf8(const char* input);
 /** Test Success */
@@ -586,7 +596,7 @@ public:
 	 */
 	std::wstring         LocaleToWideString(const char* sInput);
 
-	/**	
+	/**
 	 * @brief Convert a wide string to a string in the current locale encoding.
 	 * @param sInput The wide string to be converted.
 	 * @return The converted string in the current locale encoding.
@@ -611,14 +621,14 @@ public:
 	 * @param input UTF-16LE string to convert.
 	 * @return Converted string in local encoding.
 	 */
-	std::string ToLocalFromUtf16LE(const std::u16string& input);
+	std::string ToLocaleFromUtf16LE(const std::u16string& input);
 
 	/**
 	 * @brief Convert UTF-16LE C-style string to local encoding.
 	 * @param input UTF-16LE C-style string to convert.
 	 * @return Converted string in local encoding.
 	 */
-	std::string ToLocalFromUtf16LE(const char16_t* input);
+	std::string ToLocaleFromUtf16LE(const char16_t* input);
 
 /***************************************************************************/
 /*======================= Wide String Helpers ===========================*/
@@ -735,7 +745,7 @@ private:
 	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
 	mutable std::shared_mutex                                    m_iconvCacheMutex;            /*!< Iconv cache mutex      */
 	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;              /*!< Iconv error messages   */
-	static std::unordered_map<std::string, IconvSharedPtr>       m_iconvDescriptorCacheMapS;   /*!< Iconv descriptor cache */
+	mutable std::unordered_map<std::string, IconvSharedPtr>      m_iconvDescriptorCacheMap;    /*!< Iconv descriptor cache */
 	static constexpr size_t                                      MAX_CACHE_SIZE = 100;         /*!< Iconv max cache number */
 	static const  std::string                                    m_encodingNames[];            /*!< Encoding map           */
 	static std::string                                           m_defaultEncoding;            /*!< Current encoding       */
@@ -765,6 +775,7 @@ private:
 	 * @return The iconv descriptor as an IconvSharedPtr.
 	 */
 	IconvSharedPtr                            GetIconvDescriptor(const char* fromcode, const char* tocode);
+	void                                      CleanupIconvCache();
 
 	std::pair<BomEncoding, std::string_view>  DetectAndRemoveBom(const std::string_view& data);
 	std::pair<BomEncoding, std::wstring_view> DetectAndRemoveBom(const std::wstring_view& data);
