@@ -65,7 +65,7 @@
 #include <thread>
 #include <queue>
 #include <condition_variable>
-#include <chrono>  // for timestamp in LRU cache
+#include <chrono>
 
 #ifdef _WIN32
 #include <io.h>
@@ -111,14 +111,23 @@
 #if defined(__GNUC__) || defined(__clang__)
     #define UNICONV_LIKELY(x)    __builtin_expect(!!(x), 1)
     #define UNICONV_UNLIKELY(x)  __builtin_expect(!!(x), 0)
-    #define UNICONV_PURE         __attribute__((pure))
-    #define UNICONV_CONST        __attribute__((const))
-    #define UNICONV_NOINLINE     __attribute__((noinline))
-    #define UNICONV_ALWAYS_INLINE __attribute__((always_inline)) inline
-    #define UNICONV_HOT          __attribute__((hot))
-    #define UNICONV_COLD         __attribute__((cold))
-    #define UNICONV_FLATTEN      __attribute__((flatten))
-    #define UNICONV_PREFETCH(addr, rw, locality) __builtin_prefetch((addr), (rw), (locality))
+	// Function attributes for compiler optimization hints:
+    #define UNICONV_PURE         __attribute__((pure))  					// No side effects except memory reads, result depends only on inputs.
+    #define UNICONV_CONST        __attribute__((const)) 					// Stronger than pure: result depends only on arguments (no memory reads).
+    #define UNICONV_NOINLINE     __attribute__((noinline)) 					// Prevent compiler from inlining this function.
+    #define UNICONV_ALWAYS_INLINE __attribute__((always_inline)) inline  	// Force inlining (even with -O0).
+    #define UNICONV_HOT          __attribute__((hot)) 						// Function is executed often, optimize aggressively.
+    #define UNICONV_COLD         __attribute__((cold))						// Function is rarely executed, optimize for size.
+    #define UNICONV_FLATTEN      __attribute__((flatten))					// Inline all calls inside, create a single flat function body.
+	// Hint CPU to prefetch memory into cache before it's actually needed.
+	// addr      : memory address to prefetch
+	// rw        : 0 = read (default), 1 = write
+	// locality  : temporal locality (0-3), higher means data will be reused soon
+	//   0 = no temporal locality (one-time use, evict quickly)
+	//   3 = high temporal locality (keep in cache)
+	// Example: UNICONV_PREFETCH(ptr, 0, 3);
+	#define UNICONV_PREFETCH(addr, rw, locality) __builtin_prefetch((addr), (rw), (locality))
+
 #elif defined(_MSC_VER)
     #define UNICONV_LIKELY(x)    (x)
     #define UNICONV_UNLIKELY(x)  (x)
