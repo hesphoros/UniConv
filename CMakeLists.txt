@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(UniConv
-    VERSION 2.0.0.1
+    VERSION 2.0.0.2
     DESCRIPTION "A c++ library for variable encoding conversion"
     LANGUAGES C CXX
 )
