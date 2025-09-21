@@ -38,7 +38,7 @@
 #ifndef __UNICONV_H__
 #define __UNICONV_H__
 
-#include "iconv.h"
+#include "iconv/iconv.h"
 #include <iostream>
 #include <string>
 #include <unordered_map>

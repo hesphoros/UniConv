@@ -19,240 +19,233 @@ set(VERSION "${PROJECT_VERSION}")
 if(WIN32 OR CYGWIN OR MINGW)
     set(WINDOWS_NATIVE 1)
     message(STATUS "Detected Windows platform, enabling Windows-specific configuration")
-    
-    # Windows standard headers are typically available
-    set(HAVE_STDIO_H 1)
-    set(HAVE_STDLIB_H 1)
-    set(HAVE_STRING_H 1)
-    set(HAVE_WCHAR_H 1)
-    set(HAVE_LIMITS_H 1)
-    set(HAVE_SYS_TYPES_H 1)
-    set(STDC_HEADERS 1)
-    
-    # Modern Windows (Vista+) and modern compilers support stdint.h
-    if(MSVC AND MSVC_VERSION GREATER_EQUAL 1600)  # Visual Studio 2010+
-        set(HAVE_STDINT_H 1)
-        set(HAVE_INTTYPES_H 1)
-    elseif(MINGW OR CYGWIN)
-        set(HAVE_STDINT_H 1)
-        set(HAVE_INTTYPES_H 1)
-    endif()
-    
-    # Windows doesn't have unistd.h
-    set(HAVE_UNISTD_H 0)
-    
-    # Windows doesn't typically have langinfo
-    set(HAVE_LANGINFO_CODESET 0)
-    
-    # Windows memory allocation behavior
-    set(HAVE_MALLOC_POSIX 0)
-    set(HAVE_FREE_POSIX 0)
-    
-    # ICONV_CONST setting for Windows
-    set(ICONV_CONST "")
-    
-    # Windows type sizes (common values)
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)  # 64-bit
-        set(BITSIZEOF_SIZE_T 64)
-        set(BITSIZEOF_PTRDIFF_T 64)
-    else()  # 32-bit
-        set(BITSIZEOF_SIZE_T 32)
-        set(BITSIZEOF_PTRDIFF_T 32)
-    endif()
-    set(BITSIZEOF_WCHAR_T 16)
-    set(BITSIZEOF_WINT_T 16)
-    set(BITSIZEOF_SIG_ATOMIC_T 32)
-    
-    # Standard functions available on Windows
-    set(HAVE_MEMMOVE 1)
-    set(HAVE_SETLOCALE 1)
-    
-    # Wide character support on Windows
-    set(HAVE_WCHAR_T 1)
-    set(HAVE_MBSTATE_T 1)
-    set(HAVE_MBRTOWC 1)
-    set(HAVE_WCRTOMB 1)
-    set(HAVE_MBSINIT 1)
-    
-    # Thread-safe functions (Windows doesn't have unlocked variants)
-    set(HAVE_DECL_CLEARERR_UNLOCKED 0)
-    set(HAVE_DECL_FEOF_UNLOCKED 0)
-    set(HAVE_DECL_FERROR_UNLOCKED 0)
-    set(HAVE_DECL_FFLUSH_UNLOCKED 0)
-    set(HAVE_DECL_FGETS_UNLOCKED 0)
-    set(HAVE_DECL_FPUTC_UNLOCKED 0)
-    set(HAVE_DECL_FPUTS_UNLOCKED 0)
-    set(HAVE_DECL_FREAD_UNLOCKED 0)
-    set(HAVE_DECL_FWRITE_UNLOCKED 0)
-    set(HAVE_DECL_GETCHAR_UNLOCKED 0)
-    set(HAVE_DECL_GETC_UNLOCKED 0)
-    set(HAVE_DECL_PUTCHAR_UNLOCKED 0)
-    set(HAVE_DECL_PUTC_UNLOCKED 0)
-    set(HAVE_GETC_UNLOCKED 0)
-    
 else()
-    # Unix/Linux/macOS platform detection and configuration
     set(WINDOWS_NATIVE 0)
-    message(STATUS "Detected Unix-like platform, performing feature detection")
+endif()
+
+# Check for standard headers
+check_include_file("stdint.h" HAVE_STDINT_H)
+check_include_file("inttypes.h" HAVE_INTTYPES_H)
+check_include_file("sys/types.h" HAVE_SYS_TYPES_H)
+check_include_file("unistd.h" HAVE_UNISTD_H)
+check_include_file("wchar.h" HAVE_WCHAR_H)
+check_include_file("wctype.h" HAVE_WCTYPE_H)
+check_include_file("langinfo.h" HAVE_LANGINFO_H)
+check_include_file("locale.h" HAVE_LOCALE_H)
+check_include_file("errno.h" HAVE_ERRNO_H)
+check_include_file("sys/param.h" HAVE_SYS_PARAM_H)
+
+# Check for functions
+check_function_exists("setlocale" HAVE_SETLOCALE)
+check_function_exists("memmove" HAVE_MEMMOVE)
+
+# Check for langinfo CODESET
+if(HAVE_LANGINFO_H)
+    check_symbol_exists("CODESET" "langinfo.h" HAVE_LANGINFO_CODESET)
+else()
+    set(HAVE_LANGINFO_CODESET 0)
+endif()
+
+# Check for mbstate_t
+check_type_size("mbstate_t" MBSTATE_T)
+if(HAVE_MBSTATE_T)
+    set(HAVE_MBSTATE_T 1)
+else()
+    set(HAVE_MBSTATE_T 0)    
+endif()
+
+# Check for wcrtomb
+check_function_exists("wcrtomb" HAVE_WCRTOMB)
+
+# Visibility attributes
+if(WIN32)
+    set(HAVE_VISIBILITY 0)
+else()
+    check_c_source_compiles("
+        __attribute__ ((visibility (\"default\"))) int foo(void) { return 0; }
+        int main() { return foo(); }
+    " HAVE_VISIBILITY)
+endif()
+
+# Set ICONV_CONST based on compiler and platform
+if(MSVC OR WIN32)
+    set(ICONV_CONST "const")
+else()
+    # Test if iconv uses const
+    check_c_source_compiles("
+        #include <iconv.h>
+        int main() {
+            iconv_t cd = iconv_open(\"\", \"\");
+            const char *in = \"\";
+            char *out = 0;
+            size_t inleft = 0, outleft = 0;
+            iconv(cd, &in, &inleft, &out, &outleft);
+            return 0;
+        }
+    " ICONV_SECOND_ARGUMENT_IS_CONST)
     
-    # Check for standard headers
-    check_include_file("stdio.h" HAVE_STDIO_H)
-    check_include_file("stdlib.h" HAVE_STDLIB_H)
-    check_include_file("string.h" HAVE_STRING_H)
-    check_include_file("strings.h" HAVE_STRINGS_H)
-    check_include_file("unistd.h" HAVE_UNISTD_H)
-    check_include_file("limits.h" HAVE_LIMITS_H)
-    check_include_file("wchar.h" HAVE_WCHAR_H)
-    check_include_file("stdint.h" HAVE_STDINT_H)
-    check_include_file("inttypes.h" HAVE_INTTYPES_H)
-    check_include_file("sys/stat.h" HAVE_SYS_STAT_H)
-    check_include_file("sys/types.h" HAVE_SYS_TYPES_H)
-    check_include_file("minix/config.h" HAVE_MINIX_CONFIG_H)
-    check_include_file("langinfo.h" HAVE_LANGINFO_H)
-    
-    # Check for langinfo support
-    if(HAVE_LANGINFO_H)
-        check_symbol_exists("nl_langinfo" "langinfo.h" HAVE_NL_LANGINFO)
-        if(HAVE_NL_LANGINFO)
-            check_symbol_exists("CODESET" "langinfo.h" HAVE_CODESET)
-            if(HAVE_CODESET)
-                set(HAVE_LANGINFO_CODESET 1)
-            else()
-                set(HAVE_LANGINFO_CODESET 0)
-            endif()
+    if(ICONV_SECOND_ARGUMENT_IS_CONST)
+        set(ICONV_CONST "const")
+    else()
+        set(ICONV_CONST "")
+    endif()
+endif()
+
+# Test for words_bigendian
+include(TestBigEndian)
+test_big_endian(WORDS_BIGENDIAN)
+
+# DLL export/import macros for Windows
+if(WIN32)
+    set(DLL_VARIABLE "__declspec(dllimport)")
+    if(BUILD_SHARED_LIBS OR UNICONV_BUILD_SHARED)
+        set(BUILDING_DLL 1)
+        set(DLL_VARIABLE "__declspec(dllexport)")
+    else()
+        set(BUILDING_DLL 0)
+    endif()
+else()
+    set(DLL_VARIABLE "")
+    set(BUILDING_DLL 0)
+endif()
+
+# Set USE_MBSTATE_T
+if(HAVE_MBSTATE_T AND HAVE_WCRTOMB)
+    set(USE_MBSTATE_T 1)
+else()
+    set(USE_MBSTATE_T 0)
+endif()
+
+# Broken WCHAR_T detection
+if(WIN32)
+    set(BROKEN_WCHAR_H 0)
+else()
+    # Test for broken wchar.h
+    if(HAVE_WCHAR_H)
+        check_c_source_compiles("
+            #include <wchar.h>
+            int main() { return 0; }
+        " WCHAR_H_WORKS)
+        if(NOT WCHAR_H_WORKS)
+            set(BROKEN_WCHAR_H 1)
         else()
-            set(HAVE_LANGINFO_CODESET 0)
+            set(BROKEN_WCHAR_H 0)
         endif()
     else()
-        set(HAVE_LANGINFO_CODESET 0)
-    endif()
-    
-    # Check for standard library functions
-    check_function_exists("memmove" HAVE_MEMMOVE)
-    check_function_exists("setlocale" HAVE_SETLOCALE)
-    check_function_exists("mbrtowc" HAVE_MBRTOWC)
-    check_function_exists("wcrtomb" HAVE_WCRTOMB)
-    check_function_exists("mbsinit" HAVE_MBSINIT)
-    check_function_exists("getc_unlocked" HAVE_GETC_UNLOCKED)
-    
-    # Check for unlocked I/O function declarations
-    check_symbol_exists("clearerr_unlocked" "stdio.h" HAVE_DECL_CLEARERR_UNLOCKED)
-    check_symbol_exists("feof_unlocked" "stdio.h" HAVE_DECL_FEOF_UNLOCKED)
-    check_symbol_exists("ferror_unlocked" "stdio.h" HAVE_DECL_FERROR_UNLOCKED)
-    check_symbol_exists("fflush_unlocked" "stdio.h" HAVE_DECL_FFLUSH_UNLOCKED)
-    check_symbol_exists("fgets_unlocked" "stdio.h" HAVE_DECL_FGETS_UNLOCKED)
-    check_symbol_exists("fputc_unlocked" "stdio.h" HAVE_DECL_FPUTC_UNLOCKED)
-    check_symbol_exists("fputs_unlocked" "stdio.h" HAVE_DECL_FPUTS_UNLOCKED)
-    check_symbol_exists("fread_unlocked" "stdio.h" HAVE_DECL_FREAD_UNLOCKED)
-    check_symbol_exists("fwrite_unlocked" "stdio.h" HAVE_DECL_FWRITE_UNLOCKED)
-    check_symbol_exists("getchar_unlocked" "stdio.h" HAVE_DECL_GETCHAR_UNLOCKED)
-    check_symbol_exists("getc_unlocked" "stdio.h" HAVE_DECL_GETC_UNLOCKED)
-    check_symbol_exists("putchar_unlocked" "stdio.h" HAVE_DECL_PUTCHAR_UNLOCKED)
-    check_symbol_exists("putc_unlocked" "stdio.h" HAVE_DECL_PUTC_UNLOCKED)
-    
-    # Check for types and their sizes
-    check_type_size("wchar_t" WCHAR_T_SIZE)
-    if(WCHAR_T_SIZE)
-        set(HAVE_WCHAR_T 1)
-        math(EXPR BITSIZEOF_WCHAR_T "${WCHAR_T_SIZE} * 8")
-    else()
-        set(HAVE_WCHAR_T 0)
-        set(BITSIZEOF_WCHAR_T 0)
-    endif()
-    
-    check_type_size("wint_t" WINT_T_SIZE)
-    if(WINT_T_SIZE)
-        set(HAVE_WINT_T 1)
-        math(EXPR BITSIZEOF_WINT_T "${WINT_T_SIZE} * 8")
-    else()
-        set(HAVE_WINT_T 0)
-        set(BITSIZEOF_WINT_T 0)
-    endif()
-    
-    # Check for mbstate_t
-    check_c_source_compiles("
-        #include <wchar.h>
-        int main() { mbstate_t state; return 0; }"
-        HAVE_MBSTATE_T)
-    
-    # Check type sizes
-    check_type_size("size_t" SIZE_T_SIZE)
-    if(SIZE_T_SIZE)
-        math(EXPR BITSIZEOF_SIZE_T "${SIZE_T_SIZE} * 8")
-    endif()
-    
-    check_type_size("ptrdiff_t" PTRDIFF_T_SIZE)
-    if(PTRDIFF_T_SIZE)
-        math(EXPR BITSIZEOF_PTRDIFF_T "${PTRDIFF_T_SIZE} * 8")
-    endif()
-    
-    check_type_size("sig_atomic_t" SIG_ATOMIC_T_SIZE)
-    if(SIG_ATOMIC_T_SIZE)
-        math(EXPR BITSIZEOF_SIG_ATOMIC_T "${SIG_ATOMIC_T_SIZE} * 8")
-    endif()
-    
-    # Unix/Linux specific settings
-    set(HAVE_MALLOC_POSIX 1)
-    set(HAVE_FREE_POSIX 1)
-    set(ICONV_CONST "const")
-    
-    # Standard C headers check
-    if(HAVE_STDIO_H AND HAVE_STDLIB_H AND HAVE_STRING_H)
-        set(STDC_HEADERS 1)
-    else()
-        set(STDC_HEADERS 0)
+        set(BROKEN_WCHAR_H 0)
     endif()
 endif()
 
-# Common settings for all platforms
+# Enable relocatable installation
 set(ENABLE_RELOCATABLE 1)
-set(LIBDIR "")
-set(INSTALLDIR "")
+set(INSTALLPREFIX "${CMAKE_INSTALL_PREFIX}")
 
-# Compiler visibility support
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(HAVE_VISIBILITY 1)
+# Set relocatable variables  
+if(ENABLE_RELOCATABLE)
+    set(INSTALLDIR "")
+    set(LOCALEDIR "locale")
 else()
+    set(INSTALLDIR "${CMAKE_INSTALL_PREFIX}")
+    set(LOCALEDIR "${CMAKE_INSTALL_PREFIX}/share/locale")
+endif()
+
+# Additional platform-specific settings
+if(WIN32)
+    set(ICONV_CONST "const")
     set(HAVE_VISIBILITY 0)
-endif()
-
-# Byte order detection
-include(TestBigEndian)
-test_big_endian(IS_BIG_ENDIAN)
-if(IS_BIG_ENDIAN)
-    set(WORDS_BIGENDIAN 1)
+    set(ENABLE_EXTRA 1)
+    set(HAVE_WORKING_O_NOFOLLOW 0)
+    set(HAVE_WORKING_O_NOATIME 0)
 else()
-    set(WORDS_BIGENDIAN 0)
+    check_function_exists("readlink" HAVE_READLINK)
+    set(ENABLE_EXTRA 1)
+    set(HAVE_WORKING_O_NOFOLLOW 1)
+    set(HAVE_WORKING_O_NOATIME 1)
 endif()
 
-# Set fallback values for any undefined variables
-if(NOT DEFINED HAVE_GETTEXT)
-    set(HAVE_GETTEXT 0)
+# Set __STDC__ for compatibility
+set(__STDC__ 1)
+
+# Memory manager settings
+set(USE_HEAP_FOR_TRANSLATION_TABLE 0)
+set(USE_DOS 0)
+set(USE_OSF1 0)
+set(USE_AIX 0)
+set(USE_ZOS 0)
+
+# Extended encoding support
+set(ENABLE_EXTRA 1)
+
+# Set default values for undefined variables
+if(NOT DEFINED EILSEQ)
+    set(EILSEQ 84)
 endif()
 
-if(NOT DEFINED HAVE_ICONV)
-    set(HAVE_ICONV 1)  # We're building our own iconv
+if(NOT DEFINED HAVE_WORKING_O_NOFOLLOW)
+    set(HAVE_WORKING_O_NOFOLLOW 0)
 endif()
 
-if(NOT DEFINED C_ALLOCA)
-    set(C_ALLOCA 0)
+if(NOT DEFINED HAVE_WORKING_O_NOATIME)
+    set(HAVE_WORKING_O_NOATIME 0)
+endif()
+
+if(NOT DEFINED HAVE_READLINK)
+    set(HAVE_READLINK 0)
 endif()
 
 if(NOT DEFINED DOUBLE_SLASH_IS_DISTINCT_ROOT)
     set(DOUBLE_SLASH_IS_DISTINCT_ROOT 0)
 endif()
 
-# Generate config.h from template
-configure_file(
-    "${CMAKE_SOURCE_DIR}/include/iconv/config.h.in"
-    "${CMAKE_SOURCE_DIR}/include/iconv/config.h"
-    @ONLY
-)
+# ============================================================================
+# 🔧 修复：正确处理子项目配置文件路径
+# ============================================================================
 
-message(STATUS "Generated config.h with the following key settings:")
+# 检测是否作为子项目被包含
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    # 作为主项目构建 - 生成的文件也应该放在构建目录中
+    set(UNICONV_CONFIG_IS_SUBPROJECT FALSE)
+    set(UNICONV_CONFIG_INPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in")
+    set(UNICONV_CONFIG_OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/include/iconv/config.h")
+    message(STATUS "UniConv ConfigureConfig: Building as main project")
+    
+    # 确保构建目录存在
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/iconv")
+else()
+    # 作为子项目构建
+    set(UNICONV_CONFIG_IS_SUBPROJECT TRUE)
+    set(UNICONV_CONFIG_INPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in")
+    set(UNICONV_CONFIG_OUTPUT_PATH "${CMAKE_CURRENT_BINARY_DIR}/include/iconv/config.h")
+    message(STATUS "UniConv ConfigureConfig: Building as subproject")
+    
+    # 确保构建目录存在
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/iconv")
+endif()
+
+# 生成配置文件
+if(EXISTS "${UNICONV_CONFIG_INPUT_PATH}")
+    configure_file(
+        "${UNICONV_CONFIG_INPUT_PATH}"
+        "${UNICONV_CONFIG_OUTPUT_PATH}"
+        @ONLY
+    )
+    message(STATUS "UniConv ConfigureConfig: Generated config.h at ${UNICONV_CONFIG_OUTPUT_PATH}")
+    
+    # 🔧 设置全局变量，供主CMakeLists.txt使用
+    # 不在这里调用target_include_directories，因为目标可能还未创建
+    if(UNICONV_CONFIG_IS_SUBPROJECT)
+        set(UNICONV_GENERATED_CONFIG_DIR "${CMAKE_CURRENT_BINARY_DIR}/include" PARENT_SCOPE)
+        set(UNICONV_IS_SUBPROJECT_CONFIG TRUE PARENT_SCOPE)
+    endif()
+else()
+    message(FATAL_ERROR "UniConv ConfigureConfig: config.h.in not found at ${UNICONV_CONFIG_INPUT_PATH}")
+endif()
+
+message(STATUS "UniConv ConfigureConfig: Configuration completed with the following key settings:")
 message(STATUS "  WINDOWS_NATIVE: ${WINDOWS_NATIVE}")
 message(STATUS "  HAVE_STDINT_H: ${HAVE_STDINT_H}")
 message(STATUS "  HAVE_WCHAR_H: ${HAVE_WCHAR_H}")
 message(STATUS "  HAVE_LANGINFO_CODESET: ${HAVE_LANGINFO_CODESET}")
 message(STATUS "  ICONV_CONST: ${ICONV_CONST}")
 message(STATUS "  WORDS_BIGENDIAN: ${WORDS_BIGENDIAN}")
+message(STATUS "  IS_SUBPROJECT: ${UNICONV_CONFIG_IS_SUBPROJECT}")
