@@ -28,7 +28,7 @@
 *  2025/03/10 | 1.0.0.1   | hesphoros      | Create file
 *  Change History :
 *  <Date>     | <Version> | <Author>       | <Description>
-*  2025/9/18  | 1.0.0.2   | hesphoros      | Add ConvertEncoding API
+*  2025/9/18  | 2.0.0.1   | hesphoros      | Add ConvertEncoding API
 *****************************************************************************/
 
 #include "UniConv.h"
@@ -37,17 +37,6 @@ const std::string UniConv::m_encodingNames[] = {
     #define X(name, str) str,
     #include "encodings.inc"
     #undef X
-};
-
-
-const std::unordered_map<int, std::string_view> UniConv::m_iconvErrorMap = {
-	{EILSEQ, "Invalid multibyte sequence"},
-	{EINVAL, "Incomplete multibyte sequence"},
-	{E2BIG,  "Output buffer too small"},
-	{EBADF,  "Invalid conversion descriptor"},
-	{EFAULT, "Invalid buffer address"},
-	{EINTR,  "Conversion interrupted by signal"},
-	{ENOMEM, "Out of memory"}
 };
 
 std::string UniConv::m_defaultEncoding = {}; // Default encoding, can be set by user
@@ -801,15 +790,6 @@ std::wstring UniConv::U16StringToWString(const char16_t* u16str)
 
 
 // ===================== Error Handling Related =====================
-std::string UniConv::GetIconvErrorString(int err_code) {
-    auto it = m_iconvErrorMap.find(err_code);
-	if (it != m_iconvErrorMap.end()) {
-		return std::string(it->second);
-	}
-    // If the error code is not found in the map, return a generic error message
-	return std::string(std::generic_category().message(err_code));
-}
-
 
 UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const char* tocode)
 {

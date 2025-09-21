@@ -1558,7 +1558,6 @@ private:
 	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;                /*!< Encoding map           */
 	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
 	mutable std::shared_mutex                                    m_iconvCacheMutex;            /*!< Iconv cache mutex      */
-	static const std::unordered_map<int,std::string_view>        m_iconvErrorMap;              /*!< Iconv error messages   */
 
 	// implement LRU cache for iconv descriptors
 	struct IconvCacheEntry {
@@ -1631,19 +1630,6 @@ private:
 	//----------------------------------------------------------------------------------------------------------------------
 
 private:
-
-
-	/**
-	 * @brief Retrieves a descriptive error string corresponding to an iconv error code.
-	 *
-	 * This function maps the provided error code from the iconv library to a human-readable
-	 * string that describes the error. It is useful for debugging and logging purposes
-	 * when working with character encoding conversions.
-	 * @param err_code The error code returned by the iconv library.
-	 * @return A string containing the description of the error associated with the given error code.
-	 * @retval If the error code is not found in the map,return a generic error message
-	 */
-	static std::string                        GetIconvErrorString(int err_code);
 
 	//----------------------------------------------------------------------------------------------------------------------
 	// === High-Performance Internal Methods ===
