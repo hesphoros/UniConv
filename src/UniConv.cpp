@@ -1096,18 +1096,22 @@ constexpr int UniConv::GetEncodingMultiplier(const char* encoding) noexcept {
     // UTF编码
     if (enc.find("UTF-32") != std::string_view::npos ||
         enc.find("UCS-4") != std::string_view::npos) return 4;
+
     if (enc.find("UTF-16") != std::string_view::npos ||
         enc.find("UCS-2") != std::string_view::npos) return 4;  // 考虑代理对
+
     if (enc.find("UTF-8") != std::string_view::npos) return 4;
 
     // 中文编码
     if (enc.find("GBK") != std::string_view::npos ||
         enc.find("GB2312") != std::string_view::npos ||
         enc.find("GB18030") != std::string_view::npos) return 4;  // GB18030可达4字节
+
     if (enc.find("Big5") != std::string_view::npos) return 2;
 
     // 欧洲编码
     if (enc.find("ISO-8859") != std::string_view::npos) return 1;
+
     if (enc.find("CP1252") != std::string_view::npos) return 1;
     
     // 日文编码
@@ -1196,10 +1200,7 @@ StringResult UniConv::ConvertEncodingInternal(const std::string& input,const cha
 // === Advanced High-Performance Methods Implementation ===
 //----------------------------------------------------------------------------------------------------------------------
 
-StringResult UniConv::ConvertEncodingFastWithHint(const std::string& input,
-                                                  const char* fromEncoding,
-                                                  const char* toEncoding,
-                                                  size_t estimatedSize) noexcept {
+StringResult UniConv::ConvertEncodingFastWithHint(const std::string& input,const char* fromEncoding,const char* toEncoding,size_t estimatedSize) noexcept {
     // 空输入快速返回 - 预测输入通常不为空
     if (UNICONV_UNLIKELY(input.empty())) {
         return StringResult::Success(std::string{});
@@ -1228,9 +1229,7 @@ StringResult UniConv::ConvertEncodingFastWithHint(const std::string& input,
     return ConvertEncodingInternal(input, fromEncoding, toEncoding, buffer_lease, estimated);
 }
 
-std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::string>& inputs,
-                                                       const char* fromEncoding,
-                                                       const char* toEncoding) noexcept {
+std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::string>& inputs,const char* fromEncoding,const char* toEncoding) noexcept {
     std::vector<StringResult> results;
     results.reserve(inputs.size());
     
