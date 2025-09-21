@@ -30,9 +30,9 @@
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
-// 屏蔽字符编码警告，确保跨平台编码一致性
+// Block character encoding warnings to ensure cross-platform encoding consistency
 #pragma warning(push)
-#pragma warning(disable: 4819)  // 字符编码警告
+#pragma warning(disable: 4819)  // Character encoding warning
 #endif
 
 #ifndef __UNICONV_H__
@@ -70,19 +70,11 @@
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
-#endif
-
-
-
-
-#ifdef _WIN32
 #include <windows.h>
-#endif // _WIN32
-
-#ifdef __linux__
+#elif __linux__
 #include <unistd.h>
 #include <langinfo.h>
-#endif // __linux__
+#endif
 
 
 #ifdef _WIN32
@@ -192,15 +184,66 @@
 
 // Compile-time string hashing for fast encoding lookup
 namespace detail {
+
+	/**
+	 * @brief FNV-1a hash function for compile-time string hashing.
+	 * @details This function used FNV-1a algorithm to compute a hash value for a given string at compile time.
+	 * *        If the compiler supports "consteval", this function will be evaluated at compile time.
+	 * @param str The input string to hash. Don't need "\0" terminator.
+	 * @param len The length of the input string.
+	 * @return 32-bit hash value.
+	 * @note
+	 * * Initial FNV offset basis: 2166136261
+	 * * FNV prime: 16777619
+	 * * algorithm reference: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+	 * @see operator""_hash
+	 *
+	 * @code
+	 * constexpr uint32_t hash1 = detail::fnv1a_hash("hello", 5); // Compute hash at compile time
+	 * constexpr uint32_t hash2 = detail::fnv1a_hash(runtime_str.c_str(), runtime_str.size()); // Compute hash at runtime
+	 * @endcode
+	 */
     UNICONV_CONSTEVAL uint32_t fnv1a_hash(const char* str, size_t len) noexcept {
-        uint32_t hash = 2166136261u;
+        uint32_t hash = 2166136261u;  // FNV-1a offset basis
         for (size_t i = 0; i < len; ++i) {
-            hash ^= static_cast<uint32_t>(str[i]);
-            hash *= 16777619u;
+            hash ^= static_cast<uint32_t>(str[i]);  // XOR each byte
+            hash *= 16777619u;  // Multiply by FNV prime
         }
         return hash;
     }
-    
+	/**
+     * @brief User-defined literal operator for computing FNV-1a hash values.
+     *
+     * Allows string literals to be converted into compile-time constant hash values
+     * using the `_hash` suffix.
+     *
+     * @param str Pointer to the string literal data.
+     * @param len Length of the string literal (excluding the null terminator).
+     * @return A 32-bit unsigned integer representing the FNV-1a hash.
+     *
+     * @note
+     * - Only works with string literals (evaluated at compile time).
+     * - Useful in `switch` statements or constant expressions for mapping strings to IDs.
+     *
+     * @see fnv1a_hash
+     *
+     * @code
+     * using namespace detail;
+     *
+     * Compile-time string hashing
+     * constexpr uint32_t id = "hello"_hash;
+     *
+     *  Example: string-based switch using hashed cases
+     * switch (command_id) {
+     *     case "login"_hash:
+     *         handle login
+     *         break;
+     *     case "logout"_hash:
+     *         handle logout
+     *         break;
+     * }
+     * @endcode
+     */
     UNICONV_CONSTEVAL uint32_t operator""_hash(const char* str, size_t len) noexcept {
         return fnv1a_hash(str, len);
     }
@@ -240,45 +283,45 @@ inline constexpr std::string_view current_cpp_standard() {
 // === High-Performance Error Handling System ===
 //----------------------------------------------------------------------------------------------------------------------
 
-// 轻量级错误码枚举，仅占1字节
+// Lightweight error code enumeration, only 1 byte
 enum class ErrorCode : uint8_t {
-    Success = 0,
-    InvalidParameter = 1,
-    InvalidSourceEncoding = 2,
-    InvalidTargetEncoding = 3,
-    ConversionFailed = 4,
-    IncompleteSequence = 5,
-    InvalidSequence = 6,
-    OutOfMemory = 7,
-    BufferTooSmall = 8,
-    FileNotFound = 9,
-    FileReadError = 10,
-    FileWriteError = 11,
-    InternalError = 12,
-    EncodingNotFound = 13,
-    SystemError = 14
+    Success					 	= 0,  /*!< Success */
+    InvalidParameter 			= 1,  /*!< Invalid parameter */
+    InvalidSourceEncoding 		= 2,  /*!< Invalid source encoding */
+    InvalidTargetEncoding 		= 3,  /*!< Invalid target encoding */
+    ConversionFailed 			= 4,  /*!< Conversion failed */
+    IncompleteSequence 			= 5,  /*!< Incomplete multibyte sequence */
+    InvalidSequence 			= 6,  /*!< Invalid multibyte sequence */
+    OutOfMemory 				= 7,  /*!< Out of memory */
+    BufferTooSmall 				= 8,  /*!< Buffer too small */
+    FileNotFound 				= 9,  /*!< File not found */
+    FileReadError				= 10, /*!< File read error */
+    FileWriteError				= 11, /*!< File write error */
+    InternalError				= 12, /*!< Internal error */
+    EncodingNotFound			= 13, /*!< Encoding not found */
+    SystemError					= 14  /*!< System error */
 };
 
-// 编译时错误信息映射，零运行时开销
+// Compile-time error message mapping, zero runtime overhead
 namespace detail {
     constexpr const char* GetErrorMessage(ErrorCode code) noexcept {
         switch (code) {
-            case ErrorCode::Success: return "Success";
-            case ErrorCode::InvalidParameter: return "Invalid parameter";
-            case ErrorCode::InvalidSourceEncoding: return "Invalid source encoding";
-            case ErrorCode::InvalidTargetEncoding: return "Invalid target encoding";
-            case ErrorCode::ConversionFailed: return "Conversion failed";
-            case ErrorCode::IncompleteSequence: return "Incomplete multibyte sequence";
-            case ErrorCode::InvalidSequence: return "Invalid multibyte sequence";
-            case ErrorCode::OutOfMemory: return "Out of memory";
-            case ErrorCode::BufferTooSmall: return "Buffer too small";
-            case ErrorCode::FileNotFound: return "File not found";
-            case ErrorCode::FileReadError: return "File read error";
-            case ErrorCode::FileWriteError: return "File write error";
-            case ErrorCode::InternalError: return "Internal error";
-            case ErrorCode::EncodingNotFound: return "Encoding not found";
-            case ErrorCode::SystemError: return "System error";
-            default: return "Unknown error";
+            case ErrorCode::Success: 					return "Success";
+            case ErrorCode::InvalidParameter: 			return "Invalid parameter";
+            case ErrorCode::InvalidSourceEncoding: 		return "Invalid source encoding";
+            case ErrorCode::InvalidTargetEncoding: 		return "Invalid target encoding";
+            case ErrorCode::ConversionFailed: 			return "Conversion failed";
+            case ErrorCode::IncompleteSequence: 		return "Incomplete multibyte sequence";
+            case ErrorCode::InvalidSequence: 			return "Invalid multibyte sequence";
+            case ErrorCode::OutOfMemory: 				return "Out of memory";
+            case ErrorCode::BufferTooSmall: 			return "Buffer too small";
+            case ErrorCode::FileNotFound: 				return "File not found";
+            case ErrorCode::FileReadError: 				return "File read error";
+            case ErrorCode::FileWriteError: 		    return "File write error";
+            case ErrorCode::InternalError: 				return "Internal error";
+            case ErrorCode::EncodingNotFound: 			return "Encoding not found";
+            case ErrorCode::SystemError: 				return "System error";
+            default: 									return "Unknown error";
         }
     }
 }
@@ -288,8 +331,8 @@ template<typename T>
 class [[nodiscard]] CompactResult {
 private:
     union {
-        T value_;
-        ErrorCode error_code_;
+        T 				 value_;
+        ErrorCode 	error_code_;
     };
     bool has_value_;  // 状态标志
     
@@ -297,17 +340,17 @@ public:
     // 成功构造 - 零开销
     explicit CompactResult(T&& value) noexcept(std::is_nothrow_move_constructible_v<T>)
         : value_(std::move(value)), has_value_(true) {}
-    
+
     // 从const引用构造
     explicit CompactResult(const T& value) noexcept(std::is_nothrow_copy_constructible_v<T>)
         : value_(value), has_value_(true) {}
-    
+
     // 错误构造 - 极小开销
-    explicit CompactResult(ErrorCode error) noexcept 
+    explicit CompactResult(ErrorCode error) noexcept
         : error_code_(error), has_value_(false) {}
-    
+
     // 移动构造
-    CompactResult(CompactResult&& other) noexcept 
+    CompactResult(CompactResult&& other) noexcept
         : has_value_(other.has_value_) {
         if (has_value_) {
             new(&value_) T(std::move(other.value_));
@@ -364,10 +407,10 @@ public:
         }
     }
     
-    // 热路径优化：内联+分支预测 (成功情况更常见)
-    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT 
+    // 热路径优化：内联+分支预测
+    [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     bool IsSuccess() const noexcept {
-        return UNICONV_LIKELY(has_value_); 
+        return UNICONV_LIKELY(has_value_);
     }
     
     // 显式bool转换 - 热路径优化
@@ -375,23 +418,23 @@ public:
     explicit operator bool() const noexcept {
         return IsSuccess();
     }
-    
+
     // 快速访问，无额外检查（性能优先）- 热路径优化
     UNICONV_ALWAYS_INLINE UNICONV_HOT
-    T&& GetValue() && noexcept { 
-        return std::move(value_); 
+    T&& GetValue() && noexcept {
+        return std::move(value_);
     }
-    
+
     UNICONV_ALWAYS_INLINE UNICONV_HOT
-    const T& GetValue() const& noexcept { 
+    const T& GetValue() const& noexcept {
         return value_; 
     }
-    
+
     UNICONV_ALWAYS_INLINE UNICONV_HOT
     T& GetValue() & noexcept {
         return value_;
     }
-    
+
     // 错误信息获取（编译时字符串，零分配）- 冷路径
     UNICONV_COLD constexpr const char* GetErrorMessage() const noexcept {
         return UNICONV_LIKELY(has_value_) ? "Success" : detail::GetErrorMessage(error_code_);
@@ -439,8 +482,8 @@ private:
     };
     
     static constexpr size_t POOL_SIZE = 16;  // 池大小，平衡内存使用和并发性能
-    std::array<Buffer, POOL_SIZE> buffers_;
-    std::atomic<size_t> next_index_{0};
+    std::array<Buffer, POOL_SIZE> buffers_;  // 固定大小缓冲区数组
+    std::atomic<size_t> next_index_{0};      // 下一个可用缓冲区索引
     
 public:
     // RAII缓冲区租用器
@@ -727,10 +770,10 @@ public:
 };
 
 // 便利的类型别名
-using StringResult = CompactResult<std::string>;
-using StringViewResult = CompactResult<std::string_view>;
-using IntResult = CompactResult<int>;
-using BoolResult = CompactResult<bool>;
+using StringResult 		= CompactResult<std::string>;
+using StringViewResult 	= CompactResult<std::string_view>;
+using IntResult 		= CompactResult<int>;
+using BoolResult 		= CompactResult<bool>;
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -806,7 +849,7 @@ private:
 
 public:
 
-   void SetDefaultEncoding(const std::string& encoding) noexcept;
+	void SetDefaultEncoding(const std::string& encoding) noexcept;
 
 	//---------------------------------------------------------------------------
 	// Bom encodings @{
@@ -917,7 +960,7 @@ public:
 	 * @return Equivalent IConvResult
 	 */
 	static IConvResult StringResultToIConvResult(const CompactResult<std::string>& stringResult);
-	
+
 	/**
 	 * @brief Convert IConvResult to StringResult for unified internal processing
 	 * @param iconvResult The IConvResult to convert
@@ -961,7 +1004,7 @@ public:
 	 */
 	static std::string     GetEncodingNameByCodePage(std::uint16_t codePage) noexcept;
 
-/** Test Success */ 
+/** Test Success */
 /***************************************************************************/
 /*=================== Locale <-> UTF-8 Conversion Interface =========================*/
 /***************************************************************************/
@@ -1638,7 +1681,7 @@ private:
 	 * @param tocode The target encoding.
 	 * @return The iconv descriptor as an IconvSharedPtr.
 	 */
-	UNICONV_HOT IconvSharedPtr                            GetIconvDescriptor(const char* fromcode, const char* tocode);
+	UNICONV_HOT IconvSharedPtr                GetIconvDescriptor(const char* fromcode, const char* tocode);
 	void                                      EvictLRUCacheEntries();
 	void                                      CleanupIconvCache();
 

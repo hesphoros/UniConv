@@ -32,7 +32,7 @@
 *****************************************************************************/
 
 #include "UniConv.h"
-#include <algorithm>
+
 
 
 
@@ -377,7 +377,7 @@ std::u16string UniConv::ToUtf16LEFromLocale(const std::string& input) {
     std::string currentEncoding = GetCurrentSystemEncoding();
     auto result = ConvertEncoding(input, currentEncoding.c_str(), UniConv::ToString(UniConv::Encoding::utf_16le).c_str());
     if (result.IsSuccess() && result.conv_result_str.size() % 2 == 0) {
-        return std::u16string(reinterpret_cast<const char16_t*>(result.conv_result_str.data()), 
+        return std::u16string(reinterpret_cast<const char16_t*>(result.conv_result_str.data()),
                              result.conv_result_str.size() / 2);
     }
     return std::u16string();
@@ -827,7 +827,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     // 构建缓存键，优化字符串构造
     std::string key;
     const size_t from_len = strlen(fromcode);
-    const size_t to_len = strlen(tocode);
+    const size_t to_len   = strlen(tocode);
     key.reserve(from_len + to_len + 1);
     key.assign(fromcode, from_len);
     key.push_back('>');
