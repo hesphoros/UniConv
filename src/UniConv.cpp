@@ -33,11 +33,6 @@
 
 #include "UniConv.h"
 
-
-
-
-
-
 const std::string UniConv::m_encodingNames[] = {
     #define X(name, str) str,
     #include "encodings.inc"
@@ -255,7 +250,7 @@ std::string UniConv::GetCurrentSystemEncoding() noexcept
  */
 UniConv::IConvResult UniConv::StringResultToIConvResult(const CompactResult<std::string>& stringResult) {
     IConvResult result;
-    
+
     if (stringResult.IsSuccess()) {
         result.error_code = 0;
         result.error_msg.clear();
@@ -265,7 +260,7 @@ UniConv::IConvResult UniConv::StringResultToIConvResult(const CompactResult<std:
         result.error_msg = stringResult.GetErrorMessage();
         result.conv_result_str.clear();
     }
-    
+
     return result;
 }
 
@@ -278,7 +273,7 @@ CompactResult<std::string> UniConv::IConvResultToStringResult(const IConvResult&
     } else {
         // Map common errno values to ErrorCode
         ErrorCode errorCode = ErrorCode::ConversionFailed; // Default fallback
-        
+
         switch (iconvResult.error_code) {
             case EINVAL:
                 errorCode = ErrorCode::InvalidParameter;
@@ -296,7 +291,7 @@ CompactResult<std::string> UniConv::IConvResultToStringResult(const IConvResult&
                 errorCode = ErrorCode::SystemError;
                 break;
         }
-        
+
         return CompactResult<std::string>::Failure(errorCode);
     }
 }
@@ -950,63 +945,62 @@ std::string UniConv::ToString(UniConv::Encoding  enc) noexcept {
 // === High-Performance Methods Implementation ===
 //----------------------------------------------------------------------------------------------------------------------
 
-StringResult UniConv::ConvertEncodingFast(const std::string& input, 
-                                  const char* fromEncoding, 
-                                  const char* toEncoding) noexcept {
+StringResult UniConv::ConvertEncodingFast(const std::string& input,const char* fromEncoding, const char* toEncoding) noexcept {
     // 快速参数检查 - 预测参数通常有效
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
         return StringResult::Failure(ErrorCode::InvalidParameter);
     }
-    
+
     // 预测输入通常不为空
     if (UNICONV_UNLIKELY(input.empty())) {
         return StringResult::Success(std::string{});
     }
-    
+
     // 预取输入数据到缓存
     UNICONV_PREFETCH(input.data(), 0, 3);
-    
+
     // 使用LRU缓存的iconv描述符
     auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
         return StringResult::Failure(ErrorCode::ConversionFailed);
     }
-    
+
     iconv_t cd = descriptor.get();
-    
+
     // 输入缓冲区设置
     const char* inbuf_ptr = input.data();
     std::size_t inbuf_left = input.size();
-    
-    // 预分配输出缓冲区，经验预估避免多次重分配
+
+    // 使用智能估算预分配输出缓冲区
     std::string result;
-    result.reserve(input.size() * 2);
-    
-    // 使用临时缓冲区进行转换
-    std::size_t buffer_size = (std::max)(static_cast<std::size_t>(4096), input.size() * 2);
+    size_t estimated_size = EstimateOutputSize(input.size(), fromEncoding, toEncoding);
+    result.reserve(estimated_size);
+
+    // 使用临时缓冲区进行转换，基于智能估算调整大小
+    std::size_t buffer_size = (std::max)(static_cast<std::size_t>(4096), estimated_size);
     std::vector<char> temp_buffer(buffer_size);
-    
+
     // 转换循环，限制最大迭代次数防止死循环 - 预测通常一次转换成功
     constexpr int max_iterations = 100;
     int iteration_count = 0;
-    
+
     // 预测大多数情况下单次转换即可完成
     while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
         char* outbuf_ptr = temp_buffer.data();
         std::size_t outbuf_left = temp_buffer.size();
-        
+
         // 预取临时缓冲区到缓存
         UNICONV_PREFETCH(temp_buffer.data(), 1, 2);
-        
+
         // 执行转换
         std::size_t ret = iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
-        
+
         // 计算转换的字节数 - 预测通常有数据被转换
         std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
         if (UNICONV_LIKELY(converted_bytes > 0)) {
             result.append(temp_buffer.data(), converted_bytes);
         }
-        
+
         // 错误处理 - 预测大多数情况下转换成功
         if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
             int current_errno = errno;
@@ -1030,12 +1024,12 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,
             break;
         }
     }
-    
+
     // 预测很少会达到最大迭代次数
     if (UNICONV_UNLIKELY(iteration_count >= max_iterations)) {
         return StringResult::Failure(ErrorCode::InternalError);
     }
-    
+
     return StringResult::Success(std::move(result));
 }
 
@@ -1079,66 +1073,59 @@ IntResult UniConv::GetSystemCodePageFast() noexcept {
 // === High-Performance Internal Methods Implementation ===
 //----------------------------------------------------------------------------------------------------------------------
 
-size_t UniConv::EstimateOutputSize(size_t input_size, 
-                                  const char* from_encoding, 
-                                  const char* to_encoding) noexcept {
+size_t UniConv::EstimateOutputSize(size_t input_size, const char* from_encoding, const char* to_encoding) noexcept {
     // 获取编码的最大字节倍数
     int from_multiplier = GetEncodingMultiplier(from_encoding);
-    int to_multiplier = GetEncodingMultiplier(to_encoding);
-    
+    int to_multiplier   = GetEncodingMultiplier(to_encoding);
+
     // 基础估算：根据编码特性计算扩展比例
     double expansion_factor = static_cast<double>(to_multiplier) / from_multiplier;
-    
+
     // 特殊情况优化
     std::string_view from_enc{from_encoding};
     std::string_view to_enc{to_encoding};
-    
+
     // UTF-8 to UTF-16: 通常扩展1.5-2倍
-    if (from_enc.find("UTF-8") != std::string_view::npos && 
-        to_enc.find("UTF-16") != std::string_view::npos) {
+    if (from_enc.find("UTF-8") != std::string_view::npos && to_enc.find("UTF-16") != std::string_view::npos) {
         expansion_factor = 2.0;
     }
     // UTF-16 to UTF-8: 通常收缩0.75倍
-    else if (from_enc.find("UTF-16") != std::string_view::npos && 
-             to_enc.find("UTF-8") != std::string_view::npos) {
+    else if (from_enc.find("UTF-16") != std::string_view::npos && to_enc.find("UTF-8") != std::string_view::npos) {
         expansion_factor = 0.75;
     }
     // ASCII兼容编码之间转换
-    else if ((from_enc.find("UTF-8") != std::string_view::npos || 
-              from_enc.find("ASCII") != std::string_view::npos) &&
-             (to_enc.find("UTF-8") != std::string_view::npos || 
-              to_enc.find("ASCII") != std::string_view::npos)) {
+    else if ((from_enc.find("UTF-8") != std::string_view::npos || from_enc.find("ASCII") != std::string_view::npos) && (to_enc.find("UTF-8") != std::string_view::npos || to_enc.find("ASCII") != std::string_view::npos)) {
         expansion_factor = 1.0;  // 通常大小相同
     }
-    
+
     // 计算估算大小，添加安全边距
     size_t estimated = static_cast<size_t>(input_size * expansion_factor * 1.25);
-    
+
     // 设置合理的最小和最大值
     constexpr size_t MIN_BUFFER_SIZE = 512;
     constexpr size_t MAX_REASONABLE_SIZE = 32 * 1024 * 1024; // 32MB上限
-    
+
     return std::clamp(estimated, MIN_BUFFER_SIZE, MAX_REASONABLE_SIZE);
 }
 
 constexpr int UniConv::GetEncodingMultiplier(const char* encoding) noexcept {
     if (!encoding) return 4;
-    
+
     std::string_view enc{encoding};
-    
+
     // UTF编码
-    if (enc.find("UTF-32") != std::string_view::npos || 
+    if (enc.find("UTF-32") != std::string_view::npos ||
         enc.find("UCS-4") != std::string_view::npos) return 4;
-    if (enc.find("UTF-16") != std::string_view::npos || 
+    if (enc.find("UTF-16") != std::string_view::npos ||
         enc.find("UCS-2") != std::string_view::npos) return 4;  // 考虑代理对
     if (enc.find("UTF-8") != std::string_view::npos) return 4;
-    
+
     // 中文编码
-    if (enc.find("GBK") != std::string_view::npos || 
+    if (enc.find("GBK") != std::string_view::npos ||
         enc.find("GB2312") != std::string_view::npos ||
         enc.find("GB18030") != std::string_view::npos) return 4;  // GB18030可达4字节
     if (enc.find("Big5") != std::string_view::npos) return 2;
-    
+
     // 欧洲编码
     if (enc.find("ISO-8859") != std::string_view::npos) return 1;
     if (enc.find("CP1252") != std::string_view::npos) return 1;
@@ -1151,50 +1138,44 @@ constexpr int UniConv::GetEncodingMultiplier(const char* encoding) noexcept {
     return 4;
 }
 
-StringResult UniConv::ConvertEncodingInternal(const std::string& input,
-                                             const char* fromEncoding,
-                                             const char* toEncoding,
-                                             StringBufferPool::BufferLease& buffer_lease,
-                                             size_t estimated_size) noexcept {
+StringResult UniConv::ConvertEncodingInternal(const std::string& input,const char* fromEncoding,const char* toEncoding,StringBufferPool::BufferLease& buffer_lease,size_t estimated_size) noexcept {
     // 更新统计
     m_totalConversions.fetch_add(1, std::memory_order_relaxed);
-    
+
     // 获取缓冲区
     std::string& result = buffer_lease.get();
     result.clear();
-    
+
     // 预分配容量
     try {
         result.reserve(estimated_size);
     } catch (...) {
         return StringResult::Failure(ErrorCode::OutOfMemory);
     }
-    
+
     // 获取iconv描述符
     auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
     if (!descriptor) {
         return StringResult::Failure(ErrorCode::InvalidSourceEncoding);
     }
-    
+
     // 准备转换参数
     const char* inbuf = input.data();
     size_t inbytesleft = input.size();
-    
+
     // 使用栈分配的临时缓冲区进行分块转换
     constexpr size_t CHUNK_SIZE = 8192;  // 8KB块大小
     char temp_chunk[CHUNK_SIZE];
-    
+
     // 转换循环
     constexpr int MAX_ITERATIONS = 1000;  // 防止无限循环
     int iteration_count = 0;
-    
+
     while (inbytesleft > 0 && iteration_count < MAX_ITERATIONS) {
         char* outbuf = temp_chunk;
         size_t outbytesleft = CHUNK_SIZE;
         
-        size_t converted = iconv(descriptor.get(), 
-                               &inbuf, &inbytesleft,
-                               &outbuf, &outbytesleft);
+        size_t converted = iconv(descriptor.get(), &inbuf, &inbytesleft,&outbuf, &outbytesleft);
         
         // 添加已转换的数据到结果
         size_t chunk_converted = CHUNK_SIZE - outbytesleft;
