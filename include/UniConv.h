@@ -153,8 +153,8 @@
     #define UNICONV_FAST_MATH
 #endif
 
-// Template specialization hints
-#define UNICONV_TEMPLATE_LIKELY template<bool Condition = true> \
+// Template SFINAE helper for conditional compilation
+#define UNICONV_TEMPLATE_ENABLE_IF template<bool Condition = true> \
     std::enable_if_t<Condition, void>
 
 // Constexpr evaluation forcing
