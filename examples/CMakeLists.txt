@@ -14,10 +14,10 @@ add_executable(branch_prediction_demo branch_prediction_demo.cpp)
 add_executable(lru_cache_demo lru_cache_demo.cpp)
 
 # 链接库
-target_link_libraries(high_performance_demo ../../build/lib/Debug/UniConv)
-target_link_libraries(stage1_demo ../../build/lib/Debug/UniConv)
-target_link_libraries(branch_prediction_demo ../../build/lib/Debug/UniConv)
-target_link_libraries(lru_cache_demo ../../build/lib/Debug/UniConv)
+target_link_libraries(high_performance_demo ../../build/lib/Release/UniConv)
+target_link_libraries(stage1_demo ../../build/lib/Release/UniConv)
+target_link_libraries(branch_prediction_demo ../../build/lib/Release/UniConv)
+target_link_libraries(lru_cache_demo ../../build/lib/Release/UniConv)
 
 # 设置输出目录
 set_target_properties(high_performance_demo PROPERTIES
