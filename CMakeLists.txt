@@ -366,10 +366,10 @@ if(NOT UNICONV_IS_SUBPROJECT)
         )
     endif()
 
-    # Install iconv.h to UniConv directory (since UniConv.h includes "iconv.h")
+    # Install iconv.h to correct iconv/ subdirectory (UniConv.h includes "iconv/iconv.h")
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv/iconv.h)
         install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv/iconv.h
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv/iconv
         )
     endif()
 
