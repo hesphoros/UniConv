@@ -349,3 +349,23 @@ cmake --build . --config Release
 - 初始版本
 - 基础编码转换功能
 - 线程安全支持
+
+## 许可与第三方组件声明
+
+- 本项目主体代码由 `hesphoros` 以 MIT 许可证发布（见 `LICENSE`）。
+- 本仓库包含 GNU libiconv 的源代码（见 `src/` 目录中的 `iconv.c`、`localcharset.c` 等文件）。
+    libiconv 源代码遵循 **GNU Lesser General Public License (LGPL) v2.1 或更高版本**。
+
+为遵守开源许可：
+
+- 仓库中包含 `COPYING.LIB`，说明 libiconv 的许可证及合规要点；
+- 仓库中包含 `THIRD_PARTY_LICENSES.md`，列出已包含的第三方代码以及分发时需要注意的合规操作；
+- 如果你要分发静态链接的二进制文件（即将 libiconv 源直接合并进可执行文件），你需要遵守 LGPL 要求（保留版权、提供修改后的 libiconv 源或提供可重链接的对象文件等）。
+
+如果你希望完全避免 LGPL 的约束，推荐的做法是：
+
+1. 使用系统提供的 libiconv（动态链接），或者
+2. 在构建时将 libiconv 作为单独可替换的子项目/静态库，让使用者可以用自己的 libiconv 源或二进制替换，或
+3. 移除内嵌的 libiconv，改用许可证兼容的实现（若存在）。
+
+更多细节请参见 `COPYING.LIB` 与 `THIRD_PARTY_LICENSES.md`。
