@@ -13,7 +13,7 @@ endif()
 
 project(UniConv
     VERSION 3.0.0.1
-    DESCRIPTION "高性能 C++ 字符编码转换库"
+    DESCRIPTION "High-performance C++ character encoding conversion library"
     LANGUAGES C CXX
 )
 
@@ -34,9 +34,10 @@ if(NOT UNICONV_IS_SUBPROJECT)
 endif()
 
 # 构建选项
-option(UNICONV_BUILD_TESTS "构建测试" OFF)
-option(UNICONV_BUILD_SHARED "构建动态库而非静态库" OFF)
-option(UNICONV_NO_THREAD_LOCAL "禁用thread_local存储，在某些DLL构建中可能需要" OFF)
+option(UNICONV_BUILD_TESTS "Build tests" OFF)
+option(UNICONV_BUILD_SHARED "Build shared library instead of static" OFF)
+option(UNICONV_NO_THREAD_LOCAL "Disable thread_local storage (may be required for some DLL builds)" OFF)
+option(UNICONV_USE_BUNDLED_LIBICONV "Use bundled libiconv sources in repository (ON preserves current behavior)" ON)
 
 # ============================================================================
 # 配置文件生成
@@ -45,7 +46,7 @@ option(UNICONV_NO_THREAD_LOCAL "禁用thread_local存储，在某些DLL构建中
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if(UNICONV_IS_SUBPROJECT)
-    message(STATUS "UniConv: 作为子项目构建")
+    message(STATUS "UniConv: building as subproject")
     set(UNICONV_CONFIG_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in")
     set(UNICONV_CONFIG_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/include/iconv/config.h")
     
@@ -60,7 +61,7 @@ if(UNICONV_IS_SUBPROJECT)
         configure_file("${UNICONV_CONFIG_INPUT}" "${UNICONV_CONFIG_OUTPUT}" @ONLY)
     endif()
 else()
-    message(STATUS "UniConv: 作为主项目构建")
+    message(STATUS "UniConv: building as top-level project")
     include(cmake/ConfigureConfig.cmake)
 endif()
 
@@ -81,10 +82,29 @@ endif()
 # 源文件
 set(UNICONV_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/UniConv.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/iconv.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/localcharset.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/relocatable.c
 )
+
+if(UNICONV_USE_BUNDLED_LIBICONV)
+    list(APPEND UNICONV_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/iconv.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/localcharset.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/relocatable.c
+    )
+else()
+    # 尝试查找系统提供的 iconv/libiconv
+    find_path(ICONV_INCLUDE_DIR iconv.h)
+    find_library(ICONV_LIBRARY NAMES iconv libiconv)
+
+    if(NOT ICONV_LIBRARY)
+        message(FATAL_ERROR "UNICONV_USE_BUNDLED_LIBICONV=OFF but system libiconv not found. Either install libiconv or enable UNICONV_USE_BUNDLED_LIBICONV.")
+    endif()
+
+    if(ICONV_INCLUDE_DIR)
+        message(STATUS "Found system iconv include: ${ICONV_INCLUDE_DIR}")
+    endif()
+    message(STATUS "Found system iconv library: ${ICONV_LIBRARY}")
+
+endif()
 
 set(UNICONV_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/UniConv.h
@@ -118,8 +138,6 @@ target_include_directories(UniConv
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<INSTALL_INTERFACE:include/UniConv>
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv
-        ${CMAKE_CURRENT_BINARY_DIR}/include/iconv
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
@@ -142,15 +160,33 @@ target_compile_definitions(UniConv PRIVATE
     $<$<BOOL:${MSVC}>:_UNICODE>
     $<$<BOOL:${MSVC}>:UNICODE>
     LIBDIR=""
-    BUILDING_LIBICONV
-    ENABLE_RELOCATABLE=1
-    IN_LIBRARY
-    INSTALLDIR=""
-    NO_XMALLOC
-    set_relocation_prefix=libiconv_set_relocation_prefix
-    relocate=libiconv_relocate
-    HAVE_CONFIG_H
 )
+
+# 如果使用捆绑的 libiconv，添加对应的编译定义和包含路径
+if(UNICONV_USE_BUNDLED_LIBICONV)
+    target_compile_definitions(UniConv PRIVATE
+        BUILDING_LIBICONV
+        ENABLE_RELOCATABLE=1
+        IN_LIBRARY
+        INSTALLDIR=""
+        NO_XMALLOC
+        set_relocation_prefix=libiconv_set_relocation_prefix
+        relocate=libiconv_relocate
+        HAVE_CONFIG_H
+    )
+    target_include_directories(UniConv PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv
+        ${CMAKE_CURRENT_BINARY_DIR}/include/iconv
+    )
+else()
+    # 使用系统 libiconv，链接库并添加包含目录（若找到）
+    if(ICONV_INCLUDE_DIR)
+        target_include_directories(UniConv PRIVATE ${ICONV_INCLUDE_DIR})
+    endif()
+    if(ICONV_LIBRARY)
+        target_link_libraries(UniConv PRIVATE ${ICONV_LIBRARY})
+    endif()
+endif()
 
 # 条件编译选项
 if(UNICONV_BUILD_SHARED)
@@ -250,15 +286,15 @@ endif()
 
 message(STATUS "")
 message(STATUS "============================================")
-message(STATUS "UniConv 配置摘要:")
-message(STATUS "  版本: ${PROJECT_VERSION}")
-message(STATUS "  子项目: ${UNICONV_IS_SUBPROJECT}")
-message(STATUS "  构建类型: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  C++ 标准: 17")
-message(STATUS "  动态库: ${UNICONV_BUILD_SHARED}")
-message(STATUS "  测试: ${UNICONV_BUILD_TESTS}")
+message(STATUS "UniConv configuration summary:")
+message(STATUS "  Version: ${PROJECT_VERSION}")
+message(STATUS "  Subproject: ${UNICONV_IS_SUBPROJECT}")
+message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  C++ standard: 17")
+message(STATUS "  Shared library: ${UNICONV_BUILD_SHARED}")
+message(STATUS "  Tests: ${UNICONV_BUILD_TESTS}")
 if(NOT UNICONV_IS_SUBPROJECT)
-    message(STATUS "  安装前缀: ${CMAKE_INSTALL_PREFIX}")
+    message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 endif()
 message(STATUS "============================================")
 message(STATUS "")
