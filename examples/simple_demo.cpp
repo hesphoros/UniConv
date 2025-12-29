@@ -1,62 +1,69 @@
+/**
+ * @file simple_demo.cpp
+ * @brief UniConv 基础功能演示
+ * @details 演示 UniConv 库的核心编码转换功能和错误处理
+ */
+
 #include "../include/UniConv.h"
 #include <iostream>
 #include <string>
 
 int main() {
-    std::cout << "=== UniConv High-Performance Error Handling Demo ===" << std::endl;
+    std::cout << "=== UniConv Basic Features Demo ===" << std::endl;
     
-    // Get UniConv instance
-    auto uniconv = UniConv::UniConv::GetInstance();
+    // 获取 UniConv 实例
+    auto converter = UniConv::Create();
     
-    // Demo 1: High-performance encoding conversion
-    std::cout << "\n1. High-performance encoding conversion demo:" << std::endl;
-    std::string input = "Hello, World!";
-    std::cout << "Input: " << input << std::endl;
+    // 演示1: 基础编码转换
+    std::cout << "\n1. Basic Encoding Conversion:" << std::endl;
+    std::string input_text = "Hello, World! Test string";
+    std::cout << "Input: " << input_text << std::endl;
     
-    auto result = uniconv->ConvertEncodingFast(input, "UTF-8", "UTF-16LE");
+    // 使用高性能转换方法
+    auto result = converter->ConvertEncodingFast(input_text, "UTF-8", "UTF-16LE");
     if (result.IsSuccess()) {
-        std::cout << "Conversion successful! Output length: " << result.GetValue().size() << " bytes" << std::endl;
+        std::cout << "Success! Output size: " << result.GetValue().size() << " bytes" << std::endl;
     } else {
-        std::cout << "Conversion failed: " << result.GetErrorMessage() << std::endl;
+        std::cout << "Failed: " << result.GetErrorMessage() << std::endl;
     }
     
-    // Demo 2: Fast system codepage retrieval
-    std::cout << "\n2. Fast system codepage retrieval:" << std::endl;
-    auto codepage_result = uniconv->GetSystemCodePageFast();
+    // 演示2: 获取系统代码页
+    std::cout << "\n2. Get System Codepage:" << std::endl;
+    auto codepage_result = converter->GetSystemCodePageFast();
     if (codepage_result.IsSuccess()) {
         std::cout << "System codepage: " << codepage_result.GetValue() << std::endl;
     } else {
-        std::cout << "Failed to get codepage: " << codepage_result.GetErrorMessage() << std::endl;
+        std::cout << "Failed: " << codepage_result.GetErrorMessage() << std::endl;
     }
     
-    // Demo 3: Zero-allocation encoding name lookup
-    std::cout << "\n3. Zero-allocation encoding name lookup:" << std::endl;
-    int test_codepage = 65001; // UTF-8
-    const char* encoding_name = uniconv->GetEncodingNamePtr(test_codepage);
+    // 演示3: 零分配编码名称查询
+    std::cout << "\n3. Zero-Allocation Encoding Name Lookup:" << std::endl;
+    int cp_utf8 = 65001;
+    const char* encoding_name = converter->GetEncodingNamePtr(cp_utf8);
     if (encoding_name) {
-        std::cout << "Codepage " << test_codepage << " encoding: " << encoding_name << std::endl;
+        std::cout << "Codepage " << cp_utf8 << ": " << encoding_name << std::endl;
     } else {
-        std::cout << "Encoding not found for codepage " << test_codepage << std::endl;
+        std::cout << "Not found for codepage " << cp_utf8 << std::endl;
     }
     
-    // Demo 4: CompactResult encoding name lookup
-    std::cout << "\n4. CompactResult encoding name lookup:" << std::endl;
-    auto name_result = uniconv->GetEncodingNameFast(1252); // Windows-1252
+    // 演示4: CompactResult 编码名称查询
+    std::cout << "\n4. CompactResult Encoding Name:" << std::endl;
+    auto name_result = converter->GetEncodingNameFast(1252);
     if (name_result.IsSuccess()) {
-        std::cout << "Codepage 1252 encoding: " << name_result.GetValue() << std::endl;
+        std::cout << "Codepage 1252: " << name_result.GetValue() << std::endl;
     } else {
         std::cout << "Lookup failed: " << name_result.GetErrorMessage() << std::endl;
     }
     
-    // Demo 5: Error handling
-    std::cout << "\n5. Error handling demo:" << std::endl;
-    auto error_result = uniconv->ConvertEncodingFast("test", "INVALID_ENCODING", "UTF-8");
+    // 演示5: 错误处理
+    std::cout << "\n5. Error Handling:" << std::endl;
+    auto error_result = converter->ConvertEncodingFast("test", "INVALID_ENCODING", "UTF-8");
     if (!error_result.IsSuccess()) {
         std::cout << "Expected error: " << error_result.GetErrorMessage() << std::endl;
         std::cout << "Error code: " << static_cast<int>(error_result.GetErrorCode()) << std::endl;
     }
     
-    std::cout << "\n=== Demo completed ===" << std::endl;
+    std::cout << "\n=== Demo Completed ===" << std::endl;
     
     return 0;
 }

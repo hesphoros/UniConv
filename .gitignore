@@ -1,3 +1,7 @@
 build/
 .idea/
 vcpkg-port/
+CMakeLists.txt
+.github/prompts/*.md
+doc/
+docs/
