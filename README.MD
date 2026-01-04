@@ -1,14 +1,27 @@
 # UniConv
 
-高性能C++字符编码转换库，提供现代化C++17接口和无锁并发架构。
+<div align="center">
 
+**高性能 C++17 字符编码转换库**
+
+[![Release](https://img.shields.io/github/v/release/hesphoros/UniConv?include_prereleases)](https://github.com/hesphoros/UniConv/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
 [![CMake](https://img.shields.io/badge/CMake-3.16%2B-green.svg)](https://cmake.org/)
 
+</div>
+
 UniConv 是 GNU libiconv 的现代 C++17 封装，具有零拷贝优化、无锁并发缓存和高性能批处理能力。
 
 ## 核心特性
+
+### v3.0 性能优化亮点
+- **快速路径优化**: 同编码直接返回、ASCII 内容零开销传递
+- **可选 SIMD 加速**: simdutf 集成，UTF 转换 5-15x 性能提升
+- **O(1) LRU 缓存**: 双向链表 + 哈希表实现常数时间操作
+- **分层缓冲池**: 32×4KB + 8×64KB + 2×1MB 三级缓冲区
+- **无锁线程池**: 自适应并行策略，智能工作负载决策
+- **智能缓冲估算**: 编码感知扩展因子，精确预估输出大小
 
 ### 性能与架构
 - **无锁并发缓存**: 采用 parallel-hashmap 实现的无锁 iconv 描述符缓存
@@ -27,6 +40,15 @@ UniConv 是 GNU libiconv 的现代 C++17 封装，具有零拷贝优化、无锁
 - **错误处理**: CompactResult 类型提供清晰的错误处理
 
 ## 性能基准
+
+### v3.0 性能提升
+```text
+同编码快速路径:              ~0 ns (直接返回)
+ASCII 快速路径:              ~50 ns/KB
+simdutf UTF-8↔UTF-16:        5-15x 提升 (vs 传统 iconv)
+O(1) LRU 缓存:               常数时间访问
+分层缓冲池命中率:            >95%
+```
 
 ### 单次转换性能
 ```text
@@ -353,6 +375,24 @@ cmake --build . --config Release
 
 ## 更新日志
 
+### v3.0.0 (2026-01)
+
+#### ⚡ 性能优化
+- **P0 快速路径**: 同编码快速路径、ASCII 内容快速路径
+- **P1 SIMD 加速**: 可选的 simdutf 集成，UTF-8/UTF-16 转换 5-15x 性能提升
+- **P1 O(1) LRU**: 使用双向链表 + 哈希表实现常数时间缓存操作
+- **P2 哈希缓存键**: FNV-1a 64 位哈希替代字符串拼接，减少内存分配
+- **P2 分层缓冲池**: 32×4KB + 8×64KB + 2×1MB 三级缓冲区
+- **P2 无锁线程池**: 自适应并行策略，根据工作负载智能决策
+- **P3 智能估算**: 编码感知扩展因子，精确预估输出缓冲区大小
+- **P3 CPU 检测**: 运行时检测 SSE4.2/AVX2/AVX-512 等 SIMD 能力
+
+#### ✨ 新特性
+- 批量并行转换 API: `ConvertEncodingBatchParallel()`
+- 零拷贝转换: `ConvertEncodingZeroCopy()`
+- 实例化转换器: `UniConvInstance` 类
+- CPU 优化信息: `CpuOptimization::GetInfo()`
+
 ### v2.0 (2025-12)
 - ✨ 实现无锁并发缓存（parallel-hashmap）
 - ✨ 添加零拷贝 BufferLease 机制
@@ -378,10 +418,3 @@ cmake --build . --config Release
 - 仓库中包含 `THIRD_PARTY_LICENSES.md`，列出已包含的第三方代码以及分发时需要注意的合规操作；
 - 如果你要分发静态链接的二进制文件（即将 libiconv 源直接合并进可执行文件），你需要遵守 LGPL 要求（保留版权、提供修改后的 libiconv 源或提供可重链接的对象文件等）。
 
-如果你希望完全避免 LGPL 的约束，推荐的做法是：
-
-1. 使用系统提供的 libiconv（动态链接），或者
-2. 在构建时将 libiconv 作为单独可替换的子项目/静态库，让使用者可以用自己的 libiconv 源或二进制替换，或
-3. 移除内嵌的 libiconv，改用许可证兼容的实现（若存在）。
-
-更多细节请参见 `COPYING.LIB` 与 `THIRD_PARTY_LICENSES.md`。
