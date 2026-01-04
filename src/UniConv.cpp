@@ -1573,39 +1573,241 @@ IntResult UniConv::GetSystemCodePageFast() noexcept {
 // === High-Performance Internal Methods Implementation ===
 //----------------------------------------------------------------------------------------------------------------------
 
+// ===================================================================================================================
+// Encoding-Aware Output Size Estimation (P3 Optimization)
+// ===================================================================================================================
+
+namespace {
+    // Encoding ID for fast lookup (avoid string comparisons in hot path)
+    enum class EncodingId : uint8_t {
+        Unknown = 0,
+        UTF8,
+        UTF16,
+        UTF16LE,
+        UTF16BE,
+        UTF32,
+        UTF32LE,
+        UTF32BE,
+        ASCII,
+        GBK,
+        GB2312,
+        GB18030,
+        BIG5,
+        ShiftJIS,
+        ISO8859_1,
+        Windows1252,
+        EUC_JP,
+        EUC_KR
+    };
+    
+    // Fast encoding name to ID lookup using hash
+    EncodingId GetEncodingId(const char* encoding) noexcept {
+        if (!encoding) return EncodingId::Unknown;
+        
+        // Normalize to uppercase for comparison
+        char normalized[32];
+        size_t len = 0;
+        for (; encoding[len] && len < 31; ++len) {
+            char c = encoding[len];
+            normalized[len] = (c >= 'a' && c <= 'z') ? (c - 32) : c;
+        }
+        normalized[len] = '\0';
+        
+        // Use hash for fast lookup
+        uint32_t hash = detail::fnv1a_hash(normalized, len);
+        
+        // Common encodings (ordered by frequency)
+        switch (hash) {
+            case detail::fnv1a_hash("UTF-8", 5):
+            case detail::fnv1a_hash("UTF8", 4):
+                return EncodingId::UTF8;
+            case detail::fnv1a_hash("UTF-16", 6):
+            case detail::fnv1a_hash("UTF16", 5):
+                return EncodingId::UTF16;
+            case detail::fnv1a_hash("UTF-16LE", 8):
+            case detail::fnv1a_hash("UTF16LE", 7):
+                return EncodingId::UTF16LE;
+            case detail::fnv1a_hash("UTF-16BE", 8):
+            case detail::fnv1a_hash("UTF16BE", 7):
+                return EncodingId::UTF16BE;
+            case detail::fnv1a_hash("UTF-32", 6):
+            case detail::fnv1a_hash("UTF32", 5):
+                return EncodingId::UTF32;
+            case detail::fnv1a_hash("UTF-32LE", 8):
+            case detail::fnv1a_hash("UTF32LE", 7):
+                return EncodingId::UTF32LE;
+            case detail::fnv1a_hash("UTF-32BE", 8):
+            case detail::fnv1a_hash("UTF32BE", 7):
+                return EncodingId::UTF32BE;
+            case detail::fnv1a_hash("ASCII", 5):
+            case detail::fnv1a_hash("US-ASCII", 8):
+                return EncodingId::ASCII;
+            case detail::fnv1a_hash("GBK", 3):
+                return EncodingId::GBK;
+            case detail::fnv1a_hash("GB2312", 6):
+                return EncodingId::GB2312;
+            case detail::fnv1a_hash("GB18030", 7):
+                return EncodingId::GB18030;
+            case detail::fnv1a_hash("BIG5", 4):
+            case detail::fnv1a_hash("BIG-5", 5):
+                return EncodingId::BIG5;
+            case detail::fnv1a_hash("SHIFT_JIS", 9):
+            case detail::fnv1a_hash("SHIFT-JIS", 9):
+            case detail::fnv1a_hash("SJIS", 4):
+                return EncodingId::ShiftJIS;
+            case detail::fnv1a_hash("ISO-8859-1", 10):
+            case detail::fnv1a_hash("LATIN1", 6):
+                return EncodingId::ISO8859_1;
+            case detail::fnv1a_hash("WINDOWS-1252", 12):
+            case detail::fnv1a_hash("CP1252", 6):
+                return EncodingId::Windows1252;
+            case detail::fnv1a_hash("EUC-JP", 6):
+            case detail::fnv1a_hash("EUCJP", 5):
+                return EncodingId::EUC_JP;
+            case detail::fnv1a_hash("EUC-KR", 6):
+            case detail::fnv1a_hash("EUCKR", 5):
+                return EncodingId::EUC_KR;
+            default:
+                // Fallback: check for common substrings
+                if (strstr(normalized, "UTF-8") || strstr(normalized, "UTF8")) return EncodingId::UTF8;
+                if (strstr(normalized, "UTF-16") || strstr(normalized, "UTF16")) return EncodingId::UTF16;
+                if (strstr(normalized, "UTF-32") || strstr(normalized, "UTF32")) return EncodingId::UTF32;
+                if (strstr(normalized, "GBK")) return EncodingId::GBK;
+                if (strstr(normalized, "GB18030")) return EncodingId::GB18030;
+                if (strstr(normalized, "GB2312")) return EncodingId::GB2312;
+                return EncodingId::Unknown;
+        }
+    }
+    
+    // Encoding expansion factor table (from_id, to_id) -> factor
+    // Factor < 1.0 means output is smaller, > 1.0 means output is larger
+    constexpr double GetExpansionFactor(EncodingId from, EncodingId to) noexcept {
+        // Same encoding family optimizations
+        if (from == to) return 1.0;
+        
+        // UTF-8 conversions
+        if (from == EncodingId::UTF8) {
+            switch (to) {
+                case EncodingId::UTF16:
+                case EncodingId::UTF16LE:
+                case EncodingId::UTF16BE:
+                    return 2.0;  // UTF-8 can expand to 2x in UTF-16
+                case EncodingId::UTF32:
+                case EncodingId::UTF32LE:
+                case EncodingId::UTF32BE:
+                    return 4.0;  // UTF-8 can expand to 4x in UTF-32
+                case EncodingId::ASCII:
+                    return 1.0;  // ASCII subset stays same
+                case EncodingId::GBK:
+                case EncodingId::GB2312:
+                case EncodingId::GB18030:
+                case EncodingId::BIG5:
+                    return 1.0;  // Similar size for CJK
+                default:
+                    return 1.5;
+            }
+        }
+        
+        // UTF-16 conversions
+        if (from == EncodingId::UTF16 || from == EncodingId::UTF16LE || from == EncodingId::UTF16BE) {
+            switch (to) {
+                case EncodingId::UTF8:
+                    return 1.5;  // UTF-16 to UTF-8 usually similar or smaller
+                case EncodingId::UTF32:
+                case EncodingId::UTF32LE:
+                case EncodingId::UTF32BE:
+                    return 2.0;  // Each UTF-16 unit becomes 4 bytes
+                case EncodingId::ASCII:
+                    return 0.5;  // 2 bytes -> 1 byte for ASCII range
+                case EncodingId::GBK:
+                case EncodingId::GB2312:
+                case EncodingId::GB18030:
+                    return 1.0;  // Similar size
+                default:
+                    return 1.0;
+            }
+        }
+        
+        // UTF-32 conversions
+        if (from == EncodingId::UTF32 || from == EncodingId::UTF32LE || from == EncodingId::UTF32BE) {
+            switch (to) {
+                case EncodingId::UTF8:
+                    return 1.0;  // UTF-32 to UTF-8 usually shrinks
+                case EncodingId::UTF16:
+                case EncodingId::UTF16LE:
+                case EncodingId::UTF16BE:
+                    return 0.5;  // 4 bytes -> 2 bytes typical
+                default:
+                    return 0.5;
+            }
+        }
+        
+        // CJK encodings (GBK, GB2312, GB18030, BIG5)
+        if (from == EncodingId::GBK || from == EncodingId::GB2312 || 
+            from == EncodingId::GB18030 || from == EncodingId::BIG5) {
+            switch (to) {
+                case EncodingId::UTF8:
+                    return 1.5;  // CJK characters: 2 bytes -> 3 bytes
+                case EncodingId::UTF16:
+                case EncodingId::UTF16LE:
+                case EncodingId::UTF16BE:
+                    return 1.0;  // Similar size
+                case EncodingId::UTF32:
+                case EncodingId::UTF32LE:
+                case EncodingId::UTF32BE:
+                    return 2.0;  // 2 bytes -> 4 bytes
+                default:
+                    return 1.2;
+            }
+        }
+        
+        // ASCII/Latin1 conversions
+        if (from == EncodingId::ASCII || from == EncodingId::ISO8859_1 || from == EncodingId::Windows1252) {
+            switch (to) {
+                case EncodingId::UTF8:
+                    return 1.5;  // Extended ASCII chars become multi-byte
+                case EncodingId::UTF16:
+                case EncodingId::UTF16LE:
+                case EncodingId::UTF16BE:
+                    return 2.0;  // 1 byte -> 2 bytes
+                case EncodingId::UTF32:
+                case EncodingId::UTF32LE:
+                case EncodingId::UTF32BE:
+                    return 4.0;  // 1 byte -> 4 bytes
+                default:
+                    return 1.2;
+            }
+        }
+        
+        // Default: conservative estimate
+        return 2.0;
+    }
+}
+
 size_t UniConv::EstimateOutputSize(size_t input_size, const char* from_encoding, const char* to_encoding) noexcept {
-    // 获取编码的最大字节倍数
-    int from_multiplier = GetEncodingMultiplier(from_encoding);
-    int to_multiplier   = GetEncodingMultiplier(to_encoding);
-
-    // 基础估算：根据编码特性计算扩展比例
-    double expansion_factor = static_cast<double>(to_multiplier) / from_multiplier;
-
-    // 特殊情况优化
-    std::string_view from_enc{from_encoding};
-    std::string_view to_enc{to_encoding};
-
-    // UTF-8 to UTF-16: 通常扩展1.5-2倍
-    if (from_enc.find("UTF-8") != std::string_view::npos && to_enc.find("UTF-16") != std::string_view::npos) {
-        expansion_factor = 2.0;
+    // Fast path: empty input
+    if (input_size == 0) return 512;  // Minimum buffer
+    
+    // Fast path: same encoding
+    if (from_encoding && to_encoding && CompareEncodingNamesEqual(from_encoding, to_encoding)) {
+        return input_size + 16;  // Just add small safety margin
     }
-    // UTF-16 to UTF-8: 通常收缩0.75倍
-    else if (from_enc.find("UTF-16") != std::string_view::npos && to_enc.find("UTF-8") != std::string_view::npos) {
-        expansion_factor = 0.75;
-    }
-    // ASCII兼容编码之间转换
-    else if ((from_enc.find("UTF-8") != std::string_view::npos || from_enc.find("ASCII") != std::string_view::npos) && (to_enc.find("UTF-8") != std::string_view::npos || to_enc.find("ASCII") != std::string_view::npos)) {
-        expansion_factor = 1.0;  // 通常大小相同
-    }
-
-    // 计算估算大小，添加安全边距
-    size_t estimated = static_cast<size_t>(input_size * expansion_factor * 1.25);
-
-    // 设置合理的最小和最大值
+    
+    // Get encoding IDs for fast lookup
+    EncodingId from_id = GetEncodingId(from_encoding);
+    EncodingId to_id = GetEncodingId(to_encoding);
+    
+    // Get expansion factor from table
+    double expansion_factor = GetExpansionFactor(from_id, to_id);
+    
+    // Add safety margin (15%)
+    double estimated = static_cast<double>(input_size) * expansion_factor * 1.15;
+    
+    // Clamp to reasonable bounds
     constexpr size_t MIN_BUFFER_SIZE = 512;
-    constexpr size_t MAX_REASONABLE_SIZE = 32 * 1024 * 1024; // 32MB上限
-
-    return std::clamp(estimated, MIN_BUFFER_SIZE, MAX_REASONABLE_SIZE);
+    constexpr size_t MAX_REASONABLE_SIZE = 32 * 1024 * 1024; // 32MB
+    
+    return std::clamp(static_cast<size_t>(estimated), MIN_BUFFER_SIZE, MAX_REASONABLE_SIZE);
 }
 
 bool UniConv::IsValidEncodingName(const char* encoding) noexcept {

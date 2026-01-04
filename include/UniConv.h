@@ -740,6 +740,160 @@ struct AdaptiveParallelPolicy {
     }
 };
 
+//----------------------------------------------------------------------------------------------------------------------
+// === CPU Optimization Detection  ===
+//----------------------------------------------------------------------------------------------------------------------
+
+/**
+ * @brief Runtime CPU feature and optimization detection
+ * @details Detects available SIMD instructions and system characteristics
+ *          for optimal algorithm selection at runtime.
+ */
+struct CpuOptimizationInfo {
+    // SIMD capabilities
+    bool has_sse2 = false;       ///< SSE2 support (x86/x64 baseline)
+    bool has_sse4_1 = false;     ///< SSE4.1 support
+    bool has_sse4_2 = false;     ///< SSE4.2 support
+    bool has_avx = false;        ///< AVX support
+    bool has_avx2 = false;       ///< AVX2 support (256-bit SIMD)
+    bool has_avx512f = false;    ///< AVX-512 Foundation support
+    bool has_neon = false;       ///< ARM NEON support
+    
+    // System characteristics
+    size_t cache_line_size = 64; ///< L1 cache line size (bytes)
+    size_t l1_cache_size = 0;    ///< L1 data cache size (bytes, 0 if unknown)
+    size_t l2_cache_size = 0;    ///< L2 cache size (bytes, 0 if unknown)
+    size_t page_size = 4096;     ///< Memory page size (bytes)
+    size_t hardware_threads = 0; ///< Number of hardware threads
+    
+    // Feature summary
+    bool has_simd() const noexcept { return has_sse2 || has_neon; }
+    bool has_fast_simd() const noexcept { return has_avx2 || has_neon; }
+    
+    /**
+     * @brief Get recommended SIMD width in bytes
+     */
+    size_t GetSimdWidth() const noexcept {
+        if (has_avx512f) return 64;
+        if (has_avx2 || has_avx) return 32;
+        if (has_sse2 || has_neon) return 16;
+        return 8;  // Scalar fallback
+    }
+};
+
+/**
+ * @brief Singleton accessor for CPU optimization info
+ * @details Detects CPU features once at first call and caches the result.
+ */
+class CpuOptimization {
+public:
+    /**
+     * @brief Get cached CPU optimization info
+     * @return Reference to CpuOptimizationInfo structure
+     */
+    static const CpuOptimizationInfo& GetInfo() noexcept {
+        static CpuOptimizationInfo info = Detect();
+        return info;
+    }
+    
+    /**
+     * @brief Check if simdutf acceleration is available
+     */
+    static bool HasSimdUtf() noexcept {
+#ifdef UNICONV_HAS_SIMDUTF
+        return true;
+#else
+        return false;
+#endif
+    }
+    
+    /**
+     * @brief Get a human-readable summary of available optimizations
+     */
+    static std::string GetOptimizationSummary() {
+        const auto& info = GetInfo();
+        std::ostringstream oss;
+        oss << "UniConv Optimization Info:\n";
+        oss << "  Hardware threads: " << info.hardware_threads << "\n";
+        oss << "  SIMD width: " << info.GetSimdWidth() << " bytes\n";
+        oss << "  SSE2: " << (info.has_sse2 ? "Yes" : "No") << "\n";
+        oss << "  SSE4.2: " << (info.has_sse4_2 ? "Yes" : "No") << "\n";
+        oss << "  AVX2: " << (info.has_avx2 ? "Yes" : "No") << "\n";
+        oss << "  AVX-512: " << (info.has_avx512f ? "Yes" : "No") << "\n";
+        oss << "  NEON: " << (info.has_neon ? "Yes" : "No") << "\n";
+        oss << "  simdutf: " << (HasSimdUtf() ? "Enabled" : "Disabled") << "\n";
+        oss << "  Cache line: " << info.cache_line_size << " bytes\n";
+        oss << "  Page size: " << info.page_size << " bytes\n";
+        return oss.str();
+    }
+
+private:
+    static CpuOptimizationInfo Detect() noexcept {
+        CpuOptimizationInfo info;
+        
+        // Hardware threads
+        info.hardware_threads = std::thread::hardware_concurrency();
+        if (info.hardware_threads == 0) info.hardware_threads = 4;
+        
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+        // Windows x86/x64: use __cpuid
+        int cpu_info[4] = {0};
+        __cpuid(cpu_info, 0);
+        int max_id = cpu_info[0];
+        
+        if (max_id >= 1) {
+            __cpuid(cpu_info, 1);
+            info.has_sse2 = (cpu_info[3] & (1 << 26)) != 0;
+            info.has_sse4_1 = (cpu_info[2] & (1 << 19)) != 0;
+            info.has_sse4_2 = (cpu_info[2] & (1 << 20)) != 0;
+            info.has_avx = (cpu_info[2] & (1 << 28)) != 0;
+        }
+        
+        if (max_id >= 7) {
+            __cpuidex(cpu_info, 7, 0);
+            info.has_avx2 = (cpu_info[1] & (1 << 5)) != 0;
+            info.has_avx512f = (cpu_info[1] & (1 << 16)) != 0;
+        }
+        
+        // Get cache line size
+        __cpuid(cpu_info, 0x80000006);
+        info.cache_line_size = cpu_info[2] & 0xFF;
+        if (info.cache_line_size == 0) info.cache_line_size = 64;
+        
+        // Windows page size
+        SYSTEM_INFO sys_info;
+        GetSystemInfo(&sys_info);
+        info.page_size = sys_info.dwPageSize;
+        
+#elif defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
+        // GCC/Clang x86/x64: use __builtin_cpu_supports
+        info.has_sse2 = __builtin_cpu_supports("sse2");
+        info.has_sse4_1 = __builtin_cpu_supports("sse4.1");
+        info.has_sse4_2 = __builtin_cpu_supports("sse4.2");
+        info.has_avx = __builtin_cpu_supports("avx");
+        info.has_avx2 = __builtin_cpu_supports("avx2");
+        info.has_avx512f = __builtin_cpu_supports("avx512f");
+        
+        // Linux page size
+        #ifdef __linux__
+        info.page_size = sysconf(_SC_PAGESIZE);
+        #endif
+        
+#elif defined(__ARM_NEON) || defined(__aarch64__)
+        // ARM: NEON is baseline for AArch64
+        info.has_neon = true;
+        
+        #ifdef __linux__
+        info.page_size = sysconf(_SC_PAGESIZE);
+        #endif
+#endif
+        
+        return info;
+    }
+    
+    CpuOptimization() = delete;
+};
+
 /**
  * @brief High-performance tiered string buffer pool
  * @details Provides three tiers of buffer sizes optimized for different use cases:
