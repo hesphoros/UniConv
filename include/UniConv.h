@@ -57,7 +57,7 @@
 #include <cstring>
 #include <system_error>
 #include <mutex>
- #include <memory>
+#include <memory>
 #include <algorithm>
 #include "parallel_hashmap/phmap.h"
 #include <functional>
@@ -363,7 +363,7 @@ public:
         }
     }
     
-    // 移动赋值 - 异常安全版本
+    // 移动赋值
     CompactResult& operator=(CompactResult&& other) noexcept {
         if (this != &other) {
             if (has_value_) {
@@ -380,7 +380,7 @@ public:
         return *this;
     }
     
-    // 拷贝构造 - 异常安全版本
+    // 拷贝构造
     CompactResult(const CompactResult& other) noexcept(std::is_nothrow_copy_constructible_v<T>)
         : has_value_(false) {  // 初始化为失败状态确保异常安全
         if (other.has_value_) {
@@ -391,7 +391,7 @@ public:
         }
     }
     
-    // 拷贝赋值 - 异常安全版本
+    // 拷贝赋值
     CompactResult& operator=(const CompactResult& other) noexcept(std::is_nothrow_copy_constructible_v<T>) {
         if (this != &other) {
             if (has_value_) {
@@ -414,19 +414,18 @@ public:
         }
     }
     
-    // 热路径优化：内联+分支预测
+
     [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     bool IsSuccess() const noexcept {
         return UNICONV_LIKELY(has_value_);
     }
     
-    // 显式bool转换 - 热路径优化
+    
     UNICONV_ALWAYS_INLINE UNICONV_HOT
     explicit operator bool() const noexcept {
         return IsSuccess();
     }
 
-    // 快速访问，无额外检查（性能优先）- 热路径优化
     UNICONV_ALWAYS_INLINE UNICONV_HOT
     T&& GetValue() && noexcept {
         return std::move(value_);
@@ -480,7 +479,7 @@ public:
 class StringBufferPool {
 private:
     struct Buffer {
-        std::string data;
+        std::string                      data;
         std::atomic<bool> in_use{false};
 
         Buffer() {
@@ -488,16 +487,16 @@ private:
         }
     };
 
-    static constexpr size_t POOL_SIZE = 16;  // 池大小，平衡内存使用和并发性能
-    std::array<Buffer, POOL_SIZE> buffers_;  // 固定大小缓冲区数组
-    std::atomic<size_t> next_index_{0};      // 下一个可用缓冲区索引
+    static constexpr size_t      POOL_SIZE = 16;  // 池大小，平衡内存使用和并发性能
+    std::array<Buffer, POOL_SIZE>      buffers_;  // 固定大小缓冲区数组
+    std::atomic<size_t>    next_index_{0};  // 下一个可用缓冲区索引
 
 public:
     // RAII缓冲区lease类
     class BufferLease {
-        Buffer* buffer_;
+        Buffer*         buffer_;
         StringBufferPool* pool_;
-        bool is_from_pool_;  // 标记是否来自池（用于统计）
+        bool      is_from_pool_;  // 标记是否来自池（用于统计）
 
     public:
         BufferLease(Buffer* buf, StringBufferPool* pool, bool from_pool = true) noexcept
@@ -620,7 +619,7 @@ public:
         return BufferLease(&temp_buffer, nullptr, false);  // false = 不是来自池
     }
 
-    // 获取池统计信息（调试用）
+    // 获取池统计信息
     [[nodiscard]] size_t GetActiveBuffers() const noexcept {
         size_t count = 0;
         for (const auto& buffer : buffers_) {
@@ -636,7 +635,7 @@ public:
 template<>
 class [[nodiscard]] CompactResult<std::string> {
 private:
-    std::string                   value_;
+    std::string                        value_;
     ErrorCode                     error_code_;
 
     // SSO优化：利用标准库的小字符串优化
@@ -679,7 +678,7 @@ public:
         }
     }
 
-    // 从C字符串快速构造
+
     static CompactResult FromCString(const char* str, size_t len) noexcept {
         if (!str) {
             return CompactResult(ErrorCode::InvalidParameter);
@@ -708,7 +707,6 @@ public:
         return IsSuccess();
     }
 
-    // 零拷贝访问方法 - 热路径优化
     [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     std::string&& GetValue() && noexcept {
         return std::move(value_);
@@ -905,8 +903,8 @@ private:
 	 * @details Reduces contention on global caches and improves multi-threaded performance
 	 */
 	struct ThreadLocalCache {
-		// Iconv descriptor local cache (max 8 entries)
-		static constexpr size_t LOCAL_CACHE_SIZE = 8;
+		// Iconv descriptor local cache (max 32 entries)
+		static constexpr size_t LOCAL_CACHE_SIZE = 32;
 		std::unordered_map<std::string, IconvSharedPtr> iconv_cache;
 		std::vector<std::pair<uint64_t, std::string>> lru_keys;  // For LRU eviction
 		
@@ -1186,7 +1184,6 @@ public:
 	 */
 	static std::string     GetEncodingNameByCodePage(std::uint16_t codePage) noexcept;
 
-/** Test Success */
 /***************************************************************************/
 /*=================== Locale <-> UTF-8 Conversion Interface =========================*/
 /***************************************************************************/
@@ -1219,7 +1216,7 @@ public:
 	 * @return Converted system locale encoding string
 	 */
 	std::string ToLocaleFromUtf8(const char* input);
-/** Test Success */
+
 /***************************************************************************/
 /*=================== Locale convert to UTF-16 (LE BE) ====================*/
 /***************************************************************************/
@@ -1249,7 +1246,7 @@ public:
 	 */
 	std::u16string ToUtf16BEFromLocale(const char* input);
 
-/** Test Success */
+
 /***************************************************************************/
 /*========================== UTF-16 BE To Locale ==========================*/
 /***************************************************************************/
@@ -1267,7 +1264,7 @@ public:
 	 */
 	std::string ToLocaleFromUtf16BE(const char16_t* input);
 
-/** Test Success */
+
 /***************************************************************************/
 /*======================== UTF-16 (LE BE) To UTF-8 ========================*/
 /***************************************************************************/
@@ -1316,7 +1313,6 @@ public:
 	 */
 	std::string ToUtf8FromUtf16BE(const char16_t* input);
 
-/** Test Success */
 /***************************************************************************/
 /*========================== UTF-8 To UTF16(LE BE) ========================*/
 /***************************************************************************/
@@ -1371,7 +1367,6 @@ public:
 	 */
 	std::u16string ToUtf16BEFromUtf8(const char* input);
 
-/** Test Success */
 /***************************************************************************/
 /*====================== UTF16 LE BE <-> UTF16 LE BE ======================*/
 /***************************************************************************/
@@ -1474,7 +1469,6 @@ public:
 	 */
 	CompactResult<std::string> ToUtf8FromUtf16BEEx(const std::u16string& input);
 
-/*Test Success */
 /***************************************************************************/
 /*========================= string <-> wstring ============================*/
 /***************************************************************************/
@@ -1507,9 +1501,6 @@ public:
 	 */
 	std::string          ToLocaleFromWideString(const wchar_t* input);
 
-
-
-/** Test Suceess */
 /***************************************************************************/
 /*===================== UTF16 <-> Local Encoding =======================*/
 /***************************************************************************/
@@ -1646,7 +1637,7 @@ public:
 	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
 
 	//----------------------------------------------------------------------------------------------------------------------
-	// === Zero-Copy Output Parameter API (High Performance) ===
+	// === Zero-Copy Output Parameter API (High Performance) 
 	//----------------------------------------------------------------------------------------------------------------------
 	/**
 	 * @brief Core conversion with output parameter (zero-copy, memory reuse)
@@ -1655,10 +1646,8 @@ public:
 	 * @param toEncoding Target encoding name
 	 * @param output Output string (caller-provided, memory reused)
 	 * @return true on success, false on failure
-	 * @deprecated Use ConvertEncodingFast() with output parameter for consistent error handling.
-	 * @see ConvertEncodingFast
+	 * @note For detailed error reporting, use ConvertEncodingFast() which returns ErrorCode
 	 */
-	[[deprecated("Use ConvertEncodingFast() with output parameter for better error reporting.")]]
 	bool ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
 	
 	/**
@@ -1671,56 +1660,33 @@ public:
 	 */
 	ErrorCode ConvertEncodingFast(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
 	
-	// UTF-8 Conversion Series (output parameter versions) - Deprecated
-	/**
-	 * @deprecated Use the return-value versions (e.g., ToUtf8FromLocale(input)) for simpler code.
-	 * Output parameter versions add unnecessary complexity for most use cases.
-	 */
-	[[deprecated("Use return-value version ToUtf8FromLocale(input) for simpler code.")]]
+	// UTF-8 Conversion Series (output parameter versions for buffer reuse)
 	bool ToUtf8FromLocale(const std::string& input, std::string& output) noexcept;
-	[[deprecated("Use return-value version ToLocaleFromUtf8(input) for simpler code.")]]
 	bool ToLocaleFromUtf8(const std::string& input, std::string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf8FromUtf16LE(input) for simpler code.")]]
 	bool ToUtf8FromUtf16LE(const std::u16string& input, std::string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf8FromUtf16BE(input) for simpler code.")]]
 	bool ToUtf8FromUtf16BE(const std::u16string& input, std::string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf8FromUtf32LE(input) for simpler code.")]]
 	bool ToUtf8FromUtf32LE(const std::u32string& input, std::string& output) noexcept;
 	
-	// UTF-16 Conversion Series (output parameter versions) - Deprecated
-	[[deprecated("Use return-value version ToUtf16LEFromUtf8(input) for simpler code.")]]
+	// UTF-16 Conversion Series (output parameter versions for buffer reuse)
 	bool ToUtf16LEFromUtf8(const std::string& input, std::u16string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf16BEFromUtf8(input) for simpler code.")]]
 	bool ToUtf16BEFromUtf8(const std::string& input, std::u16string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf16LEFromLocale(input) for simpler code.")]]
 	bool ToUtf16LEFromLocale(const std::string& input, std::u16string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf16BEFromLocale(input) for simpler code.")]]
 	bool ToUtf16BEFromLocale(const std::string& input, std::u16string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf16BEFromUtf16LE(input) for simpler code.")]]
 	bool ToUtf16BEFromUtf16LE(const std::u16string& input, std::u16string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf16LEFromUtf16BE(input) for simpler code.")]]
 	bool ToUtf16LEFromUtf16BE(const std::u16string& input, std::u16string& output) noexcept;
 	
-	// UTF-32 Conversion Series (output parameter versions) - Deprecated
-	[[deprecated("Use return-value version ToUtf32LEFromUtf8(input) for simpler code.")]]
+	// UTF-32 Conversion Series (output parameter versions for buffer reuse)
 	bool ToUtf32LEFromUtf8(const std::string& input, std::u32string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf32LEFromUtf16LE(input) for simpler code.")]]
 	bool ToUtf32LEFromUtf16LE(const std::u16string& input, std::u32string& output) noexcept;
-	[[deprecated("Use return-value version ToUtf32LEFromUtf16BE(input) for simpler code.")]]
 	bool ToUtf32LEFromUtf16BE(const std::u16string& input, std::u32string& output) noexcept;
 	
-	// Locale Conversion Series (output parameter versions) - Deprecated
-	[[deprecated("Use return-value version ToLocaleFromUtf16LE(input) for simpler code.")]]
+	// Locale Conversion Series (output parameter versions for buffer reuse)
 	bool ToLocaleFromUtf16LE(const std::u16string& input, std::string& output) noexcept;
-	[[deprecated("Use return-value version ToLocaleFromUtf16BE(input) for simpler code.")]]
 	bool ToLocaleFromUtf16BE(const std::u16string& input, std::string& output) noexcept;
-	[[deprecated("Use return-value version ToLocaleFromWideString(input) for simpler code.")]]
 	bool ToLocaleFromWideString(const std::wstring& input, std::string& output) noexcept;
 	
-	// Wide String Series (output parameter versions) - Deprecated
-	[[deprecated("Use return-value version ToWideStringFromLocale(input) for simpler code.")]]
+	// Wide String Series (output parameter versions for buffer reuse)
 	bool ToWideStringFromLocale(const std::string& input, std::wstring& output) noexcept;
-	[[deprecated("Use return-value version U16StringToWString(input) for simpler code.")]]
 	bool U16StringToWString(const std::u16string& input, std::wstring& output) noexcept;
 	
 	/**
@@ -1749,10 +1715,8 @@ public:
 	 * @param output Output string (caller-provided, memory reused)
 	 * @return true on success, false on failure
 	 * @note Avoids temporary string construction for string literals and substrings
-	 * @deprecated Use ConvertEncodingFast() with string_view for better error reporting.
-	 * @see ConvertEncodingFast
+	 * @note For detailed error reporting, use ConvertEncodingFast() which returns ErrorCode
 	 */
-	[[deprecated("Use ConvertEncodingFast() with string_view for better error reporting.")]]
 	bool ConvertEncoding(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
 	
 	/**
@@ -1765,18 +1729,10 @@ public:
 	 */
 	ErrorCode ConvertEncodingFast(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
 	
-	/**
-	 * @brief UTF-8 conversion with string_view input (output parameter versions)
-	 * @deprecated Use ConvertEncodingFast() with string_view for consistent API.
-	 * Specialized string_view overloads add unnecessary API surface.
-	 */
-	[[deprecated("Use ConvertEncodingFast() with string_view for consistent API.")]]
+	// string_view input overloads (output parameter versions for buffer reuse)
 	bool ToUtf8FromLocale(std::string_view input, std::string& output) noexcept;
-	[[deprecated("Use ConvertEncodingFast() with string_view for consistent API.")]]
 	bool ToLocaleFromUtf8(std::string_view input, std::string& output) noexcept;
-	[[deprecated("Use ConvertEncodingFast() with string_view for consistent API.")]]
 	bool ToUtf16LEFromUtf8(std::string_view input, std::u16string& output) noexcept;
-	[[deprecated("Use ConvertEncodingFast() with string_view for consistent API.")]]
 	bool ToUtf16BEFromUtf8(std::string_view input, std::u16string& output) noexcept;
 
 	//----------------------------------------------------------------------------------------------------------------------

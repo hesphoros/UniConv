@@ -5,3 +5,4 @@ CMakeLists.txt
 .github/prompts/*.md
 doc/
 docs/
+.cache/

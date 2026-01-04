@@ -40,6 +40,188 @@
 
 #include "UniConv.h"
 
+namespace {
+
+/**
+ * @brief 不区分大小写比较两个编码名称是否相等
+ * @param enc1 第一个编码名称
+ * @param enc2 第二个编码名称
+ * @return 如果编码名称等价则返回 true
+ * @note 支持常见别名，如 "UTF-8" == "utf-8" == "UTF8"
+ */
+inline bool CompareEncodingNamesEqual(const char* enc1, const char* enc2) noexcept {
+    if (!enc1 || !enc2) return false;
+    if (enc1 == enc2) return true;  // 指针相同
+    
+    // 快速长度检查（允许有分隔符差异，如 UTF-8 vs UTF8）
+    size_t len1 = strlen(enc1);
+    size_t len2 = strlen(enc2);
+    
+    // 如果长度差异超过2（考虑 "-" 或 "_" 分隔符），则不相等
+    if (len1 > len2 + 2 || len2 > len1 + 2) return false;
+    
+    // 规范化比较：忽略大小写和分隔符（'-', '_'）
+    size_t i = 0, j = 0;
+    while (i < len1 && j < len2) {
+        char c1 = enc1[i];
+        char c2 = enc2[j];
+        
+        // 跳过分隔符
+        if (c1 == '-' || c1 == '_') { ++i; continue; }
+        if (c2 == '-' || c2 == '_') { ++j; continue; }
+        
+        // 转换为小写比较
+        if (c1 >= 'A' && c1 <= 'Z') c1 += 32;
+        if (c2 >= 'A' && c2 <= 'Z') c2 += 32;
+        
+        if (c1 != c2) return false;
+        ++i; ++j;
+    }
+    
+    // 跳过剩余的分隔符
+    while (i < len1 && (enc1[i] == '-' || enc1[i] == '_')) ++i;
+    while (j < len2 && (enc2[j] == '-' || enc2[j] == '_')) ++j;
+    
+    return i == len1 && j == len2;
+}
+
+/**
+ * @brief 检查编码是否是 ASCII 兼容的
+ * @param encoding 编码名称
+ * @return 如果编码的 ASCII 字符（0x00-0x7F）与标准 ASCII 一致则返回 true
+ * @note ASCII 兼容编码包括：UTF-8, ISO-8859-*, Windows-125*, ASCII 等
+ *       非 ASCII 兼容编码：UTF-16, UTF-32, EBCDIC 等
+ */
+inline bool IsAsciiCompatibleEncoding(const char* encoding) noexcept {
+    if (!encoding) return false;
+    
+    std::string_view enc{encoding};
+    
+    // ASCII 兼容编码列表
+    // UTF-8 是 ASCII 兼容的
+    if (enc.find("UTF-8") != std::string_view::npos ||
+        enc.find("utf-8") != std::string_view::npos ||
+        enc.find("UTF8") != std::string_view::npos ||
+        enc.find("utf8") != std::string_view::npos) {
+        return true;
+    }
+    
+    // ASCII 本身
+    if (enc.find("ASCII") != std::string_view::npos ||
+        enc.find("ascii") != std::string_view::npos ||
+        enc.find("US-ASCII") != std::string_view::npos ||
+        enc.find("ANSI_X3.4") != std::string_view::npos) {
+        return true;
+    }
+    
+    // ISO-8859 系列（Latin 系列）
+    if (enc.find("ISO-8859") != std::string_view::npos ||
+        enc.find("ISO8859") != std::string_view::npos ||
+        enc.find("iso-8859") != std::string_view::npos ||
+        enc.find("LATIN") != std::string_view::npos ||
+        enc.find("latin") != std::string_view::npos) {
+        return true;
+    }
+    
+    // Windows 代码页 125x 系列
+    if (enc.find("Windows-125") != std::string_view::npos ||
+        enc.find("windows-125") != std::string_view::npos ||
+        enc.find("CP125") != std::string_view::npos ||
+        enc.find("cp125") != std::string_view::npos) {
+        return true;
+    }
+    
+    // 中文 GBK/GB2312/GB18030（ASCII 兼容）
+    if (enc.find("GBK") != std::string_view::npos ||
+        enc.find("gbk") != std::string_view::npos ||
+        enc.find("GB2312") != std::string_view::npos ||
+        enc.find("gb2312") != std::string_view::npos ||
+        enc.find("GB18030") != std::string_view::npos ||
+        enc.find("gb18030") != std::string_view::npos) {
+        return true;
+    }
+    
+    // Big5（ASCII 兼容）
+    if (enc.find("Big5") != std::string_view::npos ||
+        enc.find("BIG5") != std::string_view::npos ||
+        enc.find("big5") != std::string_view::npos) {
+        return true;
+    }
+    
+    // 日文编码（ASCII 兼容）
+    if (enc.find("Shift_JIS") != std::string_view::npos ||
+        enc.find("SHIFT_JIS") != std::string_view::npos ||
+        enc.find("shift_jis") != std::string_view::npos ||
+        enc.find("SJIS") != std::string_view::npos ||
+        enc.find("sjis") != std::string_view::npos ||
+        enc.find("EUC-JP") != std::string_view::npos ||
+        enc.find("euc-jp") != std::string_view::npos ||
+        enc.find("EUCJP") != std::string_view::npos) {
+        return true;
+    }
+    
+    // 韩文编码（ASCII 兼容）
+    if (enc.find("EUC-KR") != std::string_view::npos ||
+        enc.find("euc-kr") != std::string_view::npos ||
+        enc.find("EUCKR") != std::string_view::npos) {
+        return true;
+    }
+    
+    // KOI8 系列（ASCII 兼容）
+    if (enc.find("KOI8") != std::string_view::npos ||
+        enc.find("koi8") != std::string_view::npos) {
+        return true;
+    }
+    
+    // 非 ASCII 兼容编码：UTF-16, UTF-32, UCS-2, UCS-4, EBCDIC
+    // 这些需要走 iconv 转换
+    return false;
+}
+
+/**
+ * @brief 快速检查字符串是否全是 ASCII 字符（所有字节 < 0x80）
+ * @param input 输入字符串
+ * @return 如果所有字节都是 ASCII（0x00-0x7F）则返回 true
+ * @note 使用位运算优化，一次检查 8 个字节
+ */
+inline bool IsAllAscii(const std::string& input) noexcept {
+    const size_t len = input.size();
+    const unsigned char* data = reinterpret_cast<const unsigned char*>(input.data());
+    
+    // 空字符串视为 ASCII
+    if (len == 0) return true;
+    
+    size_t i = 0;
+    
+    // 使用 64 位批量检查（每次检查 8 字节）
+    // 如果任何字节的最高位为 1，则 OR 结果的对应位也为 1
+    if (len >= 8) {
+        const uint64_t* ptr64 = reinterpret_cast<const uint64_t*>(data);
+        const size_t count64 = len / 8;
+        
+        for (size_t j = 0; j < count64; ++j) {
+            // 检查是否有任何字节 >= 0x80
+            // 0x8080808080808080 是每个字节最高位的掩码
+            if (ptr64[j] & 0x8080808080808080ULL) {
+                return false;
+            }
+        }
+        i = count64 * 8;
+    }
+    
+    // 处理剩余字节
+    for (; i < len; ++i) {
+        if (data[i] >= 0x80) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+} // anonymous namespace
+
+
 #if !UNICONV_NO_THREAD_LOCAL
 // Thread-local cache instance definition (only when thread_local is enabled)
 thread_local UniConv::ThreadLocalCache UniConv::t_cache;
@@ -288,9 +470,10 @@ std::string UniConv::GetCurrentSystemEncoding() noexcept
 #endif
 }
 
-// ===================== Error handling adapters =====================
+
 /**
  * Convert StringResult to IConvResult for backward compatibility
+ * @deprecated Use CompactResult<std::string> instead
  */
 UniConv::IConvResult UniConv::StringResultToIConvResult(const CompactResult<std::string>& stringResult) {
     IConvResult result;
@@ -310,6 +493,7 @@ UniConv::IConvResult UniConv::StringResultToIConvResult(const CompactResult<std:
 
 /**
  * Convert IConvResult to StringResult for unified internal processing
+ * @deprecated Use CompactResult<std::string> instead
  */
 CompactResult<std::string> UniConv::IConvResultToStringResult(const IConvResult& iconvResult) {
     if (iconvResult.error_code == 0) {
@@ -341,6 +525,7 @@ CompactResult<std::string> UniConv::IConvResultToStringResult(const IConvResult&
 }
 
 // ===================== General convert functions =====================
+// @deprecated Use ConvertEncodingFast instead
 UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding) {
     // Use the new high-performance ConvertEncodingFast internally and convert the result
     auto result = ConvertEncodingFast(input, fromEncoding, toEncoding);
@@ -919,7 +1104,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     m_iconvDescriptorCacheMap.insert_or_assign(key, std::move(new_entry));
 
     #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-    std::cout << "Create and cached iconv descriptor: " << fromcode << ">" << tocode << std::endl;
+    std::wcout << "Create and cached iconv descriptor: " << fromcode << ">" << tocode << std::endl;
     #endif
 
     return iconvPtr;
@@ -974,7 +1159,7 @@ void UniConv::CleanupIconvCache() {
     m_iconvDescriptorCacheMap.clear();
     
     #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-        std::cout << "iconv descriptor cache cleared" << std::endl;
+        std::wcout << "iconv descriptor cache cleared" << std::endl;
     #endif
 }
 
@@ -1007,6 +1192,23 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,const char* f
     if (UNICONV_UNLIKELY(input.empty())) {
         return StringResult::Success(std::string{});
     }
+
+    // 同编码直接返回（零转换开销）
+    // 使用不区分大小写的比较，因为编码名称可能有大小写差异
+    if (UNICONV_LIKELY(CompareEncodingNamesEqual(fromEncoding, toEncoding))) {
+        return StringResult::Success(std::string(input));
+    }
+    
+    // ASCII 内容的快速处理
+    // 对于 ASCII 兼容编码（UTF-8, ISO-8859-*, Windows-125*, ASCII 等），
+    // 如果内容全是 ASCII（所有字节 < 0x80），可以直接复制
+    if (IsAsciiCompatibleEncoding(fromEncoding) && IsAsciiCompatibleEncoding(toEncoding)) {
+        if (UNICONV_LIKELY(IsAllAscii(input))) {
+            return StringResult::Success(std::string(input));
+        }
+    }
+    
+    //==========================================================================
 
     // 预取输入数据到缓存
     UNICONV_PREFETCH(input.data(), 0, 3);
@@ -1646,6 +1848,24 @@ ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fro
     if (UNICONV_UNLIKELY(input.empty())) {
         return ErrorCode::Success;
     }
+    
+
+    
+    // 同编码直接返回（零转换开销）
+    if (UNICONV_LIKELY(CompareEncodingNamesEqual(fromEncoding, toEncoding))) {
+        output = input;
+        return ErrorCode::Success;
+    }
+    
+    // 纯 ASCII 内容的快速处理
+    if (IsAsciiCompatibleEncoding(fromEncoding) && IsAsciiCompatibleEncoding(toEncoding)) {
+        if (UNICONV_LIKELY(IsAllAscii(input))) {
+            output = input;
+            return ErrorCode::Success;
+        }
+    }
+    
+    //==========================================================================
     
     // Prefetch input data to cache
     UNICONV_PREFETCH(input.data(), 0, 3);
