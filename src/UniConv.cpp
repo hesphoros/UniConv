@@ -1365,16 +1365,21 @@ std::pair<UniConv::BomEncoding, std::string_view> UniConv::DetectAndRemoveBom(co
     const unsigned char* bytes = reinterpret_cast<const unsigned char*>(data.data());
     size_t len = data.size();
 
+    // UTF-8 BOM (3 bytes)
     if (len >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
         return { BomEncoding::UTF8, data.substr(3) };
-    if (len >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
-        return { BomEncoding::UTF16_LE, data.substr(2) };
-    if (len >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
-        return { BomEncoding::UTF16_BE, data.substr(2) };
+    
+    // UTF-32 检测必须在 UTF-16 之前！（UTF-32LE BOM 以 FF FE 开头，会被误判为 UTF-16LE）
     if (len >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0x00 && bytes[3] == 0x00)
         return { BomEncoding::UTF32_LE, data.substr(4) };
     if (len >= 4 && bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0xFE && bytes[3] == 0xFF)
         return { BomEncoding::UTF32_BE, data.substr(4) };
+    
+    // UTF-16 检测（在 UTF-32 之后）
+    if (len >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+        return { BomEncoding::UTF16_LE, data.substr(2) };
+    if (len >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+        return { BomEncoding::UTF16_BE, data.substr(2) };
 
     return { BomEncoding::None, data };
 }

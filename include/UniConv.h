@@ -971,16 +971,21 @@ public:
     class BufferLease {
         Buffer*           buffer_;
         StringBufferPool* pool_;
-        bool              is_from_pool_;  // 标记是否来自池（用于统计）
+        bool              is_from_pool_;   // 标记是否来自池（用于统计）
+        bool              is_emergency_;   // 标记是否是 emergency_buffer（不能 delete）
 
     public:
-        BufferLease(Buffer* buf, StringBufferPool* pool, bool from_pool = true) noexcept
-            : buffer_(buf), pool_(pool), is_from_pool_(from_pool) {}
+        BufferLease(Buffer* buf, StringBufferPool* pool, bool from_pool = true, bool is_emergency = false) noexcept
+            : buffer_(buf), pool_(pool), is_from_pool_(from_pool), is_emergency_(is_emergency) {}
 
         ~BufferLease() noexcept {
             if (buffer_) {
                 if (is_from_pool_) {
                     // 从池中获取的缓冲区，清理并标记为可用
+                    buffer_->data.clear();
+                    buffer_->in_use.store(false, std::memory_order_release);
+                } else if (is_emergency_) {
+                    // emergency_buffer 是 static thread_local，只清理不 delete
                     buffer_->data.clear();
                     buffer_->in_use.store(false, std::memory_order_release);
                 } else {
@@ -992,7 +997,7 @@ public:
 
         // 移动构造和赋值
         BufferLease(BufferLease&& other) noexcept
-            : buffer_(other.buffer_), pool_(other.pool_), is_from_pool_(other.is_from_pool_) {
+            : buffer_(other.buffer_), pool_(other.pool_), is_from_pool_(other.is_from_pool_), is_emergency_(other.is_emergency_) {
             other.buffer_ = nullptr;
         }
 
@@ -1002,6 +1007,9 @@ public:
                     if (is_from_pool_) {
                         buffer_->data.clear();
                         buffer_->in_use.store(false, std::memory_order_release);
+                    } else if (is_emergency_) {
+                        buffer_->data.clear();
+                        buffer_->in_use.store(false, std::memory_order_release);
                     } else {
                         delete buffer_;  // 释放临时分配的内存
                     }
@@ -1009,6 +1017,7 @@ public:
                 buffer_ = other.buffer_;
                 pool_ = other.pool_;
                 is_from_pool_ = other.is_from_pool_;
+                is_emergency_ = other.is_emergency_;
                 other.buffer_ = nullptr;
             }
             return *this;
@@ -1135,17 +1144,17 @@ public:
         Buffer* temp = new (std::nothrow) Buffer(hint_size);
         if (temp) {
             temp->in_use.store(true);
-            return BufferLease(temp, nullptr, false);
+            return BufferLease(temp, nullptr, false, false);
         }
         
-        // Last resort: thread-local static buffer
+        // Last resort: thread-local static buffer (cannot be deleted!)
         static thread_local Buffer emergency_buffer(SMALL_BUFFER_SIZE);
         emergency_buffer.data.clear();
         if (hint_size > emergency_buffer.data.capacity()) {
             try { emergency_buffer.data.reserve(hint_size); } catch (...) {}
         }
         emergency_buffer.in_use.store(true);
-        return BufferLease(&emergency_buffer, nullptr, false);
+        return BufferLease(&emergency_buffer, nullptr, false, true);  // is_emergency = true
     }
 
     /**
