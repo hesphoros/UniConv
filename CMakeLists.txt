@@ -38,6 +38,36 @@ option(UNICONV_BUILD_TESTS "Build tests" OFF)
 option(UNICONV_BUILD_SHARED "Build shared library instead of static" OFF)
 option(UNICONV_NO_THREAD_LOCAL "Disable thread_local storage (may be required for some DLL builds)" OFF)
 option(UNICONV_USE_BUNDLED_LIBICONV "Use bundled libiconv sources in repository (ON preserves current behavior)" ON)
+option(UNICONV_USE_SIMDUTF "Use simdutf for SIMD-accelerated UTF conversions (optional dependency)" OFF)
+
+# ============================================================================
+# 可选依赖：simdutf（SIMD 加速 UTF 转换）
+# ============================================================================
+
+if(UNICONV_USE_SIMDUTF)
+    message(STATUS "UniConv: SIMD acceleration enabled via simdutf")
+    
+    include(FetchContent)
+    
+    FetchContent_Declare(
+        simdutf
+        GIT_REPOSITORY https://github.com/simdutf/simdutf.git
+        GIT_TAG        v7.7.1
+        GIT_SHALLOW    TRUE
+    )
+    
+    # simdutf 构建选项
+    set(SIMDUTF_TESTS OFF CACHE BOOL "" FORCE)
+    set(SIMDUTF_BENCHMARKS OFF CACHE BOOL "" FORCE)
+    set(SIMDUTF_TOOLS OFF CACHE BOOL "" FORCE)
+    set(SIMDUTF_ICONV OFF CACHE BOOL "" FORCE)
+    
+    FetchContent_MakeAvailable(simdutf)
+    
+    message(STATUS "UniConv: simdutf fetched successfully")
+else()
+    message(STATUS "UniConv: SIMD acceleration disabled (use -DUNICONV_USE_SIMDUTF=ON to enable)")
+endif()
 
 # ============================================================================
 # 配置文件生成
@@ -197,6 +227,12 @@ if(UNICONV_NO_THREAD_LOCAL)
     target_compile_definitions(UniConv PUBLIC UNICONV_NO_THREAD_LOCAL=1)
 endif()
 
+# simdutf 集成（可选 SIMD 加速）
+if(UNICONV_USE_SIMDUTF)
+    target_compile_definitions(UniConv PUBLIC UNICONV_HAS_SIMDUTF=1)
+    target_link_libraries(UniConv PUBLIC simdutf::simdutf)
+endif()
+
 # ============================================================================
 # 安装规则（仅主项目）
 # ============================================================================
@@ -292,6 +328,7 @@ message(STATUS "  Subproject: ${UNICONV_IS_SUBPROJECT}")
 message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: 17")
 message(STATUS "  Shared library: ${UNICONV_BUILD_SHARED}")
+message(STATUS "  SIMD acceleration (simdutf): ${UNICONV_USE_SIMDUTF}")
 message(STATUS "  Tests: ${UNICONV_BUILD_TESTS}")
 if(NOT UNICONV_IS_SUBPROJECT)
     message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")

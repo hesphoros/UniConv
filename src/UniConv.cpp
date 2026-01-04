@@ -35,10 +35,19 @@
 *  Change Histrory :
 *  <Date>     | <Version> | <Author>       | <Description>
 *  2025/12/29 | 3.0.0.1   | hesphoros      | Refactor error handling system
+*  <Date>     | <Version> | <Author>       | <Description>
+*  2026/1/4   | 3.0.0.2   | hesphoros      | Add simdutf SIMD acceleration support
 
 *****************************************************************************/
 
 #include "UniConv.h"
+
+//==============================================================================
+// 可选：simdutf（SIMD 加速 UTF 转换）
+//==============================================================================
+#ifdef UNICONV_HAS_SIMDUTF
+    #include <simdutf.h>
+#endif
 
 namespace {
 
@@ -218,6 +227,225 @@ inline bool IsAllAscii(const std::string& input) noexcept {
     
     return true;
 }
+
+//==============================================================================
+// simdutf 快速路径辅助函数（仅在启用 simdutf 时编译）
+//==============================================================================
+#ifdef UNICONV_HAS_SIMDUTF
+
+/**
+ * @brief 检查是否为 UTF-8 到 UTF-16LE 的转换
+ */
+inline bool IsUtf8ToUtf16LE(const char* from, const char* to) noexcept {
+    std::string_view from_sv{from};
+    std::string_view to_sv{to};
+    
+    bool is_from_utf8 = (from_sv.find("UTF-8") != std::string_view::npos ||
+                         from_sv.find("utf-8") != std::string_view::npos ||
+                         from_sv.find("UTF8") != std::string_view::npos ||
+                         from_sv.find("utf8") != std::string_view::npos);
+    
+    bool is_to_utf16le = (to_sv.find("UTF-16LE") != std::string_view::npos ||
+                          to_sv.find("utf-16le") != std::string_view::npos ||
+                          to_sv.find("UTF16LE") != std::string_view::npos);
+    
+    return is_from_utf8 && is_to_utf16le;
+}
+
+/**
+ * @brief 检查是否为 UTF-16LE 到 UTF-8 的转换
+ */
+inline bool IsUtf16LEToUtf8(const char* from, const char* to) noexcept {
+    std::string_view from_sv{from};
+    std::string_view to_sv{to};
+    
+    bool is_from_utf16le = (from_sv.find("UTF-16LE") != std::string_view::npos ||
+                            from_sv.find("utf-16le") != std::string_view::npos ||
+                            from_sv.find("UTF16LE") != std::string_view::npos);
+    
+    bool is_to_utf8 = (to_sv.find("UTF-8") != std::string_view::npos ||
+                       to_sv.find("utf-8") != std::string_view::npos ||
+                       to_sv.find("UTF8") != std::string_view::npos ||
+                       to_sv.find("utf8") != std::string_view::npos);
+    
+    return is_from_utf16le && is_to_utf8;
+}
+
+/**
+ * @brief 检查是否为 UTF-8 到 UTF-16BE 的转换
+ */
+inline bool IsUtf8ToUtf16BE(const char* from, const char* to) noexcept {
+    std::string_view from_sv{from};
+    std::string_view to_sv{to};
+    
+    bool is_from_utf8 = (from_sv.find("UTF-8") != std::string_view::npos ||
+                         from_sv.find("utf-8") != std::string_view::npos ||
+                         from_sv.find("UTF8") != std::string_view::npos ||
+                         from_sv.find("utf8") != std::string_view::npos);
+    
+    bool is_to_utf16be = (to_sv.find("UTF-16BE") != std::string_view::npos ||
+                          to_sv.find("utf-16be") != std::string_view::npos ||
+                          to_sv.find("UTF16BE") != std::string_view::npos);
+    
+    return is_from_utf8 && is_to_utf16be;
+}
+
+/**
+ * @brief 检查是否为 UTF-16BE 到 UTF-8 的转换
+ */
+inline bool IsUtf16BEToUtf8(const char* from, const char* to) noexcept {
+    std::string_view from_sv{from};
+    std::string_view to_sv{to};
+    
+    bool is_from_utf16be = (from_sv.find("UTF-16BE") != std::string_view::npos ||
+                            from_sv.find("utf-16be") != std::string_view::npos ||
+                            from_sv.find("UTF16BE") != std::string_view::npos);
+    
+    bool is_to_utf8 = (to_sv.find("UTF-8") != std::string_view::npos ||
+                       to_sv.find("utf-8") != std::string_view::npos ||
+                       to_sv.find("UTF8") != std::string_view::npos ||
+                       to_sv.find("utf8") != std::string_view::npos);
+    
+    return is_from_utf16be && is_to_utf8;
+}
+
+/**
+ * @brief 使用 simdutf 进行 UTF-8 到 UTF-16LE 转换
+ */
+inline StringResult ConvertUtf8ToUtf16LE_SIMD(const std::string& input) noexcept {
+    // 先验证 UTF-8 是否有效
+    if (!simdutf::validate_utf8(input.data(), input.size())) {
+        return StringResult::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    // 计算输出长度
+    size_t utf16_len = simdutf::utf16_length_from_utf8(input.data(), input.size());
+    
+    // 分配输出缓冲区
+    std::u16string utf16_output(utf16_len, u'\0');
+    
+    // 执行转换
+    size_t written = simdutf::convert_utf8_to_utf16le(
+        input.data(), input.size(),
+        utf16_output.data());
+    
+    if (written == 0 && utf16_len > 0) {
+        return StringResult::Failure(ErrorCode::ConversionFailed);
+    }
+    
+    // 转换为字节字符串
+    std::string result;
+    result.resize(utf16_output.size() * sizeof(char16_t));
+    std::memcpy(result.data(), utf16_output.data(), result.size());
+    
+    return StringResult::Success(std::move(result));
+}
+
+/**
+ * @brief 使用 simdutf 进行 UTF-16LE 到 UTF-8 转换
+ */
+inline StringResult ConvertUtf16LEToUtf8_SIMD(const std::string& input) noexcept {
+    // 检查输入长度是否为偶数
+    if (input.size() % 2 != 0) {
+        return StringResult::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    const char16_t* utf16_data = reinterpret_cast<const char16_t*>(input.data());
+    size_t utf16_len = input.size() / 2;
+    
+    // 验证 UTF-16LE
+    if (!simdutf::validate_utf16le(utf16_data, utf16_len)) {
+        return StringResult::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    // 计算输出长度
+    size_t utf8_len = simdutf::utf8_length_from_utf16le(utf16_data, utf16_len);
+    
+    // 分配输出缓冲区
+    std::string result(utf8_len, '\0');
+    
+    // 执行转换
+    size_t written = simdutf::convert_utf16le_to_utf8(
+        utf16_data, utf16_len,
+        result.data());
+    
+    if (written == 0 && utf8_len > 0) {
+        return StringResult::Failure(ErrorCode::ConversionFailed);
+    }
+    
+    result.resize(written);
+    return StringResult::Success(std::move(result));
+}
+
+/**
+ * @brief 使用 simdutf 进行 UTF-8 到 UTF-16BE 转换
+ */
+inline StringResult ConvertUtf8ToUtf16BE_SIMD(const std::string& input) noexcept {
+    // 先验证 UTF-8 是否有效
+    if (!simdutf::validate_utf8(input.data(), input.size())) {
+        return StringResult::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    // 计算输出长度
+    size_t utf16_len = simdutf::utf16_length_from_utf8(input.data(), input.size());
+    
+    // 分配输出缓冲区
+    std::u16string utf16_output(utf16_len, u'\0');
+    
+    // 执行转换
+    size_t written = simdutf::convert_utf8_to_utf16be(
+        input.data(), input.size(),
+        utf16_output.data());
+    
+    if (written == 0 && utf16_len > 0) {
+        return StringResult::Failure(ErrorCode::ConversionFailed);
+    }
+    
+    // 转换为字节字符串
+    std::string result;
+    result.resize(utf16_output.size() * sizeof(char16_t));
+    std::memcpy(result.data(), utf16_output.data(), result.size());
+    
+    return StringResult::Success(std::move(result));
+}
+
+/**
+ * @brief 使用 simdutf 进行 UTF-16BE 到 UTF-8 转换
+ */
+inline StringResult ConvertUtf16BEToUtf8_SIMD(const std::string& input) noexcept {
+    // 检查输入长度是否为偶数
+    if (input.size() % 2 != 0) {
+        return StringResult::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    const char16_t* utf16_data = reinterpret_cast<const char16_t*>(input.data());
+    size_t utf16_len = input.size() / 2;
+    
+    // 验证 UTF-16BE
+    if (!simdutf::validate_utf16be(utf16_data, utf16_len)) {
+        return StringResult::Failure(ErrorCode::InvalidSequence);
+    }
+    
+    // 计算输出长度
+    size_t utf8_len = simdutf::utf8_length_from_utf16be(utf16_data, utf16_len);
+    
+    // 分配输出缓冲区
+    std::string result(utf8_len, '\0');
+    
+    // 执行转换
+    size_t written = simdutf::convert_utf16be_to_utf8(
+        utf16_data, utf16_len,
+        result.data());
+    
+    if (written == 0 && utf8_len > 0) {
+        return StringResult::Failure(ErrorCode::ConversionFailed);
+    }
+    
+    result.resize(written);
+    return StringResult::Success(std::move(result));
+}
+
+#endif // UNICONV_HAS_SIMDUTF
 
 } // anonymous namespace
 
@@ -1209,6 +1437,27 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,const char* f
     }
     
     //==========================================================================
+    //  simdutf SIMD 加速快速路径（可选）
+    //==========================================================================
+#ifdef UNICONV_HAS_SIMDUTF
+    // UTF-8 → UTF-16LE
+    if (IsUtf8ToUtf16LE(fromEncoding, toEncoding)) {
+        return ConvertUtf8ToUtf16LE_SIMD(input);
+    }
+    // UTF-16LE → UTF-8
+    if (IsUtf16LEToUtf8(fromEncoding, toEncoding)) {
+        return ConvertUtf16LEToUtf8_SIMD(input);
+    }
+    // UTF-8 → UTF-16BE
+    if (IsUtf8ToUtf16BE(fromEncoding, toEncoding)) {
+        return ConvertUtf8ToUtf16BE_SIMD(input);
+    }
+    // UTF-16BE → UTF-8
+    if (IsUtf16BEToUtf8(fromEncoding, toEncoding)) {
+        return ConvertUtf16BEToUtf8_SIMD(input);
+    }
+#endif // UNICONV_HAS_SIMDUTF
+    //==========================================================================
 
     // 预取输入数据到缓存
     UNICONV_PREFETCH(input.data(), 0, 3);
@@ -1865,6 +2114,47 @@ ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fro
         }
     }
     
+    //==========================================================================
+    // P1: simdutf SIMD 加速快速路径（可选）
+    //==========================================================================
+#ifdef UNICONV_HAS_SIMDUTF
+    // UTF-8 → UTF-16LE
+    if (IsUtf8ToUtf16LE(fromEncoding, toEncoding)) {
+        auto result = ConvertUtf8ToUtf16LE_SIMD(input);
+        if (result.IsSuccess()) {
+            output = std::move(result).GetValue();
+            return ErrorCode::Success;
+        }
+        return result.GetErrorCode();
+    }
+    // UTF-16LE → UTF-8
+    if (IsUtf16LEToUtf8(fromEncoding, toEncoding)) {
+        auto result = ConvertUtf16LEToUtf8_SIMD(input);
+        if (result.IsSuccess()) {
+            output = std::move(result).GetValue();
+            return ErrorCode::Success;
+        }
+        return result.GetErrorCode();
+    }
+    // UTF-8 → UTF-16BE
+    if (IsUtf8ToUtf16BE(fromEncoding, toEncoding)) {
+        auto result = ConvertUtf8ToUtf16BE_SIMD(input);
+        if (result.IsSuccess()) {
+            output = std::move(result).GetValue();
+            return ErrorCode::Success;
+        }
+        return result.GetErrorCode();
+    }
+    // UTF-16BE → UTF-8
+    if (IsUtf16BEToUtf8(fromEncoding, toEncoding)) {
+        auto result = ConvertUtf16BEToUtf8_SIMD(input);
+        if (result.IsSuccess()) {
+            output = std::move(result).GetValue();
+            return ErrorCode::Success;
+        }
+        return result.GetErrorCode();
+    }
+#endif // UNICONV_HAS_SIMDUTF
     //==========================================================================
     
     // Prefetch input data to cache

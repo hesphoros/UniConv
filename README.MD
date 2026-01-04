@@ -95,6 +95,22 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 ```
 
+#### 启用 SIMD 加速（可选）
+
+UniConv 支持通过 [simdutf](https://github.com/simdutf/simdutf) 库实现 SIMD 加速的 UTF 转换。这是可选功能，默认关闭。
+
+```bash
+# 启用 simdutf SIMD 加速（通过 FetchContent 自动下载）
+cmake .. -DCMAKE_BUILD_TYPE=Release -DUNICONV_USE_SIMDUTF=ON
+cmake --build . --config Release
+```
+
+**SIMD 加速支持的编码转换**：
+- UTF-8 ↔ UTF-16LE
+- UTF-8 ↔ UTF-16BE
+
+**预期性能提升**：ASCII 主导文本 5-15x 性能提升
+
 ## 使用方法
 
 ### 基本转换
