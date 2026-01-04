@@ -45,20 +45,22 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <cwchar>
 #include <clocale>
 #include <sstream>
 #include <utility>
 #include <vector>
+#include <list>
 #include <string_view>
 #include <cerrno>
 #include <fstream>
 #include <cstring>
 #include <system_error>
 #include <mutex>
-#include <shared_mutex>
 #include <memory>
 #include <algorithm>
+#include "parallel_hashmap/phmap.h"
 #include <functional>
 #include <cstdlib>
 #include <type_traits>
@@ -214,6 +216,48 @@ namespace detail {
         }
         return hash;
     }
+
+    /**
+     * @brief 64-bit FNV-1a hash for runtime string hashing
+     * @param str The input string
+     * @param len The length of the string
+     * @return 64-bit hash value
+     */
+    inline uint64_t fnv1a_hash64(const char* str, size_t len) noexcept {
+        uint64_t hash = 14695981039346656037ULL;  // FNV-1a 64-bit offset basis
+        for (size_t i = 0; i < len; ++i) {
+            hash ^= static_cast<uint64_t>(static_cast<unsigned char>(str[i]));
+            hash *= 1099511628211ULL;  // FNV-1a 64-bit prime
+        }
+        return hash;
+    }
+
+    /**
+     * @brief Compute combined hash key for encoding pair (from -> to)
+     * @param fromcode Source encoding name
+     * @param from_len Length of source encoding name
+     * @param tocode Target encoding name  
+     * @param to_len Length of target encoding name
+     * @return Combined 64-bit hash (high 32 bits: from, low 32 bits: to)
+     * 
+     * This eliminates string concatenation overhead in cache key generation.
+     * Time complexity: O(from_len + to_len) with no memory allocation.
+     */
+    inline uint64_t MakeEncodingPairKey(const char* fromcode, size_t from_len,
+                                         const char* tocode, size_t to_len) noexcept {
+        // Use 64-bit hash combining both encodings
+        // Start with from encoding hash
+        uint64_t hash = fnv1a_hash64(fromcode, from_len);
+        // Add separator and continue hashing with to encoding
+        hash ^= static_cast<uint64_t>('>');
+        hash *= 1099511628211ULL;
+        // Continue hashing with to encoding
+        for (size_t i = 0; i < to_len; ++i) {
+            hash ^= static_cast<uint64_t>(static_cast<unsigned char>(tocode[i]));
+            hash *= 1099511628211ULL;
+        }
+        return hash;
+    }
 	/**
      * @brief User-defined literal operator for computing FNV-1a hash values.
      *
@@ -288,43 +332,43 @@ inline constexpr std::string_view current_cpp_standard() {
 
 // Lightweight error code enumeration, only 1 byte
 enum class ErrorCode : uint8_t {
-    Success					 	= 0,  /*!< Success */
-    InvalidParameter 			= 1,  /*!< Invalid parameter */
-    InvalidSourceEncoding 		= 2,  /*!< Invalid source encoding */
-    InvalidTargetEncoding 		= 3,  /*!< Invalid target encoding */
-    ConversionFailed 			= 4,  /*!< Conversion failed */
-    IncompleteSequence 			= 5,  /*!< Incomplete multibyte sequence */
-    InvalidSequence 			= 6,  /*!< Invalid multibyte sequence */
-    OutOfMemory 				= 7,  /*!< Out of memory */
-    BufferTooSmall 				= 8,  /*!< Buffer too small */
-    FileNotFound 				= 9,  /*!< File not found */
-    FileReadError				= 10, /*!< File read error */
-    FileWriteError				= 11, /*!< File write error */
-    InternalError				= 12, /*!< Internal error */
-    EncodingNotFound			= 13, /*!< Encoding not found */
-    SystemError					= 14  /*!< System error */
+    Success                     = 0,  /*!< Success */
+    InvalidParameter            = 1,  /*!< Invalid parameter */
+    InvalidSourceEncoding       = 2,  /*!< Invalid source encoding */
+    InvalidTargetEncoding       = 3,  /*!< Invalid target encoding */
+    ConversionFailed            = 4,  /*!< Conversion failed */
+    IncompleteSequence          = 5,  /*!< Incomplete multibyte sequence */
+    InvalidSequence             = 6,  /*!< Invalid multibyte sequence */
+    OutOfMemory                 = 7,  /*!< Out of memory */
+    BufferTooSmall              = 8,  /*!< Buffer too small */
+    FileNotFound                = 9,  /*!< File not found */
+    FileReadError               = 10, /*!< File read error */
+    FileWriteError              = 11, /*!< File write error */
+    InternalError               = 12, /*!< Internal error */
+    EncodingNotFound            = 13, /*!< Encoding not found */
+    SystemError                 = 14  /*!< System error */
 };
 
 // Compile-time error message mapping, zero runtime overhead
 namespace detail {
     constexpr const char* GetErrorMessage(ErrorCode code) noexcept {
         switch (code) {
-            case ErrorCode::Success: 					return "Success";
-            case ErrorCode::InvalidParameter: 			return "Invalid parameter";
-            case ErrorCode::InvalidSourceEncoding: 		return "Invalid source encoding";
-            case ErrorCode::InvalidTargetEncoding: 		return "Invalid target encoding";
-            case ErrorCode::ConversionFailed: 			return "Conversion failed";
-            case ErrorCode::IncompleteSequence: 		return "Incomplete multibyte sequence";
-            case ErrorCode::InvalidSequence: 			return "Invalid multibyte sequence";
-            case ErrorCode::OutOfMemory: 				return "Out of memory";
-            case ErrorCode::BufferTooSmall: 			return "Buffer too small";
-            case ErrorCode::FileNotFound: 				return "File not found";
-            case ErrorCode::FileReadError: 				return "File read error";
-            case ErrorCode::FileWriteError: 		    return "File write error";
-            case ErrorCode::InternalError: 				return "Internal error";
-            case ErrorCode::EncodingNotFound: 			return "Encoding not found";
-            case ErrorCode::SystemError: 				return "System error";
-            default: 									return "Unknown error";
+            case ErrorCode::Success:                    return "Success";
+            case ErrorCode::InvalidParameter:           return "Invalid parameter";
+            case ErrorCode::InvalidSourceEncoding:      return "Invalid source encoding";
+            case ErrorCode::InvalidTargetEncoding:      return "Invalid target encoding";
+            case ErrorCode::ConversionFailed:           return "Conversion failed";
+            case ErrorCode::IncompleteSequence:         return "Incomplete multibyte sequence";
+            case ErrorCode::InvalidSequence:            return "Invalid multibyte sequence";
+            case ErrorCode::OutOfMemory:                return "Out of memory";
+            case ErrorCode::BufferTooSmall:             return "Buffer too small";
+            case ErrorCode::FileNotFound:               return "File not found";
+            case ErrorCode::FileReadError:              return "File read error";
+            case ErrorCode::FileWriteError:             return "File write error";
+            case ErrorCode::InternalError:              return "Internal error";
+            case ErrorCode::EncodingNotFound:           return "Encoding not found";
+            case ErrorCode::SystemError:                return "System error";
+            default:                                    return "Unknown error";
         }
     }
 }
@@ -334,8 +378,8 @@ template<typename T>
 class [[nodiscard]] CompactResult {
 private:
     union {
-        T 				 value_;
-        ErrorCode 	error_code_;
+        T                value_;
+        ErrorCode   error_code_;
     };
     bool has_value_;  // 状态标志
 
@@ -367,10 +411,11 @@ public:
         if (this != &other) {
             if (has_value_) {
                 value_.~T();
+                has_value_ = false;  // 先清除标志确保状态一致
             }
-            has_value_ = other.has_value_;
-            if (has_value_) {
+            if (other.has_value_) {
                 new(&value_) T(std::move(other.value_));
+                has_value_ = true;  // 成功后才设置标志
             } else {
                 error_code_ = other.error_code_;
             }
@@ -380,9 +425,10 @@ public:
     
     // 拷贝构造
     CompactResult(const CompactResult& other) noexcept(std::is_nothrow_copy_constructible_v<T>)
-        : has_value_(other.has_value_) {
-        if (has_value_) {
-            new(&value_) T(other.value_);
+        : has_value_(false) {  // 初始化为失败状态确保异常安全
+        if (other.has_value_) {
+            new(&value_) T(other.value_);  // 若抛异常，has_value_ 仍为 false，析构安全
+            has_value_ = true;  // 成功后才设置标志
         } else {
             error_code_ = other.error_code_;
         }
@@ -393,10 +439,11 @@ public:
         if (this != &other) {
             if (has_value_) {
                 value_.~T();
+                has_value_ = false;  // 先清除标志确保状态一致
             }
-            has_value_ = other.has_value_;
-            if (has_value_) {
-                new(&value_) T(other.value_);
+            if (other.has_value_) {
+                new(&value_) T(other.value_);  // 若抛异常，对象处于清理后的有效状态
+                has_value_ = true;  // 成功后才设置标志
             } else {
                 error_code_ = other.error_code_;
             }
@@ -410,19 +457,18 @@ public:
         }
     }
     
-    // 热路径优化：内联+分支预测
+
     [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     bool IsSuccess() const noexcept {
         return UNICONV_LIKELY(has_value_);
     }
     
-    // 显式bool转换 - 热路径优化
+    
     UNICONV_ALWAYS_INLINE UNICONV_HOT
     explicit operator bool() const noexcept {
         return IsSuccess();
     }
 
-    // 快速访问，无额外检查（性能优先）- 热路径优化
     UNICONV_ALWAYS_INLINE UNICONV_HOT
     T&& GetValue() && noexcept {
         return std::move(value_);
@@ -472,51 +518,497 @@ public:
     }
 };
 
-// 高性能字符串缓冲池类
+//----------------------------------------------------------------------------------------------------------------------
+// Thread Pool ===
+//----------------------------------------------------------------------------------------------------------------------
+
+/**
+ * @brief Lock-free thread pool for parallel batch processing
+ * @details Provides efficient task scheduling with:
+ *          - Pre-created worker threads (no creation overhead per batch)
+ *          - Lock-free task queue using condition variable
+ *          - Automatic thread count based on hardware
+ *          - Support for waiting on specific task batches
+ */
+class ThreadPool {
+public:
+    /**
+     * @brief Construct thread pool with specified number of workers
+     * @param num_threads Number of worker threads (0 = hardware_concurrency)
+     */
+    explicit ThreadPool(size_t num_threads = 0) : stop_(false) {
+        if (num_threads == 0) {
+            num_threads = std::thread::hardware_concurrency();
+            if (num_threads == 0) num_threads = 4;  // Fallback
+        }
+        
+        workers_.reserve(num_threads);
+        for (size_t i = 0; i < num_threads; ++i) {
+            workers_.emplace_back([this] { WorkerLoop(); });
+        }
+    }
+    
+    ~ThreadPool() {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            stop_ = true;
+        }
+        condition_.notify_all();
+        for (auto& worker : workers_) {
+            if (worker.joinable()) {
+                worker.join();
+            }
+        }
+    }
+    
+    // Non-copyable, non-movable
+    ThreadPool(const ThreadPool&) = delete;
+    ThreadPool& operator=(const ThreadPool&) = delete;
+    ThreadPool(ThreadPool&&) = delete;
+    ThreadPool& operator=(ThreadPool&&) = delete;
+    
+    /**
+     * @brief Submit a task to the thread pool
+     * @tparam F Callable type
+     * @param task Task to execute
+     * @return std::future for the task result
+     */
+    template<typename F>
+    auto Submit(F&& task) -> std::future<decltype(task())> {
+        using ReturnType = decltype(task());
+        
+        auto packaged_task = std::make_shared<std::packaged_task<ReturnType()>>(
+            std::forward<F>(task));
+        
+        std::future<ReturnType> future = packaged_task->get_future();
+        
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            if (stop_) {
+                throw std::runtime_error("ThreadPool is stopped");
+            }
+            tasks_.emplace([packaged_task]() { (*packaged_task)(); });
+        }
+        condition_.notify_one();
+        
+        return future;
+    }
+    
+    /**
+     * @brief Execute tasks in parallel and wait for completion
+     * @tparam F Callable type (void(size_t start, size_t end))
+     * @param total_items Total number of items to process
+     * @param task_func Function to call with (start_idx, end_idx) range
+     * @param min_chunk_size Minimum items per chunk (default: 1)
+     */
+    template<typename F>
+    void ParallelFor(size_t total_items, F&& task_func, size_t min_chunk_size = 1) {
+        if (total_items == 0) return;
+        
+        size_t num_threads = workers_.size();
+        size_t chunk_size = (std::max)(min_chunk_size, (total_items + num_threads - 1) / num_threads);
+        
+        std::vector<std::future<void>> futures;
+        futures.reserve((total_items + chunk_size - 1) / chunk_size);
+        
+        for (size_t start = 0; start < total_items; start += chunk_size) {
+            size_t end = (std::min)(start + chunk_size, total_items);
+            futures.emplace_back(Submit([&task_func, start, end]() {
+                task_func(start, end);
+            }));
+        }
+        
+        // Wait for all tasks to complete
+        for (auto& future : futures) {
+            future.wait();
+        }
+    }
+    
+    /**
+     * @brief Get number of worker threads
+     */
+    [[nodiscard]] size_t GetThreadCount() const noexcept {
+        return workers_.size();
+    }
+    
+    /**
+     * @brief Get number of pending tasks
+     */
+    [[nodiscard]] size_t GetPendingTaskCount() const noexcept {
+        std::unique_lock<std::mutex> lock(queue_mutex_);
+        return tasks_.size();
+    }
+
+private:
+    void WorkerLoop() {
+        while (true) {
+            std::function<void()> task;
+            
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex_);
+                condition_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+                
+                if (stop_ && tasks_.empty()) {
+                    return;
+                }
+                
+                task = std::move(tasks_.front());
+                tasks_.pop();
+            }
+            
+            task();
+        }
+    }
+    
+    std::vector<std::thread> workers_;
+    std::queue<std::function<void()>> tasks_;
+    mutable std::mutex queue_mutex_;
+    std::condition_variable condition_;
+    bool stop_;
+};
+
+/**
+ * @brief Singleton thread pool for UniConv parallel operations
+ * @details Provides a shared thread pool instance for all UniConv parallel batch operations.
+ *          Uses lazy initialization to avoid overhead if parallel operations are never used.
+ */
+class UniConvThreadPool {
+public:
+    /**
+     * @brief Get singleton thread pool instance
+     */
+    static ThreadPool& GetInstance() {
+        static ThreadPool instance;
+        return instance;
+    }
+    
+    /**
+     * @brief Get singleton with specific thread count (first call only)
+     * @param num_threads Desired thread count
+     * @note Thread count is only applied on first call; subsequent calls return existing pool
+     */
+    static ThreadPool& GetInstance(size_t num_threads) {
+        static ThreadPool instance(num_threads);
+        return instance;
+    }
+    
+    // Prevent instantiation
+    UniConvThreadPool() = delete;
+};
+
+/**
+ * @brief Adaptive parallel execution policy
+ * @details Determines optimal parallelization strategy based on workload characteristics
+ */
+struct AdaptiveParallelPolicy {
+    static constexpr size_t SERIAL_THRESHOLD_ITEMS = 10;        // Items below this: always serial
+    static constexpr size_t SERIAL_THRESHOLD_BYTES = 10 * 1024; // Bytes below this: always serial
+    static constexpr size_t LIGHT_PARALLEL_BYTES = 100 * 1024;  // Bytes below this: use 2 threads
+    
+    /**
+     * @brief Determine recommended thread count based on workload
+     * @param num_items Number of items to process
+     * @param total_bytes Total bytes to process
+     * @param max_threads Maximum available threads
+     * @return Recommended thread count (0 = use serial processing)
+     */
+    static size_t GetRecommendedThreads(size_t num_items, size_t total_bytes, size_t max_threads) noexcept {
+        // Too few items: serial
+        if (num_items < SERIAL_THRESHOLD_ITEMS) {
+            return 0;
+        }
+        
+        // Small data: serial
+        if (total_bytes < SERIAL_THRESHOLD_BYTES) {
+            return 0;
+        }
+        
+        // Medium data: light parallel
+        if (total_bytes < LIGHT_PARALLEL_BYTES) {
+            return (std::min)(size_t(2), max_threads);
+        }
+        
+        // Large data: full parallel, but don't over-subscribe
+        return (std::min)(max_threads, num_items);
+    }
+    
+    /**
+     * @brief Check if workload should use serial processing
+     */
+    static bool ShouldUseSerial(size_t num_items, size_t total_bytes) noexcept {
+        return num_items < SERIAL_THRESHOLD_ITEMS || total_bytes < SERIAL_THRESHOLD_BYTES;
+    }
+};
+
+//----------------------------------------------------------------------------------------------------------------------
+// === CPU Optimization Detection  ===
+//----------------------------------------------------------------------------------------------------------------------
+
+/**
+ * @brief Runtime CPU feature and optimization detection
+ * @details Detects available SIMD instructions and system characteristics
+ *          for optimal algorithm selection at runtime.
+ */
+struct CpuOptimizationInfo {
+    // SIMD capabilities
+    bool has_sse2 = false;       ///< SSE2 support (x86/x64 baseline)
+    bool has_sse4_1 = false;     ///< SSE4.1 support
+    bool has_sse4_2 = false;     ///< SSE4.2 support
+    bool has_avx = false;        ///< AVX support
+    bool has_avx2 = false;       ///< AVX2 support (256-bit SIMD)
+    bool has_avx512f = false;    ///< AVX-512 Foundation support
+    bool has_neon = false;       ///< ARM NEON support
+    
+    // System characteristics
+    size_t cache_line_size = 64; ///< L1 cache line size (bytes)
+    size_t l1_cache_size = 0;    ///< L1 data cache size (bytes, 0 if unknown)
+    size_t l2_cache_size = 0;    ///< L2 cache size (bytes, 0 if unknown)
+    size_t page_size = 4096;     ///< Memory page size (bytes)
+    size_t hardware_threads = 0; ///< Number of hardware threads
+    
+    // Feature summary
+    bool has_simd() const noexcept { return has_sse2 || has_neon; }
+    bool has_fast_simd() const noexcept { return has_avx2 || has_neon; }
+    
+    /**
+     * @brief Get recommended SIMD width in bytes
+     */
+    size_t GetSimdWidth() const noexcept {
+        if (has_avx512f) return 64;
+        if (has_avx2 || has_avx) return 32;
+        if (has_sse2 || has_neon) return 16;
+        return 8;  // Scalar fallback
+    }
+};
+
+/**
+ * @brief Singleton accessor for CPU optimization info
+ * @details Detects CPU features once at first call and caches the result.
+ */
+class CpuOptimization {
+public:
+    /**
+     * @brief Get cached CPU optimization info
+     * @return Reference to CpuOptimizationInfo structure
+     */
+    static const CpuOptimizationInfo& GetInfo() noexcept {
+        static CpuOptimizationInfo info = Detect();
+        return info;
+    }
+    
+    /**
+     * @brief Check if simdutf acceleration is available
+     */
+    static bool HasSimdUtf() noexcept {
+#ifdef UNICONV_HAS_SIMDUTF
+        return true;
+#else
+        return false;
+#endif
+    }
+    
+    /**
+     * @brief Get a human-readable summary of available optimizations
+     */
+    static std::string GetOptimizationSummary() {
+        const auto& info = GetInfo();
+        std::ostringstream oss;
+        oss << "UniConv Optimization Info:\n";
+        oss << "  Hardware threads: " << info.hardware_threads << "\n";
+        oss << "  SIMD width: " << info.GetSimdWidth() << " bytes\n";
+        oss << "  SSE2: " << (info.has_sse2 ? "Yes" : "No") << "\n";
+        oss << "  SSE4.2: " << (info.has_sse4_2 ? "Yes" : "No") << "\n";
+        oss << "  AVX2: " << (info.has_avx2 ? "Yes" : "No") << "\n";
+        oss << "  AVX-512: " << (info.has_avx512f ? "Yes" : "No") << "\n";
+        oss << "  NEON: " << (info.has_neon ? "Yes" : "No") << "\n";
+        oss << "  simdutf: " << (HasSimdUtf() ? "Enabled" : "Disabled") << "\n";
+        oss << "  Cache line: " << info.cache_line_size << " bytes\n";
+        oss << "  Page size: " << info.page_size << " bytes\n";
+        return oss.str();
+    }
+
+private:
+    static CpuOptimizationInfo Detect() noexcept {
+        CpuOptimizationInfo info;
+        
+        // Hardware threads
+        info.hardware_threads = std::thread::hardware_concurrency();
+        if (info.hardware_threads == 0) info.hardware_threads = 4;
+        
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+        // Windows x86/x64: use __cpuid
+        int cpu_info[4] = {0};
+        __cpuid(cpu_info, 0);
+        int max_id = cpu_info[0];
+        
+        if (max_id >= 1) {
+            __cpuid(cpu_info, 1);
+            info.has_sse2 = (cpu_info[3] & (1 << 26)) != 0;
+            info.has_sse4_1 = (cpu_info[2] & (1 << 19)) != 0;
+            info.has_sse4_2 = (cpu_info[2] & (1 << 20)) != 0;
+            info.has_avx = (cpu_info[2] & (1 << 28)) != 0;
+        }
+        
+        if (max_id >= 7) {
+            __cpuidex(cpu_info, 7, 0);
+            info.has_avx2 = (cpu_info[1] & (1 << 5)) != 0;
+            info.has_avx512f = (cpu_info[1] & (1 << 16)) != 0;
+        }
+        
+        // Get cache line size
+        __cpuid(cpu_info, 0x80000006);
+        info.cache_line_size = cpu_info[2] & 0xFF;
+        if (info.cache_line_size == 0) info.cache_line_size = 64;
+        
+        // Windows page size
+        SYSTEM_INFO sys_info;
+        GetSystemInfo(&sys_info);
+        info.page_size = sys_info.dwPageSize;
+        
+#elif defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
+        // GCC/Clang x86/x64: use __builtin_cpu_supports
+        info.has_sse2 = __builtin_cpu_supports("sse2");
+        info.has_sse4_1 = __builtin_cpu_supports("sse4.1");
+        info.has_sse4_2 = __builtin_cpu_supports("sse4.2");
+        info.has_avx = __builtin_cpu_supports("avx");
+        info.has_avx2 = __builtin_cpu_supports("avx2");
+        info.has_avx512f = __builtin_cpu_supports("avx512f");
+        
+        // Linux page size
+        #ifdef __linux__
+        info.page_size = sysconf(_SC_PAGESIZE);
+        #endif
+        
+#elif defined(__ARM_NEON) || defined(__aarch64__)
+        // ARM: NEON is baseline for AArch64
+        info.has_neon = true;
+        
+        #ifdef __linux__
+        info.page_size = sysconf(_SC_PAGESIZE);
+        #endif
+#endif
+        
+        return info;
+    }
+    
+    CpuOptimization() = delete;
+};
+
+/**
+ * @brief High-performance tiered string buffer pool
+ * @details Provides three tiers of buffer sizes optimized for different use cases:
+ *          - Small (4KB): High-frequency small string conversions
+ *          - Medium (64KB): Typical file and document processing
+ *          - Large (1MB): Large file and batch processing
+ * 
+ * Lock-free design using atomic compare-exchange for buffer acquisition.
+ */
 class StringBufferPool {
 private:
+    // Buffer tier constants
+    static constexpr size_t SMALL_BUFFER_SIZE   = 4096;       // 4KB
+    static constexpr size_t MEDIUM_BUFFER_SIZE  = 65536;      // 64KB
+    static constexpr size_t LARGE_BUFFER_SIZE   = 1048576;    // 1MB
+    
+    // Pool sizes per tier (balanced for memory vs concurrency)
+    static constexpr size_t SMALL_POOL_SIZE  = 32;  // High frequency, more buffers
+    static constexpr size_t MEDIUM_POOL_SIZE = 8;   // Medium frequency
+    static constexpr size_t LARGE_POOL_SIZE  = 2;   // Low frequency, large memory footprint
+    
+    // Legacy constant for compatibility
+    static constexpr size_t POOL_SIZE = SMALL_POOL_SIZE;
+    
     struct Buffer {
-        std::string data;
-        std::atomic<bool> in_use{false};
-
-        Buffer() {
-            data.reserve(4096);  // 预分配4KB，减少动态扩容
+        std::string        data;
+        std::atomic<bool>  in_use{false};
+        size_t             tier_size;  // Pre-allocated tier size
+        
+        explicit Buffer(size_t reserve_size = SMALL_BUFFER_SIZE) : tier_size(reserve_size) {
+            data.reserve(reserve_size);
         }
     };
-
-    static constexpr size_t POOL_SIZE = 16;  // 池大小，平衡内存使用和并发性能
-    std::array<Buffer, POOL_SIZE> buffers_;  // 固定大小缓冲区数组
-    std::atomic<size_t> next_index_{0};      // 下一个可用缓冲区索引
+    
+    // Tiered buffer arrays
+    std::array<Buffer, SMALL_POOL_SIZE>  small_buffers_;
+    std::array<Buffer, MEDIUM_POOL_SIZE> medium_buffers_;
+    std::array<Buffer, LARGE_POOL_SIZE>  large_buffers_;
+    
+    // Per-tier round-robin indices
+    std::atomic<size_t> small_next_index_{0};
+    std::atomic<size_t> medium_next_index_{0};
+    std::atomic<size_t> large_next_index_{0};
+    
+    // Legacy member for compatibility
+    std::array<Buffer, SMALL_POOL_SIZE>& buffers_ = small_buffers_;
+    std::atomic<size_t>& next_index_ = small_next_index_;
 
 public:
-    // RAII缓冲区租用器
+    /**
+     * @brief Buffer tier enumeration
+     */
+    enum class Tier { Small, Medium, Large };
+    
+    /**
+     * @brief Initialize tiered buffer pool with pre-allocated buffers
+     */
+    StringBufferPool() {
+        // Initialize medium and large buffers with appropriate sizes
+        for (auto& buf : medium_buffers_) {
+            buf.tier_size = MEDIUM_BUFFER_SIZE;
+            buf.data.reserve(MEDIUM_BUFFER_SIZE);
+        }
+        for (auto& buf : large_buffers_) {
+            buf.tier_size = LARGE_BUFFER_SIZE;
+            buf.data.reserve(LARGE_BUFFER_SIZE);
+        }
+        // Small buffers are initialized with default constructor (4KB)
+        for (auto& buf : small_buffers_) {
+            buf.tier_size = SMALL_BUFFER_SIZE;
+        }
+    }
+    
+    // RAII缓冲区lease类
     class BufferLease {
-        Buffer* buffer_;
+        Buffer*           buffer_;
         StringBufferPool* pool_;
+        bool              is_from_pool_;  // 标记是否来自池（用于统计）
 
     public:
-        BufferLease(Buffer* buf, StringBufferPool* pool) noexcept
-            : buffer_(buf), pool_(pool) {}
+        BufferLease(Buffer* buf, StringBufferPool* pool, bool from_pool = true) noexcept
+            : buffer_(buf), pool_(pool), is_from_pool_(from_pool) {}
 
         ~BufferLease() noexcept {
             if (buffer_) {
-                buffer_->in_use.store(false, std::memory_order_release);
+                if (is_from_pool_) {
+                    // 从池中获取的缓冲区，清理并标记为可用
+                    buffer_->data.clear();
+                    buffer_->in_use.store(false, std::memory_order_release);
+                } else {
+                    // 临时分配的缓冲区，必须释放内存
+                    delete buffer_;
+                }
             }
         }
 
         // 移动构造和赋值
         BufferLease(BufferLease&& other) noexcept
-            : buffer_(other.buffer_), pool_(other.pool_) {
+            : buffer_(other.buffer_), pool_(other.pool_), is_from_pool_(other.is_from_pool_) {
             other.buffer_ = nullptr;
         }
 
         BufferLease& operator=(BufferLease&& other) noexcept {
             if (this != &other) {
                 if (buffer_) {
-                    buffer_->in_use.store(false, std::memory_order_release);
+                    if (is_from_pool_) {
+                        buffer_->data.clear();
+                        buffer_->in_use.store(false, std::memory_order_release);
+                    } else {
+                        delete buffer_;  // 释放临时分配的内存
+                    }
                 }
                 buffer_ = other.buffer_;
                 pool_ = other.pool_;
+                is_from_pool_ = other.is_from_pool_;
                 other.buffer_ = nullptr;
             }
             return *this;
@@ -539,51 +1031,175 @@ public:
         [[nodiscard]] bool valid() const noexcept {
             return buffer_ != nullptr;
         }
+        
+        // 检查是否来自池（用于统计）
+        [[nodiscard]] bool is_from_pool() const noexcept {
+            return is_from_pool_;
+        }
+        
+        /**
+         * @brief Move buffer content to output parameter (zero-copy)
+         * @param output Output string to receive the buffer content
+         */
+        void move_to(std::string& output) noexcept {
+            if (buffer_) {
+                output = std::move(buffer_->data);
+                buffer_->data.clear();  // Clear for next use
+            }
+        }
+        
+        /**
+         * @brief Swap buffer content with output parameter (zero-copy)
+         * @param output Output string to swap with buffer content
+         */
+        void swap_to(std::string& output) noexcept {
+            if (buffer_) {
+                output.swap(buffer_->data);
+                buffer_->data.clear();  // Clear for next use
+            }
+        }
     };
 
-    // 获取缓冲区租用器 - 热路径优化，分支预测
-    [[nodiscard]] UNICONV_HOT UNICONV_FLATTEN BufferLease acquire() noexcept {
-        constexpr int max_attempts = POOL_SIZE * 2;
-
-        // 预取下一个可能的索引位置，提升缓存性能
-        size_t current_index = next_index_.load(std::memory_order_relaxed);
-        UNICONV_PREFETCH(&buffers_[current_index % POOL_SIZE], 0, 1);
+private:
+    /**
+     * @brief Try to acquire a buffer from a specific tier
+     * @tparam N Pool size
+     * @param buffers Buffer array
+     * @param next_index Atomic index counter
+     * @return BufferLease if successful, nullptr otherwise
+     */
+    template<size_t N>
+    [[nodiscard]] Buffer* TryAcquireFromTier(
+        std::array<Buffer, N>& buffers,
+        std::atomic<size_t>& next_index) noexcept 
+    {
+        constexpr int max_attempts = static_cast<int>(N * 2);
         
-        // 尝试获取缓冲区
-        for (int attempt = 0; UNICONV_LIKELY(attempt < max_attempts); ++attempt) {
-            size_t index = next_index_.fetch_add(1, std::memory_order_relaxed) % POOL_SIZE;
+        for (int attempt = 0; attempt < max_attempts; ++attempt) {
+            size_t index = next_index.fetch_add(1, std::memory_order_relaxed) % N;
             
             bool expected = false;
-            if (UNICONV_LIKELY(buffers_[index].in_use.compare_exchange_weak(
-                    expected, true, std::memory_order_acquire))) {
-                // 获取成功，清理缓冲区准备使用
-                buffers_[index].data.clear();
-                return BufferLease(&buffers_[index], this);
-            }
-
-            // 预取下一个可能的缓冲区位置
-            if (UNICONV_LIKELY(attempt + 1 < max_attempts)) {
-                size_t next_index = (index + 1) % POOL_SIZE;
-                UNICONV_PREFETCH(&buffers_[next_index], 0, 1);
+            if (buffers[index].in_use.compare_exchange_weak(
+                    expected, true, std::memory_order_acquire)) {
+                buffers[index].data.clear();
+                return &buffers[index];
             }
         }
-
-        // 池满时的回退策略：使用线程本地临时缓冲区（罕见情况）
-        static thread_local Buffer temp_buffer;
-        temp_buffer.data.clear();
-        temp_buffer.in_use.store(true);
-        return BufferLease(&temp_buffer, nullptr);  // nullptr表示临时缓冲区
+        return nullptr;
     }
 
-    // 获取池统计信息（调试用）
+public:
+    /**
+     * @brief Acquire buffer with size hint - chooses appropriate tier
+     * @param hint_size Expected buffer size needed
+     * @return BufferLease for the acquired buffer
+     * 
+     * Tier selection:
+     * - hint_size <= 4KB  → Small tier (32 buffers)
+     * - hint_size <= 64KB → Medium tier (8 buffers)
+     * - hint_size > 64KB  → Large tier (2 buffers)
+     */
+    [[nodiscard]] UNICONV_HOT BufferLease acquire(size_t hint_size) noexcept {
+        Buffer* buf = nullptr;
+        
+        // Select tier based on size hint
+        if (hint_size <= SMALL_BUFFER_SIZE) {
+            buf = TryAcquireFromTier(small_buffers_, small_next_index_);
+            // Fallback to medium if small is exhausted
+            if (!buf) buf = TryAcquireFromTier(medium_buffers_, medium_next_index_);
+        } 
+        else if (hint_size <= MEDIUM_BUFFER_SIZE) {
+            buf = TryAcquireFromTier(medium_buffers_, medium_next_index_);
+            // Fallback to large if medium is exhausted
+            if (!buf) buf = TryAcquireFromTier(large_buffers_, large_next_index_);
+        } 
+        else {
+            buf = TryAcquireFromTier(large_buffers_, large_next_index_);
+        }
+        
+        if (buf) {
+            // Ensure buffer has adequate capacity
+            if (buf->data.capacity() < hint_size) {
+                try {
+                    buf->data.reserve(hint_size);
+                } catch (...) {
+                    // Release buffer and fall through to temp allocation
+                    buf->in_use.store(false, std::memory_order_release);
+                    buf = nullptr;
+                }
+            }
+            if (buf) return BufferLease(buf, this, true);
+        }
+        
+        // Fallback: allocate temporary buffer (rare case)
+        Buffer* temp = new (std::nothrow) Buffer(hint_size);
+        if (temp) {
+            temp->in_use.store(true);
+            return BufferLease(temp, nullptr, false);
+        }
+        
+        // Last resort: thread-local static buffer
+        static thread_local Buffer emergency_buffer(SMALL_BUFFER_SIZE);
+        emergency_buffer.data.clear();
+        if (hint_size > emergency_buffer.data.capacity()) {
+            try { emergency_buffer.data.reserve(hint_size); } catch (...) {}
+        }
+        emergency_buffer.in_use.store(true);
+        return BufferLease(&emergency_buffer, nullptr, false);
+    }
+
+    /**
+     * @brief Acquire buffer without size hint (defaults to small tier)
+     * @return BufferLease for the acquired buffer
+     * 
+     * For backward compatibility with existing code.
+     */
+    [[nodiscard]] UNICONV_HOT UNICONV_FLATTEN BufferLease acquire() noexcept {
+        return acquire(SMALL_BUFFER_SIZE);
+    }
+
+    /**
+     * @brief Get number of active buffers across all tiers
+     */
     [[nodiscard]] size_t GetActiveBuffers() const noexcept {
         size_t count = 0;
-        for (const auto& buffer : buffers_) {
-            if (buffer.in_use.load(std::memory_order_relaxed)) {
-                ++count;
-            }
+        for (const auto& buffer : small_buffers_) {
+            if (buffer.in_use.load(std::memory_order_relaxed)) ++count;
+        }
+        for (const auto& buffer : medium_buffers_) {
+            if (buffer.in_use.load(std::memory_order_relaxed)) ++count;
+        }
+        for (const auto& buffer : large_buffers_) {
+            if (buffer.in_use.load(std::memory_order_relaxed)) ++count;
         }
         return count;
+    }
+    
+    /**
+     * @brief Get tier-specific statistics
+     */
+    struct TierStats {
+        size_t small_active;
+        size_t medium_active;
+        size_t large_active;
+        size_t total_capacity;  // Total pre-allocated memory
+    };
+    
+    [[nodiscard]] TierStats GetTierStatistics() const noexcept {
+        TierStats stats{};
+        for (const auto& buf : small_buffers_) {
+            if (buf.in_use.load(std::memory_order_relaxed)) ++stats.small_active;
+        }
+        for (const auto& buf : medium_buffers_) {
+            if (buf.in_use.load(std::memory_order_relaxed)) ++stats.medium_active;
+        }
+        for (const auto& buf : large_buffers_) {
+            if (buf.in_use.load(std::memory_order_relaxed)) ++stats.large_active;
+        }
+        stats.total_capacity = SMALL_POOL_SIZE * SMALL_BUFFER_SIZE 
+                             + MEDIUM_POOL_SIZE * MEDIUM_BUFFER_SIZE 
+                             + LARGE_POOL_SIZE * LARGE_BUFFER_SIZE;
+        return stats;
     }
 };
 
@@ -591,7 +1207,7 @@ public:
 template<>
 class [[nodiscard]] CompactResult<std::string> {
 private:
-    std::string                   value_;
+    std::string                        value_;
     ErrorCode                     error_code_;
 
     // SSO优化：利用标准库的小字符串优化
@@ -634,7 +1250,7 @@ public:
         }
     }
 
-    // 从C字符串快速构造
+
     static CompactResult FromCString(const char* str, size_t len) noexcept {
         if (!str) {
             return CompactResult(ErrorCode::InvalidParameter);
@@ -663,7 +1279,6 @@ public:
         return IsSuccess();
     }
 
-    // 零拷贝访问方法 - 热路径优化
     [[nodiscard]] UNICONV_ALWAYS_INLINE UNICONV_HOT
     std::string&& GetValue() && noexcept {
         return std::move(value_);
@@ -773,10 +1388,10 @@ public:
 };
 
 // 便利的类型别名
-using StringResult 		= CompactResult<std::string>;
-using StringViewResult 	= CompactResult<std::string_view>;
-using IntResult 		= CompactResult<int>;
-using BoolResult 		= CompactResult<bool>;
+using StringResult      = CompactResult<std::string>;
+using StringViewResult  = CompactResult<std::string_view>;
+using IntResult         = CompactResult<int>;
+using BoolResult        = CompactResult<bool>;
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -813,36 +1428,155 @@ std::shared_ptr<T> Singleton<T>::_instance = nullptr;
 enum class ErrorCode : uint8_t;
 template<typename T> class CompactResult;
 
-class UNICONV_EXPORT UniConv : public Singleton<UniConv>
+class UNICONV_EXPORT UniConv
 {
-
-	/**
-	 * @brief Singleton class for UniConv.
-	 */
-	friend class Singleton<UniConv>;
 
 private:
 	/**
 	 * @brief Custom deleter for iconv_t to ensure proper cleanup.
-	 * * This deleter will be used with std::shared_ptr to manage the iconv_t resource.
+	 * @details This deleter will be used with std::shared_ptr to manage the iconv_t resource.
+	 * The deleter handles the special case where iconv_t might be (iconv_t)(-1) on error.
+	 * 
+	 * Cross-platform considerations:
+	 * - On most platforms, iconv_t is defined as void*
+	 * - iconv_open() returns (iconv_t)(-1) on error
+	 * - Using void* with custom deleter provides maximum compatibility
+	 * 
+	 * @note Thread-safe and exception-safe RAII wrapper
 	 */
 	struct IconvDeleter {
-		void operator()(iconv_t cd) const {
-			// std::cerr << "Closing iconv_t: " << cd << std::endl;
-			// call iconv_close to release the iconv descriptor only if it is valid
-			if (cd != reinterpret_cast<iconv_t>(-1)) {
-				iconv_close(cd);
+		void operator()(void* cd) const noexcept {
+			if (cd && cd != reinterpret_cast<void*>(-1)) {
+				iconv_close(reinterpret_cast<iconv_t>(cd));
 			}
 		}
 	};
 
 	/**
 	 * @brief Type alias for a shared pointer to iconv_t with custom deleter.
-	 * * This alias simplifies the usage of iconv_t with automatic resource management.
+	 * @details Uses std::shared_ptr<void> for maximum cross-platform compatibility.
+	 * The custom deleter ensures proper cleanup via iconv_close().
+	 * 
+	 * Platform compatibility:
+	 * - Works on Windows, Linux, macOS, and other POSIX systems
+	 * - Handles the special error value (iconv_t)(-1) correctly
+	 * - Type-safe through custom deleter functor
+	 * 
 	 * @see IconvDeleter
 	 * @see GetIconvDescriptor
 	 */
-	using IconvSharedPtr = std::shared_ptr <std::remove_pointer<iconv_t>::type>;
+	using IconvSharedPtr = std::shared_ptr<void>;
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Thread Local Cache Structure ===
+	//----------------------------------------------------------------------------------------------------------------------
+	/**
+	 * @brief Thread-local cache structure for high-performance conversions
+	 * @details Reduces contention on global caches and improves multi-threaded performance
+	 */
+	struct ThreadLocalCache {
+		// Iconv descriptor local cache (max 32 entries)
+		static constexpr size_t LOCAL_CACHE_SIZE = 32;
+		
+		// O(1) LRU cache implementation using list + unordered_map
+		// - list maintains LRU order: front = oldest, back = most recently used
+		// - map stores uint64_t hash key -> (descriptor, list iterator) for O(1) lookup
+		// - Using uint64_t keys eliminates string allocation/concatenation overhead
+		std::list<uint64_t> lru_order_;
+		std::unordered_map<uint64_t, std::pair<IconvSharedPtr, std::list<uint64_t>::iterator>> iconv_cache_;
+		
+		// Temporary conversion buffers (avoid frequent allocations)
+		std::vector<char> temp_conversion_buffer;
+		std::string temp_result_string;
+		
+		// System encoding cache
+		bool system_encoding_cached = false;
+		std::string system_encoding;
+		
+		/**
+		 * @brief Get or cache an iconv descriptor in thread-local storage
+		 * @param key Pre-computed 64-bit hash key from MakeEncodingPairKey()
+		 * @param fromcode Source encoding
+		 * @param tocode Target encoding
+		 * @return Cached or newly created iconv descriptor
+		 * 
+		 * Time complexity: O(1) average for all operations
+		 * Memory: No string allocation for cache key
+		 */
+		IconvSharedPtr GetOrCreateIconvDescriptor(uint64_t key, const char* fromcode, const char* tocode) {
+			// Check if already in cache - O(1)
+			auto it = iconv_cache_.find(key);
+			if (it != iconv_cache_.end()) {
+				// Move to back of LRU list (most recently used) - O(1)
+				lru_order_.splice(lru_order_.end(), lru_order_, it->second.second);
+				return it->second.first;
+			}
+			
+			// Create new descriptor
+			iconv_t cd = iconv_open(tocode, fromcode);
+			if (cd == reinterpret_cast<iconv_t>(-1)) {
+				return nullptr;
+			}
+			
+			// Create shared_ptr with custom deleter (cross-platform safe)
+			auto descriptor = std::shared_ptr<void>(static_cast<void*>(cd), IconvDeleter());
+			
+			// Check cache size and evict oldest if necessary - O(1)
+			if (iconv_cache_.size() >= LOCAL_CACHE_SIZE) {
+				EvictOldest();
+			}
+			
+			// Insert into LRU list (at back = most recently used) - O(1)
+			lru_order_.push_back(key);
+			auto list_it = std::prev(lru_order_.end());
+			
+			// Insert into cache map - O(1)
+			iconv_cache_[key] = std::make_pair(descriptor, list_it);
+			
+			return descriptor;
+		}
+		
+	private:
+		/**
+		 * @brief Evict the oldest (least recently used) entry - O(1)
+		 */
+		void EvictOldest() {
+			if (lru_order_.empty()) return;
+			
+			// Front of list is the oldest entry - O(1)
+			uint64_t oldest_key = lru_order_.front();
+			
+			// Remove from cache map - O(1)
+			iconv_cache_.erase(oldest_key);
+			
+			// Remove from LRU list - O(1)
+			lru_order_.pop_front();
+		}
+	};
+
+	/**
+	 * @brief Get reference to the appropriate cache (thread-local or instance-level)
+	 * @return Reference to ThreadLocalCache
+	 * @details When UNICONV_NO_THREAD_LOCAL is enabled, returns instance cache with mutex protection.
+	 * Otherwise returns thread-local cache for better multi-threading performance.
+	 */
+	inline ThreadLocalCache& GetCache() const noexcept {
+#if UNICONV_NO_THREAD_LOCAL
+		return m_instanceCache.cache;
+#else
+		return t_cache;
+#endif
+	}
+
+	/**
+	 * @brief Get cache with lock (for UNICONV_NO_THREAD_LOCAL mode)
+	 * @details This method should be used in DLL mode where thread_local is disabled
+	 */
+#if UNICONV_NO_THREAD_LOCAL
+	inline std::unique_lock<std::mutex> GetCacheLock() const noexcept {
+		return std::unique_lock<std::mutex>(m_instanceCache.mutex);
+	}
+#endif
 
 	/**
 	 * @struct EncodingInfo
@@ -921,8 +1655,11 @@ public:
 	 * @struct IConvResult
 	 * @brief Structure to hold the result of a conversion operation.
 	 * @note IConvResult
+	 * @deprecated This structure is deprecated. Use CompactResult<std::string> (StringResult) instead.
+	 * @see CompactResult
+	 * @see StringResult
 	 */
-	struct IConvResult {
+	struct [[deprecated("Use CompactResult<std::string> (StringResult) instead. See ConvertEncodingFast() for the new API.")]] IConvResult {
 		std::string        conv_result_str;  /*!< Conversion result string */
 		int                error_code;       /*!< Error code               */
 		std::string        error_msg;        /*!< Error message            */
@@ -971,14 +1708,18 @@ public:
 	 * @brief Convert StringResult to IConvResult for backward compatibility
 	 * @param stringResult The StringResult to convert
 	 * @return Equivalent IConvResult
+	 * @deprecated This function is for backward compatibility only. Use StringResult directly.
 	 */
+	[[deprecated("Use StringResult (CompactResult<std::string>) directly instead of converting.")]]
 	static IConvResult StringResultToIConvResult(const CompactResult<std::string>& stringResult);
 
 	/**
 	 * @brief Convert IConvResult to StringResult for unified internal processing
 	 * @param iconvResult The IConvResult to convert
 	 * @return Equivalent StringResult
+	 * @deprecated This function is for backward compatibility only. Use StringResult directly.
 	 */
+	[[deprecated("Use StringResult (CompactResult<std::string>) directly instead of converting.")]]
 	static CompactResult<std::string> IConvResultToStringResult(const IConvResult& iconvResult);
 
 	~UniConv() {
@@ -1017,7 +1758,6 @@ public:
 	 */
 	static std::string     GetEncodingNameByCodePage(std::uint16_t codePage) noexcept;
 
-/** Test Success */
 /***************************************************************************/
 /*=================== Locale <-> UTF-8 Conversion Interface =========================*/
 /***************************************************************************/
@@ -1050,7 +1790,7 @@ public:
 	 * @return Converted system locale encoding string
 	 */
 	std::string ToLocaleFromUtf8(const char* input);
-/** Test Success */
+
 /***************************************************************************/
 /*=================== Locale convert to UTF-16 (LE BE) ====================*/
 /***************************************************************************/
@@ -1080,7 +1820,7 @@ public:
 	 */
 	std::u16string ToUtf16BEFromLocale(const char* input);
 
-/** Test Success */
+
 /***************************************************************************/
 /*========================== UTF-16 BE To Locale ==========================*/
 /***************************************************************************/
@@ -1098,7 +1838,7 @@ public:
 	 */
 	std::string ToLocaleFromUtf16BE(const char16_t* input);
 
-/** Test Success */
+
 /***************************************************************************/
 /*======================== UTF-16 (LE BE) To UTF-8 ========================*/
 /***************************************************************************/
@@ -1147,7 +1887,6 @@ public:
 	 */
 	std::string ToUtf8FromUtf16BE(const char16_t* input);
 
-/** Test Success */
 /***************************************************************************/
 /*========================== UTF-8 To UTF16(LE BE) ========================*/
 /***************************************************************************/
@@ -1202,7 +1941,6 @@ public:
 	 */
 	std::u16string ToUtf16BEFromUtf8(const char* input);
 
-/** Test Success */
 /***************************************************************************/
 /*====================== UTF16 LE BE <-> UTF16 LE BE ======================*/
 /***************************************************************************/
@@ -1305,7 +2043,6 @@ public:
 	 */
 	CompactResult<std::string> ToUtf8FromUtf16BEEx(const std::u16string& input);
 
-/*Test Success */
 /***************************************************************************/
 /*========================= string <-> wstring ============================*/
 /***************************************************************************/
@@ -1338,9 +2075,6 @@ public:
 	 */
 	std::string          ToLocaleFromWideString(const wchar_t* input);
 
-
-
-/** Test Suceess */
 /***************************************************************************/
 /*===================== UTF16 <-> Local Encoding =======================*/
 /***************************************************************************/
@@ -1470,8 +2204,110 @@ public:
 	 * @param fromEncoding Source encoding name
 	 * @param toEncoding Target encoding name
 	 * @return Conversion result
+	 * @deprecated Use ConvertEncodingFast() which returns StringResult (CompactResult<std::string>) instead.
+	 * @see ConvertEncodingFast
 	 */
+	[[deprecated("Use ConvertEncodingFast() which returns StringResult (CompactResult<std::string>) for better performance and type safety.")]]
 	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Zero-Copy Output Parameter API (High Performance) 
+	//----------------------------------------------------------------------------------------------------------------------
+	/**
+	 * @brief Core conversion with output parameter (zero-copy, memory reuse)
+	 * @param input Input string data
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @param output Output string (caller-provided, memory reused)
+	 * @return true on success, false on failure
+	 * @note For detailed error reporting, use ConvertEncodingFast() which returns ErrorCode
+	 */
+	bool ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+	
+	/**
+	 * @brief High-performance conversion with output parameter
+	 * @param input Input string data
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @param output Output string (caller-provided, memory reused)
+	 * @return ErrorCode indicating success or failure type
+	 */
+	ErrorCode ConvertEncodingFast(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+	
+	// UTF-8 Conversion Series (output parameter versions for buffer reuse)
+	bool ToUtf8FromLocale(const std::string& input, std::string& output) noexcept;
+	bool ToLocaleFromUtf8(const std::string& input, std::string& output) noexcept;
+	bool ToUtf8FromUtf16LE(const std::u16string& input, std::string& output) noexcept;
+	bool ToUtf8FromUtf16BE(const std::u16string& input, std::string& output) noexcept;
+	bool ToUtf8FromUtf32LE(const std::u32string& input, std::string& output) noexcept;
+	
+	// UTF-16 Conversion Series (output parameter versions for buffer reuse)
+	bool ToUtf16LEFromUtf8(const std::string& input, std::u16string& output) noexcept;
+	bool ToUtf16BEFromUtf8(const std::string& input, std::u16string& output) noexcept;
+	bool ToUtf16LEFromLocale(const std::string& input, std::u16string& output) noexcept;
+	bool ToUtf16BEFromLocale(const std::string& input, std::u16string& output) noexcept;
+	bool ToUtf16BEFromUtf16LE(const std::u16string& input, std::u16string& output) noexcept;
+	bool ToUtf16LEFromUtf16BE(const std::u16string& input, std::u16string& output) noexcept;
+	
+	// UTF-32 Conversion Series (output parameter versions for buffer reuse)
+	bool ToUtf32LEFromUtf8(const std::string& input, std::u32string& output) noexcept;
+	bool ToUtf32LEFromUtf16LE(const std::u16string& input, std::u32string& output) noexcept;
+	bool ToUtf32LEFromUtf16BE(const std::u16string& input, std::u32string& output) noexcept;
+	
+	// Locale Conversion Series (output parameter versions for buffer reuse)
+	bool ToLocaleFromUtf16LE(const std::u16string& input, std::string& output) noexcept;
+	bool ToLocaleFromUtf16BE(const std::u16string& input, std::string& output) noexcept;
+	bool ToLocaleFromWideString(const std::wstring& input, std::string& output) noexcept;
+	
+	// Wide String Series (output parameter versions for buffer reuse)
+	bool ToWideStringFromLocale(const std::string& input, std::wstring& output) noexcept;
+	bool U16StringToWString(const std::u16string& input, std::wstring& output) noexcept;
+	
+	/**
+	 * @brief Batch encoding conversion with output parameter (zero-copy, memory reuse)
+	 * @param inputs Input string list
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @param outputs Output string list (caller-provided, memory reused)
+	 * @return true if all conversions succeeded, false if any failed
+	 * @note outputs will be resized to match inputs.size()
+	 */
+	bool ConvertEncodingBatch(
+		const std::vector<std::string>& inputs,
+		const char* fromEncoding,
+		const char* toEncoding,
+		std::vector<std::string>& outputs) noexcept;
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === string_view Input Overloads (Zero-Allocation) ===
+	//----------------------------------------------------------------------------------------------------------------------
+	/**
+	 * @brief Core conversion with string_view input and output parameter
+	 * @param input Input string view (zero-allocation)
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @param output Output string (caller-provided, memory reused)
+	 * @return true on success, false on failure
+	 * @note Avoids temporary string construction for string literals and substrings
+	 * @note For detailed error reporting, use ConvertEncodingFast() which returns ErrorCode
+	 */
+	bool ConvertEncoding(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+	
+	/**
+	 * @brief High-performance conversion with string_view input
+	 * @param input Input string view
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @param output Output string (caller-provided)
+	 * @return ErrorCode indicating success or failure type
+	 */
+	ErrorCode ConvertEncodingFast(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+	
+	// string_view input overloads (output parameter versions for buffer reuse)
+	bool ToUtf8FromLocale(std::string_view input, std::string& output) noexcept;
+	bool ToLocaleFromUtf8(std::string_view input, std::string& output) noexcept;
+	bool ToUtf16LEFromUtf8(std::string_view input, std::u16string& output) noexcept;
+	bool ToUtf16BEFromUtf8(std::string_view input, std::u16string& output) noexcept;
 
 	//----------------------------------------------------------------------------------------------------------------------
 	// === High-Performance Methods using CompactResult ===
@@ -1517,7 +2353,10 @@ public:
 	 * @param toEncoding Target encoding name
 	 * @param estimatedSize Estimated output size (optional, for allocation optimization)
 	 * @return CompactResult containing conversion result
+	 * @deprecated The API now auto-estimates output size efficiently. Use ConvertEncodingFast() instead.
+	 * @see ConvertEncodingFast
 	 */
+	[[deprecated("Auto size estimation is now efficient. Use ConvertEncodingFast() instead.")]]
 	UNICONV_HOT StringResult ConvertEncodingFastWithHint(const std::string& input,const char* fromEncoding,const char* toEncoding,size_t estimatedSize = 0) noexcept;
 
 	/**
@@ -1529,6 +2368,38 @@ public:
 	 */
 	UNICONV_FLATTEN std::vector<StringResult> ConvertEncodingBatch(const std::vector<std::string>& inputs,const char* fromEncoding,const char* toEncoding) noexcept;
 
+	/**
+	 * @brief Parallel batch encoding conversion (return value version)
+	 * @param inputs Input string list
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @param numThreads Number of threads to use (0 = auto-detect)
+	 * @return Conversion result list
+	 * @note Uses multi-threading for improved performance on large batches
+	 */
+	UNICONV_FLATTEN std::vector<StringResult> ConvertEncodingBatchParallel(
+		const std::vector<std::string>& inputs,
+		const char* fromEncoding,
+		const char* toEncoding,
+		size_t numThreads = 0) noexcept;
+
+	/**
+	 * @brief Parallel batch encoding conversion (output parameter version)
+	 * @param inputs Input string list
+	 * @param fromEncoding Source encoding name
+	 * @param toEncoding Target encoding name
+	 * @param outputs Output string vector (will be resized)
+	 * @param numThreads Number of threads to use (0 = auto-detect)
+	 * @return true if all conversions succeeded, false if any failed
+	 * @note Uses multi-threading for improved performance on large batches
+	 */
+	bool ConvertEncodingBatchParallel(
+		const std::vector<std::string>& inputs,
+		const char* fromEncoding,
+		const char* toEncoding,
+		std::vector<std::string>& outputs,
+		size_t numThreads = 0) noexcept;
+
 	//---------------------------------------------------------------------------
 	// Pool Statistics @{
 	//---------------------------------------------------------------------------
@@ -1538,13 +2409,13 @@ public:
 		 * @struct PoolStats
 		 */
 		struct PoolStats {
-			size_t	 			      active_buffers;  // StringBufferPool active buffer count
-			size_t 				   total_conversions;  // Total conversion count
-			size_t 						  cache_hits;  // Buffer pool cache hit count
-			double 						  	hit_rate;  // Buffer pool hit rate
-			size_t 					iconv_cache_size;  // iconv descriptor cache size
-			size_t 					iconv_cache_hits;  // iconv cache hit count
-			size_t 				  iconv_cache_misses;  // iconv cache miss count
+			size_t                    active_buffers;  // StringBufferPool active buffer count
+			size_t                 total_conversions;  // Total conversion count
+			size_t                        cache_hits;  // Buffer pool cache hit count
+			double                          hit_rate;  // Buffer pool hit rate
+			size_t                  iconv_cache_size;  // iconv descriptor cache size
+			size_t                  iconv_cache_hits;  // iconv cache hit count
+			size_t                iconv_cache_misses;  // iconv cache miss count
 			size_t             iconv_cache_evictions;  // iconv cache eviction count
 			double              iconv_cache_hit_rate;  // iconv cache hit rate
 			double               iconv_avg_hit_count;  // iconv average hit count
@@ -1560,11 +2431,10 @@ private:
 	//----------------------------------------------------------------------------------------------------------------------
 	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;                /*!< Encoding map           */
 	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
-	mutable std::shared_mutex                                    m_iconvCacheMutex;            /*!< Iconv cache mutex      */
 
-	// implement LRU cache for iconv descriptors
+	// Lock-free concurrent LRU cache for iconv descriptors using parallel-hashmap
 	struct IconvCacheEntry {
-		IconvSharedPtr 					descriptor;
+		IconvSharedPtr                  descriptor;
 		mutable std::atomic<uint64_t> last_used{0};     // 最后使用时间戳
 		mutable std::atomic<uint32_t> hit_count{0};     // 命中次数
 
@@ -1616,7 +2486,17 @@ private:
 		}
 	};
 
-	mutable std::unordered_map<std::string, IconvCacheEntry>     m_iconvDescriptorCacheMap;    /*!< Iconv descriptor cache with LRU */
+	// Lock-free parallel hash map for iconv descriptor cache (thread-safe, no mutex needed)
+	// Using uint64_t keys (pre-computed hash) instead of std::string for:
+	// - No string allocation/copy on each lookup
+	// - Faster hash computation (identity hash)
+	// - Reduced memory usage per entry
+	mutable phmap::parallel_flat_hash_map<uint64_t, IconvCacheEntry,
+		phmap::priv::hash_default_hash<uint64_t>,
+		phmap::priv::hash_default_eq<uint64_t>,
+		phmap::priv::Allocator<phmap::priv::Pair<const uint64_t, IconvCacheEntry>>,
+		4,  // 4-way parallel (16 submaps for better concurrency)
+		std::mutex> m_iconvDescriptorCacheMap;    /*!< Lock-free iconv descriptor cache with LRU */
 	static constexpr size_t                                      MAX_CACHE_SIZE = 128;         /*!< Increased cache size for better hit rate */
 	mutable std::atomic<uint64_t>                                m_cacheHitCount{0};           /*!< Cache hit statistics */
 	mutable std::atomic<uint64_t>                                m_cacheMissCount{0};          /*!< Cache miss statistics */
@@ -1628,6 +2508,18 @@ private:
 	// 性能统计（调试和优化用）
 	mutable std::atomic<size_t>                                  m_totalConversions{0};        /*!< Total conversion count */
 	mutable std::atomic<size_t>                                  m_poolCacheHits{0};           /*!< Pool cache hit count   */
+	
+#if UNICONV_NO_THREAD_LOCAL
+	// When thread_local is disabled (e.g., in DLL builds), use instance member with mutex protection
+	struct InstanceCache {
+		mutable std::mutex mutex;
+		ThreadLocalCache cache;
+	};
+	mutable InstanceCache                                        m_instanceCache;              /*!< Instance-level cache with mutex protection (non-thread-local) */
+#else
+	// Thread-local cache instance for improved multi-threaded performance
+	static thread_local ThreadLocalCache                         t_cache;                      /*!< Thread-local cache for iconv descriptors and temp buffers */
+#endif
 	//----------------------------------------------------------------------------------------------------------------------
 	/// @} ! Private members
 	//----------------------------------------------------------------------------------------------------------------------
@@ -1646,6 +2538,13 @@ private:
 	 * @return 估算的输出大小
 	 */
 	static size_t EstimateOutputSize(size_t input_size, const char* from_encoding, const char* to_encoding) noexcept;
+
+	/**
+	 * @brief 快速检查编码名称是否有效
+	 * @param encoding 编码名称
+	 * @return 如果编码名称有效则返回true
+	 */
+	static bool IsValidEncodingName(const char* encoding) noexcept;
 
 	/**
 	 * @brief 获取编码的字节倍数系数
@@ -1678,9 +2577,124 @@ private:
 	std::pair<BomEncoding, std::string_view>  DetectAndRemoveBom(const std::string_view& data);
 	std::pair<BomEncoding, std::wstring_view> DetectAndRemoveBom(const std::wstring_view& data);
 
-private:
+	/**
+	 * @brief Type-safe conversion helper: Convert character string to byte string
+	 * @tparam CharT Character type (char16_t, char32_t, wchar_t)
+	 * @param input Input character string
+	 * @return Byte string representation
+	 * @details Uses memcpy for safe byte-level copy, avoiding reinterpret_cast issues
+	 */
+	template<typename CharT>
+	static std::string ToByteString(const std::basic_string<CharT>& input) {
+		static_assert(sizeof(CharT) >= 1, "Character type must be at least 1 byte");
+		
+		std::string result;
+		const size_t byte_size = input.size() * sizeof(CharT);
+		result.resize(byte_size);
+		
+		if (!input.empty()) {
+			std::memcpy(result.data(), input.data(), byte_size);
+		}
+		
+		return result;
+	}
+
+	/**
+	 * @brief Type-safe conversion helper: Convert byte string to character string
+	 * @tparam CharT Target character type (char16_t, char32_t, wchar_t)
+	 * @param bytes Input byte string
+	 * @return Character string or empty on size mismatch
+	 * @throws std::invalid_argument if byte size is not aligned to CharT size
+	 * @details Uses memcpy for safe byte-level copy with alignment validation
+	 */
+	template<typename CharT>
+	static std::basic_string<CharT> FromByteString(const std::string& bytes) {
+		static_assert(sizeof(CharT) >= 1, "Character type must be at least 1 byte");
+		
+		// Validate alignment
+		if (bytes.size() % sizeof(CharT) != 0) {
+			return std::basic_string<CharT>{};  // Return empty on misalignment
+		}
+		
+		std::basic_string<CharT> result;
+		const size_t char_count = bytes.size() / sizeof(CharT);
+		result.resize(char_count);
+		
+		if (!bytes.empty()) {
+			std::memcpy(result.data(), bytes.data(), bytes.size());
+		}
+		
+		return result;
+	}
+
+	/**
+	 * @brief Safe reinterpret with alignment check
+	 * @tparam To Target type
+	 * @tparam From Source type
+	 * @param ptr Source pointer
+	 * @param count Number of elements
+	 * @return Target pointer or nullptr if misaligned
+	 */
+	template<typename To, typename From>
+	static const To* SafeReinterpret(const From* ptr, size_t count) {
+		if (!ptr || count == 0) return nullptr;
+		
+		// Check alignment
+		if (reinterpret_cast<uintptr_t>(ptr) % alignof(To) != 0) {
+			return nullptr;  // Misaligned
+		}
+		
+		// Check size
+		if ((count * sizeof(From)) % sizeof(To) != 0) {
+			return nullptr;  // Size mismatch
+		}
+		
+		return reinterpret_cast<const To*>(ptr);
+	}
+
+public:
+	/**
+	 * @brief Default constructor - creates a new UniConv instance
+	 * @details Allows creating multiple independent UniConv instances.
+	 * Each instance has its own iconv descriptor cache and configuration.
+	 * 
+	 * Example (stack allocation):
+	 * @code
+	 * UniConv converter;
+	 * auto result = converter.ConvertEncodingFast("hello", "UTF-8", "UTF-16LE");
+	 * @endcode
+	 * 
+	 * @note For heap allocation with automatic cleanup, use Create() method.
+	 * @see Create()
+	 */
 	UniConv() { }
 
+	/**
+	 * @brief Factory method to create a new UniConv instance
+	 * @return std::unique_ptr<UniConv> A new UniConv instance wrapped in unique_ptr
+	 * @details Provides explicit instance creation with RAII semantics.
+	 * This is the recommended way to create instances with automatic cleanup.
+	 * 
+	 * Example (recommended):
+	 * @code
+	 * auto converter = UniConv::Create();
+	 * auto result = converter->ConvertEncodingFast("hello", "UTF-8", "UTF-16LE");
+	 * @endcode
+	 * 
+	 * Benefits:
+	 * - Automatic memory management via unique_ptr
+	 * - Each instance is independent with its own cache
+	 * - Better testability and flexibility
+	 * - Thread-safe when each thread has its own instance
+	 * 
+	 * @note Each instance maintains its own internal state and caches.
+	 */
+	static std::unique_ptr<UniConv> Create() {
+		return std::unique_ptr<UniConv>(new UniConv());
+	}
+
+private:
+	// Delete copy constructor and assignment operator to prevent accidental copying
 	UniConv(const UniConv&) = delete;
 	UniConv& operator=(const UniConv&) = delete;
 };
