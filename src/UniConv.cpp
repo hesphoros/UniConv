@@ -2802,9 +2802,7 @@ bool UniConv::ConvertEncodingBatch(
     return all_success;
 }
 
-// ===================================================================================================================
-// Parallel Batch Conversion Implementation
-// ===================================================================================================================
+
 
 std::vector<StringResult> UniConv::ConvertEncodingBatchParallel(
     const std::vector<std::string>& inputs,
@@ -2842,57 +2840,42 @@ std::vector<StringResult> UniConv::ConvertEncodingBatchParallel(
         return results;
     }
     
-    // For small batches, use serial processing
-    if (inputs.size() < 10) {
+    // Calculate total bytes for adaptive strategy
+    size_t total_bytes = 0;
+    for (const auto& input : inputs) {
+        total_bytes += input.size();
+    }
+    
+    // Use adaptive parallel policy to determine strategy
+    ThreadPool& pool = UniConvThreadPool::GetInstance();
+    size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
+    size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
+        inputs.size(), total_bytes, max_threads);
+    
+    // Use serial processing if recommended
+    if (recommended_threads == 0) {
         return ConvertEncodingBatch(inputs, fromEncoding, toEncoding);
     }
     
-    // Determine number of threads
-    if (numThreads == 0) {
-        numThreads = std::thread::hardware_concurrency();
-        if (numThreads == 0) numThreads = 4;  // Fallback
-    }
+    // Use thread pool for parallel processing
+    auto* self = this;  // Capture for lambda
     
-    // Don't use more threads than items
-    numThreads = (std::min)(numThreads, inputs.size());
-    
-    // Calculate chunk size
-    size_t chunkSize = (inputs.size() + numThreads - 1) / numThreads;
-    
-    // Lambda for processing a chunk
-    auto processChunk = [&](size_t startIdx, size_t endIdx) {
-        for (size_t i = startIdx; i < endIdx && i < inputs.size(); ++i) {
-            const auto& input = inputs[i];
-            
-            if (input.empty()) {
-                results[i] = StringResult::Success(std::string{});
-                continue;
+    pool.ParallelFor(inputs.size(), 
+        [self, &inputs, &results, fromEncoding, toEncoding](size_t start, size_t end) {
+            for (size_t i = start; i < end; ++i) {
+                const auto& input = inputs[i];
+                
+                if (input.empty()) {
+                    results[i] = StringResult::Success(std::string{});
+                    continue;
+                }
+                
+                // Convert using ConvertEncodingFast
+                results[i] = self->ConvertEncodingFast(input, fromEncoding, toEncoding);
             }
-            
-            // Convert using ConvertEncodingFast
-            results[i] = ConvertEncodingFast(input, fromEncoding, toEncoding);
-        }
-    };
-    
-    // Launch threads
-    std::vector<std::thread> threads;
-    threads.reserve(numThreads);
-    
-    for (size_t t = 0; t < numThreads; ++t) {
-        size_t startIdx = t * chunkSize;
-        size_t endIdx = (std::min)(startIdx + chunkSize, inputs.size());
-        
-        if (startIdx < inputs.size()) {
-            threads.emplace_back(processChunk, startIdx, endIdx);
-        }
-    }
-    
-    // Wait for all threads
-    for (auto& thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
-        }
-    }
+        }, 
+        1  // min_chunk_size
+    );
     
     return results;
 }
@@ -2917,68 +2900,53 @@ bool UniConv::ConvertEncodingBatchParallel(
         return false;
     }
     
-    // For small batches, use serial processing
-    if (inputs.size() < 10) {
+    // Calculate total bytes for adaptive strategy
+    size_t total_bytes = 0;
+    for (const auto& input : inputs) {
+        total_bytes += input.size();
+    }
+    
+    // Use adaptive parallel policy to determine strategy
+    ThreadPool& pool = UniConvThreadPool::GetInstance();
+    size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
+    size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
+        inputs.size(), total_bytes, max_threads);
+    
+    // Use serial processing if recommended
+    if (recommended_threads == 0) {
         return ConvertEncodingBatch(inputs, fromEncoding, toEncoding, outputs);
     }
     
-    // Determine number of threads
-    if (numThreads == 0) {
-        numThreads = std::thread::hardware_concurrency();
-        if (numThreads == 0) numThreads = 4;
-    }
-    
-    numThreads = (std::min)(numThreads, inputs.size());
-    
-    // Calculate chunk size
-    size_t chunkSize = (inputs.size() + numThreads - 1) / numThreads;
-    
     // Track success across threads
     std::atomic<bool> all_success{true};
+    auto* self = this;  // Capture for lambda
     
-    // Lambda for processing a chunk
-    auto processChunk = [&](size_t startIdx, size_t endIdx) {
-        bool chunk_success = true;
-        
-        for (size_t i = startIdx; i < endIdx && i < inputs.size(); ++i) {
-            const auto& input = inputs[i];
+    // Use thread pool for parallel processing
+    pool.ParallelFor(inputs.size(),
+        [self, &inputs, &outputs, &all_success, fromEncoding, toEncoding](size_t start, size_t end) {
+            bool chunk_success = true;
             
-            if (input.empty()) {
-                outputs[i].clear();
-                continue;
+            for (size_t i = start; i < end; ++i) {
+                const auto& input = inputs[i];
+                
+                if (input.empty()) {
+                    outputs[i].clear();
+                    continue;
+                }
+                
+                // Use ConvertEncodingFast output parameter version
+                bool success = (self->ConvertEncodingFast(input, fromEncoding, toEncoding, outputs[i]) == ErrorCode::Success);
+                if (!success) {
+                    chunk_success = false;
+                }
             }
             
-            // Use ConvertEncodingFast output parameter version
-            bool success = (ConvertEncodingFast(input, fromEncoding, toEncoding, outputs[i]) == ErrorCode::Success);
-            if (!success) {
-                chunk_success = false;
+            if (!chunk_success) {
+                all_success.store(false, std::memory_order_relaxed);
             }
-        }
-        
-        if (!chunk_success) {
-            all_success.store(false, std::memory_order_relaxed);
-        }
-    };
-    
-    // Launch threads
-    std::vector<std::thread> threads;
-    threads.reserve(numThreads);
-    
-    for (size_t t = 0; t < numThreads; ++t) {
-        size_t startIdx = t * chunkSize;
-        size_t endIdx = (std::min)(startIdx + chunkSize, inputs.size());
-        
-        if (startIdx < inputs.size()) {
-            threads.emplace_back(processChunk, startIdx, endIdx);
-        }
-    }
-    
-    // Wait for all threads
-    for (auto& thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
-        }
-    }
+        },
+        1  // min_chunk_size
+    );
     
     return all_success.load(std::memory_order_relaxed);
 }

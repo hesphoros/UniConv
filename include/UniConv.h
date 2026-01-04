@@ -518,6 +518,228 @@ public:
     }
 };
 
+//----------------------------------------------------------------------------------------------------------------------
+// Thread Pool ===
+//----------------------------------------------------------------------------------------------------------------------
+
+/**
+ * @brief Lock-free thread pool for parallel batch processing
+ * @details Provides efficient task scheduling with:
+ *          - Pre-created worker threads (no creation overhead per batch)
+ *          - Lock-free task queue using condition variable
+ *          - Automatic thread count based on hardware
+ *          - Support for waiting on specific task batches
+ */
+class ThreadPool {
+public:
+    /**
+     * @brief Construct thread pool with specified number of workers
+     * @param num_threads Number of worker threads (0 = hardware_concurrency)
+     */
+    explicit ThreadPool(size_t num_threads = 0) : stop_(false) {
+        if (num_threads == 0) {
+            num_threads = std::thread::hardware_concurrency();
+            if (num_threads == 0) num_threads = 4;  // Fallback
+        }
+        
+        workers_.reserve(num_threads);
+        for (size_t i = 0; i < num_threads; ++i) {
+            workers_.emplace_back([this] { WorkerLoop(); });
+        }
+    }
+    
+    ~ThreadPool() {
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            stop_ = true;
+        }
+        condition_.notify_all();
+        for (auto& worker : workers_) {
+            if (worker.joinable()) {
+                worker.join();
+            }
+        }
+    }
+    
+    // Non-copyable, non-movable
+    ThreadPool(const ThreadPool&) = delete;
+    ThreadPool& operator=(const ThreadPool&) = delete;
+    ThreadPool(ThreadPool&&) = delete;
+    ThreadPool& operator=(ThreadPool&&) = delete;
+    
+    /**
+     * @brief Submit a task to the thread pool
+     * @tparam F Callable type
+     * @param task Task to execute
+     * @return std::future for the task result
+     */
+    template<typename F>
+    auto Submit(F&& task) -> std::future<decltype(task())> {
+        using ReturnType = decltype(task());
+        
+        auto packaged_task = std::make_shared<std::packaged_task<ReturnType()>>(
+            std::forward<F>(task));
+        
+        std::future<ReturnType> future = packaged_task->get_future();
+        
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            if (stop_) {
+                throw std::runtime_error("ThreadPool is stopped");
+            }
+            tasks_.emplace([packaged_task]() { (*packaged_task)(); });
+        }
+        condition_.notify_one();
+        
+        return future;
+    }
+    
+    /**
+     * @brief Execute tasks in parallel and wait for completion
+     * @tparam F Callable type (void(size_t start, size_t end))
+     * @param total_items Total number of items to process
+     * @param task_func Function to call with (start_idx, end_idx) range
+     * @param min_chunk_size Minimum items per chunk (default: 1)
+     */
+    template<typename F>
+    void ParallelFor(size_t total_items, F&& task_func, size_t min_chunk_size = 1) {
+        if (total_items == 0) return;
+        
+        size_t num_threads = workers_.size();
+        size_t chunk_size = (std::max)(min_chunk_size, (total_items + num_threads - 1) / num_threads);
+        
+        std::vector<std::future<void>> futures;
+        futures.reserve((total_items + chunk_size - 1) / chunk_size);
+        
+        for (size_t start = 0; start < total_items; start += chunk_size) {
+            size_t end = (std::min)(start + chunk_size, total_items);
+            futures.emplace_back(Submit([&task_func, start, end]() {
+                task_func(start, end);
+            }));
+        }
+        
+        // Wait for all tasks to complete
+        for (auto& future : futures) {
+            future.wait();
+        }
+    }
+    
+    /**
+     * @brief Get number of worker threads
+     */
+    [[nodiscard]] size_t GetThreadCount() const noexcept {
+        return workers_.size();
+    }
+    
+    /**
+     * @brief Get number of pending tasks
+     */
+    [[nodiscard]] size_t GetPendingTaskCount() const noexcept {
+        std::unique_lock<std::mutex> lock(queue_mutex_);
+        return tasks_.size();
+    }
+
+private:
+    void WorkerLoop() {
+        while (true) {
+            std::function<void()> task;
+            
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex_);
+                condition_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+                
+                if (stop_ && tasks_.empty()) {
+                    return;
+                }
+                
+                task = std::move(tasks_.front());
+                tasks_.pop();
+            }
+            
+            task();
+        }
+    }
+    
+    std::vector<std::thread> workers_;
+    std::queue<std::function<void()>> tasks_;
+    mutable std::mutex queue_mutex_;
+    std::condition_variable condition_;
+    bool stop_;
+};
+
+/**
+ * @brief Singleton thread pool for UniConv parallel operations
+ * @details Provides a shared thread pool instance for all UniConv parallel batch operations.
+ *          Uses lazy initialization to avoid overhead if parallel operations are never used.
+ */
+class UniConvThreadPool {
+public:
+    /**
+     * @brief Get singleton thread pool instance
+     */
+    static ThreadPool& GetInstance() {
+        static ThreadPool instance;
+        return instance;
+    }
+    
+    /**
+     * @brief Get singleton with specific thread count (first call only)
+     * @param num_threads Desired thread count
+     * @note Thread count is only applied on first call; subsequent calls return existing pool
+     */
+    static ThreadPool& GetInstance(size_t num_threads) {
+        static ThreadPool instance(num_threads);
+        return instance;
+    }
+    
+    // Prevent instantiation
+    UniConvThreadPool() = delete;
+};
+
+/**
+ * @brief Adaptive parallel execution policy
+ * @details Determines optimal parallelization strategy based on workload characteristics
+ */
+struct AdaptiveParallelPolicy {
+    static constexpr size_t SERIAL_THRESHOLD_ITEMS = 10;        // Items below this: always serial
+    static constexpr size_t SERIAL_THRESHOLD_BYTES = 10 * 1024; // Bytes below this: always serial
+    static constexpr size_t LIGHT_PARALLEL_BYTES = 100 * 1024;  // Bytes below this: use 2 threads
+    
+    /**
+     * @brief Determine recommended thread count based on workload
+     * @param num_items Number of items to process
+     * @param total_bytes Total bytes to process
+     * @param max_threads Maximum available threads
+     * @return Recommended thread count (0 = use serial processing)
+     */
+    static size_t GetRecommendedThreads(size_t num_items, size_t total_bytes, size_t max_threads) noexcept {
+        // Too few items: serial
+        if (num_items < SERIAL_THRESHOLD_ITEMS) {
+            return 0;
+        }
+        
+        // Small data: serial
+        if (total_bytes < SERIAL_THRESHOLD_BYTES) {
+            return 0;
+        }
+        
+        // Medium data: light parallel
+        if (total_bytes < LIGHT_PARALLEL_BYTES) {
+            return (std::min)(size_t(2), max_threads);
+        }
+        
+        // Large data: full parallel, but don't over-subscribe
+        return (std::min)(max_threads, num_items);
+    }
+    
+    /**
+     * @brief Check if workload should use serial processing
+     */
+    static bool ShouldUseSerial(size_t num_items, size_t total_bytes) noexcept {
+        return num_items < SERIAL_THRESHOLD_ITEMS || total_bytes < SERIAL_THRESHOLD_BYTES;
+    }
+};
+
 /**
  * @brief High-performance tiered string buffer pool
  * @details Provides three tiers of buffer sizes optimized for different use cases:
