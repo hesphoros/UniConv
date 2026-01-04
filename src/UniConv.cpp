@@ -1285,14 +1285,10 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
         return nullptr;
     }
 
-    // 构建缓存键，优化字符串构造
-    std::string key;
+    // 使用预计算哈希作为缓存键 - 避免字符串拼接分配
     const size_t from_len = strlen(fromcode);
     const size_t to_len   = strlen(tocode);
-    key.reserve(from_len + to_len + 1);
-    key.assign(fromcode, from_len);
-    key.push_back('>');
-    key.append(tocode, to_len);
+    const uint64_t key = detail::MakeEncodingPairKey(fromcode, from_len, tocode, to_len);
 
     // Lock-free cache lookup using parallel-hashmap's concurrent operations
     // Try to find in cache (thread-safe read)
@@ -1313,7 +1309,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     iconv_t cd = iconv_open(tocode, fromcode);
     if (UNICONV_UNLIKELY(cd == reinterpret_cast<iconv_t>(-1))) {
         #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-        std::cout << "iconv_open error for " << key << std::endl;
+        std::cout << "iconv_open error for " << fromcode << ">" << tocode << std::endl;
         #endif
         return nullptr;
     }
@@ -1892,8 +1888,8 @@ void UniConv::EvictLRUCacheEntries()
     
     constexpr size_t TARGET_SIZE = MAX_CACHE_SIZE * 3 / 4;  // 清理到75%容量
     
-    // 收集所有条目及其访问时间和键名
-    std::vector<std::pair<uint64_t, std::string>> entries;
+    // 收集所有条目及其访问时间和键（现在是uint64_t哈希值）
+    std::vector<std::pair<uint64_t, uint64_t>> entries;  // (timestamp, hash_key)
     entries.reserve(m_iconvDescriptorCacheMap.size());
     
     // Thread-safe iteration using phmap
@@ -2160,14 +2156,10 @@ ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fro
     // Prefetch input data to cache
     UNICONV_PREFETCH(input.data(), 0, 3);
     
-    // Build cache key
-    std::string key;
+    // 使用预计算哈希作为缓存键 - 避免字符串拼接分配
     const size_t from_len = strlen(fromEncoding);
     const size_t to_len   = strlen(toEncoding);
-    key.reserve(from_len + to_len + 1);
-    key.assign(fromEncoding, from_len);
-    key.push_back('>');
-    key.append(toEncoding, to_len);
+    const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
     
     // Try cache first (thread-safe in both modes)
 #if UNICONV_NO_THREAD_LOCAL
@@ -2697,14 +2689,10 @@ bool UniConv::ConvertEncodingBatch(
         UNICONV_PREFETCH(inputs.data(), 0, 2);
     }
     
-    // Build cache key once for all conversions
-    std::string key;
+    // 使用预计算哈希作为缓存键 - 批量转换只计算一次
     const size_t from_len = strlen(fromEncoding);
     const size_t to_len   = strlen(toEncoding);
-    key.reserve(from_len + to_len + 1);
-    key.assign(fromEncoding, from_len);
-    key.push_back('>');
-    key.append(toEncoding, to_len);
+    const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
     
     // Try cache first (thread-safe in both modes)
 #if UNICONV_NO_THREAD_LOCAL

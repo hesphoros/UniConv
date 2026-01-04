@@ -51,6 +51,7 @@
 #include <sstream>
 #include <utility>
 #include <vector>
+#include <list>
 #include <string_view>
 #include <cerrno>
 #include <fstream>
@@ -212,6 +213,48 @@ namespace detail {
         for (size_t i = 0; i < len; ++i) {
             hash ^= static_cast<uint32_t>(str[i]);  // XOR each byte
             hash *= 16777619u;  // Multiply by FNV prime
+        }
+        return hash;
+    }
+
+    /**
+     * @brief 64-bit FNV-1a hash for runtime string hashing
+     * @param str The input string
+     * @param len The length of the string
+     * @return 64-bit hash value
+     */
+    inline uint64_t fnv1a_hash64(const char* str, size_t len) noexcept {
+        uint64_t hash = 14695981039346656037ULL;  // FNV-1a 64-bit offset basis
+        for (size_t i = 0; i < len; ++i) {
+            hash ^= static_cast<uint64_t>(static_cast<unsigned char>(str[i]));
+            hash *= 1099511628211ULL;  // FNV-1a 64-bit prime
+        }
+        return hash;
+    }
+
+    /**
+     * @brief Compute combined hash key for encoding pair (from -> to)
+     * @param fromcode Source encoding name
+     * @param from_len Length of source encoding name
+     * @param tocode Target encoding name  
+     * @param to_len Length of target encoding name
+     * @return Combined 64-bit hash (high 32 bits: from, low 32 bits: to)
+     * 
+     * This eliminates string concatenation overhead in cache key generation.
+     * Time complexity: O(from_len + to_len) with no memory allocation.
+     */
+    inline uint64_t MakeEncodingPairKey(const char* fromcode, size_t from_len,
+                                         const char* tocode, size_t to_len) noexcept {
+        // Use 64-bit hash combining both encodings
+        // Start with from encoding hash
+        uint64_t hash = fnv1a_hash64(fromcode, from_len);
+        // Add separator and continue hashing with to encoding
+        hash ^= static_cast<uint64_t>('>');
+        hash *= 1099511628211ULL;
+        // Continue hashing with to encoding
+        for (size_t i = 0; i < to_len; ++i) {
+            hash ^= static_cast<uint64_t>(static_cast<unsigned char>(tocode[i]));
+            hash *= 1099511628211ULL;
         }
         return hash;
     }
@@ -905,8 +948,13 @@ private:
 	struct ThreadLocalCache {
 		// Iconv descriptor local cache (max 32 entries)
 		static constexpr size_t LOCAL_CACHE_SIZE = 32;
-		std::unordered_map<std::string, IconvSharedPtr> iconv_cache;
-		std::vector<std::pair<uint64_t, std::string>> lru_keys;  // For LRU eviction
+		
+		// O(1) LRU cache implementation using list + unordered_map
+		// - list maintains LRU order: front = oldest, back = most recently used
+		// - map stores uint64_t hash key -> (descriptor, list iterator) for O(1) lookup
+		// - Using uint64_t keys eliminates string allocation/concatenation overhead
+		std::list<uint64_t> lru_order_;
+		std::unordered_map<uint64_t, std::pair<IconvSharedPtr, std::list<uint64_t>::iterator>> iconv_cache_;
 		
 		// Temporary conversion buffers (avoid frequent allocations)
 		std::vector<char> temp_conversion_buffer;
@@ -918,18 +966,21 @@ private:
 		
 		/**
 		 * @brief Get or cache an iconv descriptor in thread-local storage
-		 * @param key Cache key (format: "from>to")
+		 * @param key Pre-computed 64-bit hash key from MakeEncodingPairKey()
 		 * @param fromcode Source encoding
 		 * @param tocode Target encoding
 		 * @return Cached or newly created iconv descriptor
+		 * 
+		 * Time complexity: O(1) average for all operations
+		 * Memory: No string allocation for cache key
 		 */
-		IconvSharedPtr GetOrCreateIconvDescriptor(const std::string& key, const char* fromcode, const char* tocode) {
-			// Check if already in cache
-			auto it = iconv_cache.find(key);
-			if (it != iconv_cache.end()) {
-				// Update LRU
-				UpdateLRU(key);
-				return it->second;
+		IconvSharedPtr GetOrCreateIconvDescriptor(uint64_t key, const char* fromcode, const char* tocode) {
+			// Check if already in cache - O(1)
+			auto it = iconv_cache_.find(key);
+			if (it != iconv_cache_.end()) {
+				// Move to back of LRU list (most recently used) - O(1)
+				lru_order_.splice(lru_order_.end(), lru_order_, it->second.second);
+				return it->second.first;
 			}
 			
 			// Create new descriptor
@@ -941,42 +992,36 @@ private:
 			// Create shared_ptr with custom deleter (cross-platform safe)
 			auto descriptor = std::shared_ptr<void>(static_cast<void*>(cd), IconvDeleter());
 			
-			// Check cache size and evict if necessary
-			if (iconv_cache.size() >= LOCAL_CACHE_SIZE) {
+			// Check cache size and evict oldest if necessary - O(1)
+			if (iconv_cache_.size() >= LOCAL_CACHE_SIZE) {
 				EvictOldest();
 			}
 			
-			// Insert into cache
-			iconv_cache[key] = descriptor;
-			uint64_t timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
-			lru_keys.emplace_back(timestamp, key);
+			// Insert into LRU list (at back = most recently used) - O(1)
+			lru_order_.push_back(key);
+			auto list_it = std::prev(lru_order_.end());
+			
+			// Insert into cache map - O(1)
+			iconv_cache_[key] = std::make_pair(descriptor, list_it);
 			
 			return descriptor;
 		}
 		
 	private:
-		void UpdateLRU(const std::string& key) {
-			// Remove old entry
-			auto it = std::find_if(lru_keys.begin(), lru_keys.end(),
-				[&key](const auto& pair) { return pair.second == key; });
-			if (it != lru_keys.end()) {
-				lru_keys.erase(it);
-			}
-			// Add to end with new timestamp
-			uint64_t timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
-			lru_keys.emplace_back(timestamp, key);
-		}
-		
+		/**
+		 * @brief Evict the oldest (least recently used) entry - O(1)
+		 */
 		void EvictOldest() {
-			if (lru_keys.empty()) return;
+			if (lru_order_.empty()) return;
 			
-			// Find oldest entry
-			auto oldest = std::min_element(lru_keys.begin(), lru_keys.end(),
-				[](const auto& a, const auto& b) { return a.first < b.first; });
+			// Front of list is the oldest entry - O(1)
+			uint64_t oldest_key = lru_order_.front();
 			
-			// Remove from cache
-			iconv_cache.erase(oldest->second);
-			lru_keys.erase(oldest);
+			// Remove from cache map - O(1)
+			iconv_cache_.erase(oldest_key);
+			
+			// Remove from LRU list - O(1)
+			lru_order_.pop_front();
 		}
 	};
 
@@ -1913,10 +1958,14 @@ private:
 	};
 
 	// Lock-free parallel hash map for iconv descriptor cache (thread-safe, no mutex needed)
-	mutable phmap::parallel_flat_hash_map<std::string, IconvCacheEntry,
-		phmap::priv::hash_default_hash<std::string>,
-		phmap::priv::hash_default_eq<std::string>,
-		phmap::priv::Allocator<phmap::priv::Pair<const std::string, IconvCacheEntry>>,
+	// Using uint64_t keys (pre-computed hash) instead of std::string for:
+	// - No string allocation/copy on each lookup
+	// - Faster hash computation (identity hash)
+	// - Reduced memory usage per entry
+	mutable phmap::parallel_flat_hash_map<uint64_t, IconvCacheEntry,
+		phmap::priv::hash_default_hash<uint64_t>,
+		phmap::priv::hash_default_eq<uint64_t>,
+		phmap::priv::Allocator<phmap::priv::Pair<const uint64_t, IconvCacheEntry>>,
 		4,  // 4-way parallel (16 submaps for better concurrency)
 		std::mutex> m_iconvDescriptorCacheMap;    /*!< Lock-free iconv descriptor cache with LRU */
 	static constexpr size_t                                      MAX_CACHE_SIZE = 128;         /*!< Increased cache size for better hit rate */
