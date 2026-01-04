@@ -518,28 +518,84 @@ public:
     }
 };
 
-// 高性能字符串缓冲池类
+/**
+ * @brief High-performance tiered string buffer pool
+ * @details Provides three tiers of buffer sizes optimized for different use cases:
+ *          - Small (4KB): High-frequency small string conversions
+ *          - Medium (64KB): Typical file and document processing
+ *          - Large (1MB): Large file and batch processing
+ * 
+ * Lock-free design using atomic compare-exchange for buffer acquisition.
+ */
 class StringBufferPool {
 private:
+    // Buffer tier constants
+    static constexpr size_t SMALL_BUFFER_SIZE   = 4096;       // 4KB
+    static constexpr size_t MEDIUM_BUFFER_SIZE  = 65536;      // 64KB
+    static constexpr size_t LARGE_BUFFER_SIZE   = 1048576;    // 1MB
+    
+    // Pool sizes per tier (balanced for memory vs concurrency)
+    static constexpr size_t SMALL_POOL_SIZE  = 32;  // High frequency, more buffers
+    static constexpr size_t MEDIUM_POOL_SIZE = 8;   // Medium frequency
+    static constexpr size_t LARGE_POOL_SIZE  = 2;   // Low frequency, large memory footprint
+    
+    // Legacy constant for compatibility
+    static constexpr size_t POOL_SIZE = SMALL_POOL_SIZE;
+    
     struct Buffer {
-        std::string                      data;
-        std::atomic<bool> in_use{false};
-
-        Buffer() {
-            data.reserve(4096);  // 预分配4KB，减少动态扩容
+        std::string        data;
+        std::atomic<bool>  in_use{false};
+        size_t             tier_size;  // Pre-allocated tier size
+        
+        explicit Buffer(size_t reserve_size = SMALL_BUFFER_SIZE) : tier_size(reserve_size) {
+            data.reserve(reserve_size);
         }
     };
-
-    static constexpr size_t      POOL_SIZE = 16;  // 池大小，平衡内存使用和并发性能
-    std::array<Buffer, POOL_SIZE>      buffers_;  // 固定大小缓冲区数组
-    std::atomic<size_t>    next_index_{0};  // 下一个可用缓冲区索引
+    
+    // Tiered buffer arrays
+    std::array<Buffer, SMALL_POOL_SIZE>  small_buffers_;
+    std::array<Buffer, MEDIUM_POOL_SIZE> medium_buffers_;
+    std::array<Buffer, LARGE_POOL_SIZE>  large_buffers_;
+    
+    // Per-tier round-robin indices
+    std::atomic<size_t> small_next_index_{0};
+    std::atomic<size_t> medium_next_index_{0};
+    std::atomic<size_t> large_next_index_{0};
+    
+    // Legacy member for compatibility
+    std::array<Buffer, SMALL_POOL_SIZE>& buffers_ = small_buffers_;
+    std::atomic<size_t>& next_index_ = small_next_index_;
 
 public:
+    /**
+     * @brief Buffer tier enumeration
+     */
+    enum class Tier { Small, Medium, Large };
+    
+    /**
+     * @brief Initialize tiered buffer pool with pre-allocated buffers
+     */
+    StringBufferPool() {
+        // Initialize medium and large buffers with appropriate sizes
+        for (auto& buf : medium_buffers_) {
+            buf.tier_size = MEDIUM_BUFFER_SIZE;
+            buf.data.reserve(MEDIUM_BUFFER_SIZE);
+        }
+        for (auto& buf : large_buffers_) {
+            buf.tier_size = LARGE_BUFFER_SIZE;
+            buf.data.reserve(LARGE_BUFFER_SIZE);
+        }
+        // Small buffers are initialized with default constructor (4KB)
+        for (auto& buf : small_buffers_) {
+            buf.tier_size = SMALL_BUFFER_SIZE;
+        }
+    }
+    
     // RAII缓冲区lease类
     class BufferLease {
-        Buffer*         buffer_;
+        Buffer*           buffer_;
         StringBufferPool* pool_;
-        bool      is_from_pool_;  // 标记是否来自池（用于统计）
+        bool              is_from_pool_;  // 标记是否来自池（用于统计）
 
     public:
         BufferLease(Buffer* buf, StringBufferPool* pool, bool from_pool = true) noexcept
@@ -628,49 +684,146 @@ public:
         }
     };
 
-    // 获取缓冲区租用器 - 热路径优化，分支预测
-    [[nodiscard]] UNICONV_HOT UNICONV_FLATTEN BufferLease acquire() noexcept {
-        constexpr int max_attempts = POOL_SIZE * 2;
-
-        // 预取下一个可能的索引位置，提升缓存性能
-        size_t current_index = next_index_.load(std::memory_order_relaxed);
-        UNICONV_PREFETCH(&buffers_[current_index % POOL_SIZE], 0, 1);
+private:
+    /**
+     * @brief Try to acquire a buffer from a specific tier
+     * @tparam N Pool size
+     * @param buffers Buffer array
+     * @param next_index Atomic index counter
+     * @return BufferLease if successful, nullptr otherwise
+     */
+    template<size_t N>
+    [[nodiscard]] Buffer* TryAcquireFromTier(
+        std::array<Buffer, N>& buffers,
+        std::atomic<size_t>& next_index) noexcept 
+    {
+        constexpr int max_attempts = static_cast<int>(N * 2);
         
-        // 尝试获取缓冲区
-        for (int attempt = 0; UNICONV_LIKELY(attempt < max_attempts); ++attempt) {
-            size_t index = next_index_.fetch_add(1, std::memory_order_relaxed) % POOL_SIZE;
+        for (int attempt = 0; attempt < max_attempts; ++attempt) {
+            size_t index = next_index.fetch_add(1, std::memory_order_relaxed) % N;
             
             bool expected = false;
-            if (UNICONV_LIKELY(buffers_[index].in_use.compare_exchange_weak(
-                    expected, true, std::memory_order_acquire))) {
-                // 获取成功，清理缓冲区准备使用
-                buffers_[index].data.clear();
-                return BufferLease(&buffers_[index], this, true);  // true = 来自池
-            }
-
-            // 预取下一个可能的缓冲区位置
-            if (UNICONV_LIKELY(attempt + 1 < max_attempts)) {
-                size_t next_index = (index + 1) % POOL_SIZE;
-                UNICONV_PREFETCH(&buffers_[next_index], 0, 1);
+            if (buffers[index].in_use.compare_exchange_weak(
+                    expected, true, std::memory_order_acquire)) {
+                buffers[index].data.clear();
+                return &buffers[index];
             }
         }
-
-        // 池满时的回退策略：使用线程本地临时缓冲区（罕见情况）
-        static thread_local Buffer temp_buffer;
-        temp_buffer.data.clear();
-        temp_buffer.in_use.store(true);
-        return BufferLease(&temp_buffer, nullptr, false);  // false = 不是来自池
+        return nullptr;
     }
 
-    // 获取池统计信息
+public:
+    /**
+     * @brief Acquire buffer with size hint - chooses appropriate tier
+     * @param hint_size Expected buffer size needed
+     * @return BufferLease for the acquired buffer
+     * 
+     * Tier selection:
+     * - hint_size <= 4KB  → Small tier (32 buffers)
+     * - hint_size <= 64KB → Medium tier (8 buffers)
+     * - hint_size > 64KB  → Large tier (2 buffers)
+     */
+    [[nodiscard]] UNICONV_HOT BufferLease acquire(size_t hint_size) noexcept {
+        Buffer* buf = nullptr;
+        
+        // Select tier based on size hint
+        if (hint_size <= SMALL_BUFFER_SIZE) {
+            buf = TryAcquireFromTier(small_buffers_, small_next_index_);
+            // Fallback to medium if small is exhausted
+            if (!buf) buf = TryAcquireFromTier(medium_buffers_, medium_next_index_);
+        } 
+        else if (hint_size <= MEDIUM_BUFFER_SIZE) {
+            buf = TryAcquireFromTier(medium_buffers_, medium_next_index_);
+            // Fallback to large if medium is exhausted
+            if (!buf) buf = TryAcquireFromTier(large_buffers_, large_next_index_);
+        } 
+        else {
+            buf = TryAcquireFromTier(large_buffers_, large_next_index_);
+        }
+        
+        if (buf) {
+            // Ensure buffer has adequate capacity
+            if (buf->data.capacity() < hint_size) {
+                try {
+                    buf->data.reserve(hint_size);
+                } catch (...) {
+                    // Release buffer and fall through to temp allocation
+                    buf->in_use.store(false, std::memory_order_release);
+                    buf = nullptr;
+                }
+            }
+            if (buf) return BufferLease(buf, this, true);
+        }
+        
+        // Fallback: allocate temporary buffer (rare case)
+        Buffer* temp = new (std::nothrow) Buffer(hint_size);
+        if (temp) {
+            temp->in_use.store(true);
+            return BufferLease(temp, nullptr, false);
+        }
+        
+        // Last resort: thread-local static buffer
+        static thread_local Buffer emergency_buffer(SMALL_BUFFER_SIZE);
+        emergency_buffer.data.clear();
+        if (hint_size > emergency_buffer.data.capacity()) {
+            try { emergency_buffer.data.reserve(hint_size); } catch (...) {}
+        }
+        emergency_buffer.in_use.store(true);
+        return BufferLease(&emergency_buffer, nullptr, false);
+    }
+
+    /**
+     * @brief Acquire buffer without size hint (defaults to small tier)
+     * @return BufferLease for the acquired buffer
+     * 
+     * For backward compatibility with existing code.
+     */
+    [[nodiscard]] UNICONV_HOT UNICONV_FLATTEN BufferLease acquire() noexcept {
+        return acquire(SMALL_BUFFER_SIZE);
+    }
+
+    /**
+     * @brief Get number of active buffers across all tiers
+     */
     [[nodiscard]] size_t GetActiveBuffers() const noexcept {
         size_t count = 0;
-        for (const auto& buffer : buffers_) {
-            if (buffer.in_use.load(std::memory_order_relaxed)) {
-                ++count;
-            }
+        for (const auto& buffer : small_buffers_) {
+            if (buffer.in_use.load(std::memory_order_relaxed)) ++count;
+        }
+        for (const auto& buffer : medium_buffers_) {
+            if (buffer.in_use.load(std::memory_order_relaxed)) ++count;
+        }
+        for (const auto& buffer : large_buffers_) {
+            if (buffer.in_use.load(std::memory_order_relaxed)) ++count;
         }
         return count;
+    }
+    
+    /**
+     * @brief Get tier-specific statistics
+     */
+    struct TierStats {
+        size_t small_active;
+        size_t medium_active;
+        size_t large_active;
+        size_t total_capacity;  // Total pre-allocated memory
+    };
+    
+    [[nodiscard]] TierStats GetTierStatistics() const noexcept {
+        TierStats stats{};
+        for (const auto& buf : small_buffers_) {
+            if (buf.in_use.load(std::memory_order_relaxed)) ++stats.small_active;
+        }
+        for (const auto& buf : medium_buffers_) {
+            if (buf.in_use.load(std::memory_order_relaxed)) ++stats.medium_active;
+        }
+        for (const auto& buf : large_buffers_) {
+            if (buf.in_use.load(std::memory_order_relaxed)) ++stats.large_active;
+        }
+        stats.total_capacity = SMALL_POOL_SIZE * SMALL_BUFFER_SIZE 
+                             + MEDIUM_POOL_SIZE * MEDIUM_BUFFER_SIZE 
+                             + LARGE_POOL_SIZE * LARGE_BUFFER_SIZE;
+        return stats;
     }
 };
 

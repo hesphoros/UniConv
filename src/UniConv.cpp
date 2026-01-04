@@ -1803,8 +1803,8 @@ StringResult UniConv::ConvertEncodingFastWithHint(const std::string& input,const
                       estimatedSize : 
                       EstimateOutputSize(input.size(), fromEncoding, toEncoding);
     
-    // 获取缓冲区 - 预测通常能成功获取
-    auto buffer_lease = m_stringBufferPool.acquire();
+    // 获取缓冲区 - 使用估算大小选择合适的缓冲区层级
+    auto buffer_lease = m_stringBufferPool.acquire(estimated);
     if (UNICONV_UNLIKELY(!buffer_lease.valid())) {
         return StringResult::Failure(ErrorCode::OutOfMemory);
     }
@@ -1865,8 +1865,8 @@ std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::s
         // 估算输出大小
         size_t estimated = EstimateOutputSize(input.size(), fromEncoding, toEncoding);
         
-        // 获取缓冲区
-        auto buffer_lease = m_stringBufferPool.acquire();
+        // 获取缓冲区 - 使用估算大小选择合适的缓冲区层级
+        auto buffer_lease = m_stringBufferPool.acquire(estimated);
         if (!buffer_lease.valid()) {
             results.emplace_back(StringResult::Failure(ErrorCode::OutOfMemory));
             continue;
