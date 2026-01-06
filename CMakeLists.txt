@@ -240,46 +240,94 @@ endif()
 if(NOT UNICONV_IS_SUBPROJECT)
     include(GNUInstallDirs)
 
-    # 安装库
+    # 设置默认安装路径为构建目录下的 install/ 目录
+    if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+        set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE)
+    endif()
+
+    # 根据构建类型确定安装子目录
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(UNICONV_INSTALL_CONFIG_SUFFIX "Debug")
+    else()
+        set(UNICONV_INSTALL_CONFIG_SUFFIX "Release")
+    endif()
+
+    # 定义安装目录结构（区分 Debug/Release）
+    set(UNICONV_INSTALL_LIBDIR "lib/${UNICONV_INSTALL_CONFIG_SUFFIX}")
+    set(UNICONV_INSTALL_BINDIR "bin/${UNICONV_INSTALL_CONFIG_SUFFIX}")
+    set(UNICONV_INSTALL_INCLUDEDIR "include")
+    set(UNICONV_INSTALL_CMAKEDIR "lib/cmake/UniConv")
+
+    # 安装 UniConv 库
     install(TARGETS UniConv
         EXPORT UniConvTargets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
+        LIBRARY DESTINATION ${UNICONV_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${UNICONV_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${UNICONV_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
     )
 
-    # 安装头文件
+    # 安装 simdutf 库（如果启用）
+    if(UNICONV_USE_SIMDUTF)
+        install(TARGETS simdutf
+            LIBRARY DESTINATION ${UNICONV_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${UNICONV_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${UNICONV_INSTALL_BINDIR}
+        )
+    endif()
+
+    # 安装主头文件 UniConv.h
     install(FILES ${UNICONV_HEADERS}
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
+        DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
     )
 
     # 安装 encodings.inc
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/encodings.inc)
         install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/encodings.inc
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv
+            DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
         )
     endif()
 
-    # 安装 iconv.h
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv/iconv.h)
-        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv/iconv.h
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv/iconv
+    # 安装 parallel_hashmap 头文件（如果存在）
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/parallel_hashmap)
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/parallel_hashmap
+            DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
+            FILES_MATCHING PATTERN "*.h"
         )
     endif()
 
-    # 安装生成的 config.h
+    # 安装 iconv 目录下的头文件
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv)
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv
+            DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
+            FILES_MATCHING 
+                PATTERN "*.h"
+                PATTERN "*.inc"
+        )
+    endif()
+
+    # 安装生成的 iconv/config.h（构建时生成的配置文件）
     if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/include/iconv/config.h")
         install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/iconv/config.h"
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/UniConv/iconv
+            DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv/iconv
         )
+    endif()
+
+    # 安装 simdutf 头文件（如果启用）
+    if(UNICONV_USE_SIMDUTF)
+        # simdutf 的头文件位于 FetchContent 下载的目录中
+        if(EXISTS "${simdutf_SOURCE_DIR}/include/simdutf.h")
+            install(FILES "${simdutf_SOURCE_DIR}/include/simdutf.h"
+                DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}
+            )
+        endif()
     endif()
 
     # 导出目标
     install(EXPORT UniConvTargets
         FILE UniConvTargets.cmake
         NAMESPACE UniConv::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UniConv
+        DESTINATION ${UNICONV_INSTALL_CMAKEDIR}
     )
 
     # CMake 包配置
@@ -289,7 +337,7 @@ if(NOT UNICONV_IS_SUBPROJECT)
         configure_package_config_file(
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/UniConvConfig.cmake.in"
             "${CMAKE_CURRENT_BINARY_DIR}/UniConvConfig.cmake"
-            INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UniConv
+            INSTALL_DESTINATION ${UNICONV_INSTALL_CMAKEDIR}
             NO_SET_AND_CHECK_MACRO
             NO_CHECK_REQUIRED_COMPONENTS_MACRO
         )
@@ -304,8 +352,16 @@ if(NOT UNICONV_IS_SUBPROJECT)
     install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/UniConvConfig.cmake
         ${CMAKE_CURRENT_BINARY_DIR}/UniConvConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/UniConv
+        DESTINATION ${UNICONV_INSTALL_CMAKEDIR}
     )
+
+    # 打印安装信息
+    message(STATUS "Install configuration:")
+    message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
+    message(STATUS "  Build type: ${UNICONV_INSTALL_CONFIG_SUFFIX}")
+    message(STATUS "  Libraries: ${UNICONV_INSTALL_LIBDIR}")
+    message(STATUS "  Binaries: ${UNICONV_INSTALL_BINDIR}")
+    message(STATUS "  Headers: ${UNICONV_INSTALL_INCLUDEDIR}")
 endif()
 
 # ============================================================================
