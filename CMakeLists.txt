@@ -241,20 +241,30 @@ if(NOT UNICONV_IS_SUBPROJECT)
     include(GNUInstallDirs)
 
     # 设置默认安装路径为构建目录下的 install/ 目录
-    if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    # 仅当用户未显式指定 CMAKE_INSTALL_PREFIX 时使用默认值
+    if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR CMAKE_INSTALL_PREFIX MATCHES "^C:/Program Files")
         set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE)
+        message(STATUS "Install prefix set to: ${CMAKE_INSTALL_PREFIX}")
     endif()
 
-    # 根据构建类型确定安装子目录
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(UNICONV_INSTALL_CONFIG_SUFFIX "Debug")
+    # 对于多配置生成器（如 Visual Studio），使用生成器表达式 $<CONFIG>
+    # 对于单配置生成器（如 Makefile），使用 CMAKE_BUILD_TYPE
+    if(CMAKE_CONFIGURATION_TYPES)
+        # 多配置生成器：Visual Studio, Xcode, Ninja Multi-Config
+        set(UNICONV_INSTALL_LIBDIR "lib/$<CONFIG>")
+        set(UNICONV_INSTALL_BINDIR "bin/$<CONFIG>")
     else()
-        set(UNICONV_INSTALL_CONFIG_SUFFIX "Release")
+        # 单配置生成器：Makefile, Ninja
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            set(UNICONV_INSTALL_CONFIG_SUFFIX "Debug")
+        else()
+            set(UNICONV_INSTALL_CONFIG_SUFFIX "Release")
+        endif()
+        set(UNICONV_INSTALL_LIBDIR "lib/${UNICONV_INSTALL_CONFIG_SUFFIX}")
+        set(UNICONV_INSTALL_BINDIR "bin/${UNICONV_INSTALL_CONFIG_SUFFIX}")
     endif()
 
-    # 定义安装目录结构（区分 Debug/Release）
-    set(UNICONV_INSTALL_LIBDIR "lib/${UNICONV_INSTALL_CONFIG_SUFFIX}")
-    set(UNICONV_INSTALL_BINDIR "bin/${UNICONV_INSTALL_CONFIG_SUFFIX}")
+    # 定义安装目录结构
     set(UNICONV_INSTALL_INCLUDEDIR "include")
     set(UNICONV_INSTALL_CMAKEDIR "lib/cmake/UniConv")
 

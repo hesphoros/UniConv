@@ -1272,7 +1272,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     iconv_t cd = iconv_open(tocode, fromcode);
     if (UNICONV_UNLIKELY(cd == reinterpret_cast<iconv_t>(-1))) {
         #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-        std::cout << "iconv_open error for " << fromcode << ">" << tocode << std::endl;
+        // std::cout << "iconv_open error for " << fromcode << ">" << tocode << std::endl;
         #endif
         return nullptr;
     }
@@ -1291,7 +1291,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     m_iconvDescriptorCacheMap.insert_or_assign(key, std::move(new_entry));
 
     #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-    std::wcout << "Create and cached iconv descriptor: " << fromcode << ">" << tocode << std::endl;
+        // std::wcout << "Create and cached iconv descriptor: " << fromcode << ">" << tocode << std::endl;
     #endif
 
     return iconvPtr;
@@ -1351,7 +1351,7 @@ void UniConv::CleanupIconvCache() {
     m_iconvDescriptorCacheMap.clear();
     
     #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
-        std::wcout << "iconv descriptor cache cleared" << std::endl;
+        // std::cout << "iconv descriptor cache cleared" << std::endl;
     #endif
 }
 
