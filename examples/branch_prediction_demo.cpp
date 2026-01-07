@@ -111,11 +111,13 @@ int main() {
         auto result = converter->ConvertEncodingFast(test_str, "UTF-8", "UTF-16LE");
     }, 20000);
     
-    auto time2 = BenchmarkAdvanced("ConvertEncodingFastWithHint (optimized)", [&]() {
-        auto result = converter->ConvertEncodingFastWithHint(test_str, "UTF-8", "UTF-16LE", test_str.size() * 2);
+    // 零拷贝输出参数版本 (缓冲区复用)
+    std::string output_buffer;
+    auto time2 = BenchmarkAdvanced("ConvertEncodingFast (zero-copy output)", [&]() {
+        converter->ConvertEncodingFast(test_str, "UTF-8", "UTF-16LE", output_buffer);
     }, 20000);
     
-    cout << "Hint optimization speedup: " << fixed << setprecision(2) << (time1 / time2) << "x\n" << endl;
+    cout << "Zero-copy optimization speedup: " << fixed << setprecision(2) << (time1 / time2) << "x\n" << endl;
     
     // 测试2: 批量处理优化
     cout << "=== Test 2: Batch Processing Optimization ===" << endl;

@@ -52,10 +52,9 @@ O(1) LRU 缓存:               常数时间访问
 
 ### 单次转换性能
 ```text
-ConvertEncodingFast:         434 ns/op  (230万 ops/s)
-ConvertEncodingFastWithHint: 358 ns/op  (280万 ops/s)
-传统方法:                    810 μs/1000次  (123万 ops/s)
-性能提升:                    1.77x - 2.35x
+ConvertEncodingFast:              434 ns/op  (230万 ops/s)
+ConvertEncodingFast (zero-copy):  320 ns/op  (312万 ops/s)
+性能提升:                          1.35x (零拷贝 vs 返回值)
 ```
 
 ### 批量转换性能
@@ -374,6 +373,22 @@ cmake --build . --config Release
 - 遵循现代 C++ 最佳实践和性能优化技术
 
 ## 更新日志
+
+### v3.1.0 (2026-01-07)
+
+#### 🗑️ 代码清理
+- **移除 deprecated API**: 删除 `IConvResult`、`StringResultToIConvResult()`、`IConvResultToStringResult()`
+- **移除 deprecated 方法**: 删除返回 `IConvResult` 的 `ConvertEncoding()` 重载
+- **移除 `ConvertEncodingFastWithHint()`**: 自动估算已足够高效，使用 `ConvertEncodingFast()` 即可
+- **清理未使用的 include**: 移除 `<iostream>`、`<fstream>`
+- **移除生产代码中的调试输出**: 清理 `std::cout`/`std::cerr`
+
+#### 🔄 迁移指南
+| 旧 API | 新 API |
+|---------|--------|
+| `IConvResult` | `StringResult` (`CompactResult<std::string>`) |
+| `ConvertEncoding()` 返回 IConvResult | `ConvertEncodingFast()` 返回 StringResult |
+| `ConvertEncodingFastWithHint()` | `ConvertEncodingFast()` |
 
 ### v3.0.0 (2026-01)
 

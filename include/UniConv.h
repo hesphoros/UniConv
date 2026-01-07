@@ -20,8 +20,8 @@
 *
 *  @author   hesphoros
 *  @email    hesphoros@gmail.com
-*  @version  2.0.0.2
-*  @date     2025/03/10
+*  @version  3.1.0
+*  @date     2026/01/07
 *  @license  MIT License
 *---------------------------------------------------------------------------*
 *  Remark         : None
@@ -42,7 +42,6 @@
 #define __UNICONV_H__
 
 #include "iconv/iconv.h"
-#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -54,7 +53,6 @@
 #include <list>
 #include <string_view>
 #include <cerrno>
-#include <fstream>
 #include <cstring>
 #include <system_error>
 #include <mutex>
@@ -1422,9 +1420,7 @@ public:
 
 		return _instance;
 	}
-	~Singleton() {
-		//std::cout << "this is singleton destruct" << std::endl;
-	}
+	~Singleton() = default;
 };
 
 template <typename T>
@@ -1659,77 +1655,6 @@ public:
 	//@} End of Supported encodings
 	//---------------------------------------------------------------------------
 
-
-	/**
-	 * @struct IConvResult
-	 * @brief Structure to hold the result of a conversion operation.
-	 * @note IConvResult
-	 * @deprecated This structure is deprecated. Use CompactResult<std::string> (StringResult) instead.
-	 * @see CompactResult
-	 * @see StringResult
-	 */
-	struct [[deprecated("Use CompactResult<std::string> (StringResult) instead. See ConvertEncodingFast() for the new API.")]] IConvResult {
-		std::string        conv_result_str;  /*!< Conversion result string */
-		int                error_code;       /*!< Error code               */
-		std::string        error_msg;        /*!< Error message            */
-
-		IConvResult() noexcept
-			: conv_result_str{}, error_code{0}, error_msg{}
-		{}
-
-		// 移动构造函数和赋值操作符
-		IConvResult(IConvResult&&) noexcept = default;
-		IConvResult& operator=(IConvResult&&) noexcept = default;
-
-		// 复制构造函数和赋值操作符
-		IConvResult(const IConvResult&) = default;
-		IConvResult& operator=(const IConvResult&) = default;
-		/**
-		 * @brief Check if the conversion was successful.
-		 * @return True if the conversion was successful, false otherwise.
-		 * @return bool
-		 */
-		bool IsSuccess() const noexcept {
-			return error_code == 0;
-		}
-
-		explicit operator bool() const noexcept {
-			return IsSuccess();
-		}
-		bool operator!() const noexcept {
-			return !IsSuccess();
-		}
-		bool operator==(int code) const noexcept {
-			return error_code == code;
-		}
-
-		bool operator!=(int code) const noexcept {
-			return error_code != code;
-		}
-
-		const char* c_str() const noexcept {
-			return IsSuccess() ? conv_result_str.c_str() : error_msg.data();
-		}
-	};
-
-	// ===================== Error handling adapters =====================
-	/**
-	 * @brief Convert StringResult to IConvResult for backward compatibility
-	 * @param stringResult The StringResult to convert
-	 * @return Equivalent IConvResult
-	 * @deprecated This function is for backward compatibility only. Use StringResult directly.
-	 */
-	[[deprecated("Use StringResult (CompactResult<std::string>) directly instead of converting.")]]
-	static IConvResult StringResultToIConvResult(const CompactResult<std::string>& stringResult);
-
-	/**
-	 * @brief Convert IConvResult to StringResult for unified internal processing
-	 * @param iconvResult The IConvResult to convert
-	 * @return Equivalent StringResult
-	 * @deprecated This function is for backward compatibility only. Use StringResult directly.
-	 */
-	[[deprecated("Use StringResult (CompactResult<std::string>) directly instead of converting.")]]
-	static CompactResult<std::string> IConvResultToStringResult(const IConvResult& iconvResult);
 
 	~UniConv() {
 		// clean iconv cache
@@ -2207,18 +2132,6 @@ public:
 	 */
 	static std::string ToString(UniConv::Encoding enc) noexcept;
 
-	/**
-	 * @brief Convert between any two encodings using iconv
-	 * @param input Input string data
-	 * @param fromEncoding Source encoding name
-	 * @param toEncoding Target encoding name
-	 * @return Conversion result
-	 * @deprecated Use ConvertEncodingFast() which returns StringResult (CompactResult<std::string>) instead.
-	 * @see ConvertEncodingFast
-	 */
-	[[deprecated("Use ConvertEncodingFast() which returns StringResult (CompactResult<std::string>) for better performance and type safety.")]]
-	IConvResult             ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding);
-
 	//----------------------------------------------------------------------------------------------------------------------
 	// === Zero-Copy Output Parameter API (High Performance) 
 	//----------------------------------------------------------------------------------------------------------------------
@@ -2352,21 +2265,8 @@ public:
 	UNICONV_HOT IntResult GetSystemCodePageFast() noexcept;
 
 	//----------------------------------------------------------------------------------------------------------------------
-	// === Advanced High-Performance Methods ===
+	// === Batch and Parallel Processing Methods ===
 	//----------------------------------------------------------------------------------------------------------------------
-
-	/**
-	 * @brief High-performance encoding conversion with estimated size hint
-	 * @param input Input string data
-	 * @param fromEncoding Source encoding name
-	 * @param toEncoding Target encoding name
-	 * @param estimatedSize Estimated output size (optional, for allocation optimization)
-	 * @return CompactResult containing conversion result
-	 * @deprecated The API now auto-estimates output size efficiently. Use ConvertEncodingFast() instead.
-	 * @see ConvertEncodingFast
-	 */
-	[[deprecated("Auto size estimation is now efficient. Use ConvertEncodingFast() instead.")]]
-	UNICONV_HOT StringResult ConvertEncodingFastWithHint(const std::string& input,const char* fromEncoding,const char* toEncoding,size_t estimatedSize = 0) noexcept;
 
 	/**
 	 * @brief Batch encoding conversion with detailed error handling
@@ -2443,9 +2343,9 @@ private:
 
 	// Lock-free concurrent LRU cache for iconv descriptors using parallel-hashmap
 	struct IconvCacheEntry {
-		IconvSharedPtr                  descriptor;
-		mutable std::atomic<uint64_t> last_used{0};     // 最后使用时间戳
-		mutable std::atomic<uint32_t> hit_count{0};     // 命中次数
+		IconvSharedPtr                         descriptor;
+		mutable std::atomic<uint64_t>  last_used{0};     // 最后使用时间戳
+		mutable std::atomic<uint32_t>  hit_count{0};     // 命中次数
 
 		IconvCacheEntry() = default;
 

@@ -20,8 +20,8 @@
 *
 *  @author   hesphoros
 *  @email    hesphoros@gmail.com
-*  @version  2.0.0.2
-*  @date     2025/03/10
+*  @version  3.1.0
+*  @date     2026/01/07
 *  @license  MIT License
 *---------------------------------------------------------------------------*
 *  Remark         : None
@@ -699,68 +699,6 @@ std::string UniConv::GetCurrentSystemEncoding() noexcept
 }
 
 
-/**
- * Convert StringResult to IConvResult for backward compatibility
- * @deprecated Use CompactResult<std::string> instead
- */
-UniConv::IConvResult UniConv::StringResultToIConvResult(const CompactResult<std::string>& stringResult) {
-    IConvResult result;
-
-    if (stringResult.IsSuccess()) {
-        result.error_code = 0;
-        result.error_msg.clear();
-        result.conv_result_str = stringResult.GetValue();
-    } else {
-        result.error_code = static_cast<int>(stringResult.GetErrorCode());
-        result.error_msg = stringResult.GetErrorMessage();
-        result.conv_result_str.clear();
-    }
-
-    return result;
-}
-
-/**
- * Convert IConvResult to StringResult for unified internal processing
- * @deprecated Use CompactResult<std::string> instead
- */
-CompactResult<std::string> UniConv::IConvResultToStringResult(const IConvResult& iconvResult) {
-    if (iconvResult.error_code == 0) {
-        return CompactResult<std::string>::Success(iconvResult.conv_result_str);
-    } else {
-        // Map common errno values to ErrorCode
-        ErrorCode errorCode = ErrorCode::ConversionFailed; // Default fallback
-
-        switch (iconvResult.error_code) {
-            case EINVAL:
-                errorCode = ErrorCode::InvalidParameter;
-                break;
-            case EILSEQ:
-                errorCode = ErrorCode::InvalidSequence;
-                break;
-            case E2BIG:
-                errorCode = ErrorCode::BufferTooSmall;
-                break;
-            case ENOMEM:
-                errorCode = ErrorCode::OutOfMemory;
-                break;
-            default:
-                errorCode = ErrorCode::SystemError;
-                break;
-        }
-
-        return CompactResult<std::string>::Failure(errorCode);
-    }
-}
-
-// ===================== General convert functions =====================
-// @deprecated Use ConvertEncodingFast instead
-UniConv::IConvResult UniConv::ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding) {
-    // Use the new high-performance ConvertEncodingFast internally and convert the result
-    auto result = ConvertEncodingFast(input, fromEncoding, toEncoding);
-    return StringResultToIConvResult(result);
-}
-
-
 std::uint16_t UniConv::GetCurrentSystemEncodingCodePage() noexcept {
 #ifdef _WIN32
 	UINT codePage = GetACP();
@@ -778,8 +716,7 @@ std::uint16_t UniConv::GetCurrentSystemEncodingCodePage() noexcept {
         return it->second;
     else
     {
-        // If the encoding is not found, log a warning and return a default code page
-        std::cerr << "Warning: Encoding '" << encoding << "' not found in mapping table. Defaulting to 0." << std::endl;
+        // Encoding not found in mapping table, return default code page 0
         return 0;
     }
 #endif // __linux__
@@ -2006,45 +1943,8 @@ StringResult UniConv::ConvertEncodingInternal(const std::string& input,const cha
 }
 
 //----------------------------------------------------------------------------------------------------------------------
-// === Advanced High-Performance Methods Implementation ===
+// === Batch Processing Methods Implementation ===
 //----------------------------------------------------------------------------------------------------------------------
-
-StringResult UniConv::ConvertEncodingFastWithHint(const std::string& input,const char* fromEncoding,const char* toEncoding,size_t estimatedSize) noexcept {
-    // 空输入快速返回 - 预测输入通常不为空
-    if (UNICONV_UNLIKELY(input.empty())) {
-        return StringResult::Success(std::string{});
-    }
-    
-    // 参数验证 - 预测参数通常有效
-    if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
-        return StringResult::Failure(ErrorCode::InvalidParameter);
-    }
-    
-    // 快速编码名称有效性检查
-    if (UNICONV_UNLIKELY(!IsValidEncodingName(fromEncoding))) {
-        return StringResult::Failure(ErrorCode::InvalidSourceEncoding);
-    }
-    if (UNICONV_UNLIKELY(!IsValidEncodingName(toEncoding))) {
-        return StringResult::Failure(ErrorCode::InvalidTargetEncoding);
-    }
-    
-    // 预取输入数据
-    UNICONV_PREFETCH(input.data(), 0, 3);
-    
-    // 使用提供的估算大小，或自动估算 - 预测通常提供estimatedSize
-    size_t estimated = UNICONV_LIKELY(estimatedSize > 0) ? 
-                      estimatedSize : 
-                      EstimateOutputSize(input.size(), fromEncoding, toEncoding);
-    
-    // 获取缓冲区 - 使用估算大小选择合适的缓冲区层级
-    auto buffer_lease = m_stringBufferPool.acquire(estimated);
-    if (UNICONV_UNLIKELY(!buffer_lease.valid())) {
-        return StringResult::Failure(ErrorCode::OutOfMemory);
-    }
-    
-    // 调用内部实现
-    return ConvertEncodingInternal(input, fromEncoding, toEncoding, buffer_lease, estimated);
-}
 
 std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::string>& inputs,const char* fromEncoding,const char* toEncoding) noexcept {
     std::vector<StringResult> results;

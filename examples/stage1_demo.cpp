@@ -97,21 +97,7 @@ int main() {
         cout << "  Output: " << fast_result.GetSize() << " bytes\n" << endl;
     }
     
-    // 2. ConvertEncodingFastWithHint
-    cout << "2. ConvertEncodingFastWithHint:" << endl;
-    auto hint_result = converter->ConvertEncodingFastWithHint(test_utf8, "UTF-8", "UTF-16LE", 1024);
-    if (hint_result.IsSuccess()) {
-        cout << "Success UTF-8 -> UTF-16LE (hint: 1024)\n";
-        cout << "  Output: " << hint_result.GetSize() << " bytes\n";
-        cout << "  Pre-allocated capacity: " << hint_result.GetCapacity() << " bytes\n";
-        
-        // 测试系统估算
-        cout << "  [Debug] System estimate for 43 bytes UTF-8->UTF-16LE would be: ~" << (43 * 1.8 * 1.1) << " bytes" << endl;
-        cout << "  [Debug] Expected final_estimate should be: min(1024, max(170, 512)) = " << (std::min)(1024, (std::max)(170, 512)) << endl;
-        cout << endl;
-    }
-    
-    // 3. ConvertEncodingBatch
+    // 2. ConvertEncodingBatch
     cout << "3. ConvertEncodingBatch:" << endl;
     auto batch_results = converter->ConvertEncodingBatch(batch_inputs, "UTF-8", "UTF-16LE");
     cout << "  Batch conversion results:\n";
@@ -126,19 +112,15 @@ int main() {
     // 性能基准测试
     cout << "=== Performance Benchmark ===" << endl;
     
-    // 传统方法
-    Benchmark("Traditional ConvertEncoding", [&]() {
-        auto result = converter->ConvertEncoding(test_utf8, "UTF-8", "UTF-16LE");
-    }, 1000);
-    
     // 高性能方法
     Benchmark("High-Performance ConvertEncodingFast", [&]() {
         auto result = converter->ConvertEncodingFast(test_utf8, "UTF-8", "UTF-16LE");
     }, 1000);
     
-    // 带提示的优化方法
-    Benchmark("Optimized ConvertEncodingFastWithHint", [&]() {
-        auto result = converter->ConvertEncodingFastWithHint(test_utf8, "UTF-8", "UTF-16LE", 200);
+    // 带输出参数的高性能方法 (零拷贝)
+    std::string output_buffer;
+    Benchmark("Zero-Copy ConvertEncodingFast (output param)", [&]() {
+        converter->ConvertEncodingFast(test_utf8, "UTF-8", "UTF-16LE", output_buffer);
     }, 1000);
     
     // 批量转换
@@ -159,6 +141,7 @@ int main() {
     cout << "  • StringBufferPool: Reduces memory allocation overhead\n";
     cout << "  • CompactResult specialization: Optimizes string operations\n";
     cout << "  • Smart size estimation: Reduces buffer expansion\n";
+    cout << "  • Zero-copy output parameter API: Buffer reuse for hot paths\n";
     cout << "  • Batch processing: Improves large-scale efficiency\n" << endl;
     
     return 0;
