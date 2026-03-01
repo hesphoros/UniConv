@@ -44,18 +44,13 @@
 
 //==============================================================================
 // iconv 兼容性包装：处理不同平台的 const 签名差异
-// GNU libiconv 使用 char**，而 POSIX/glibc 使用 const char**
+// libiconv-native 使用 char**，而 POSIX/glibc 使用 const char**
 //==============================================================================
 namespace {
 inline size_t portable_iconv(iconv_t cd, const char** inbuf, size_t* inbytesleft,
                               char** outbuf, size_t* outbytesleft) {
-#ifdef UNICONV_USE_BUNDLED_ICONV
-    // Bundled libiconv uses const char**
-    return iconv(cd, inbuf, inbytesleft, outbuf, outbytesleft);
-#else
-    // libiconv-native and some systems use char**
+    // libiconv-native and most systems use char** for the input buffer
     return iconv(cd, const_cast<char**>(inbuf), inbytesleft, outbuf, outbytesleft);
-#endif
 }
 } // anonymous namespace
 
