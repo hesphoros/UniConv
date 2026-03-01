@@ -37,17 +37,91 @@ endif()
 option(UNICONV_BUILD_TESTS "Build tests" OFF)
 option(UNICONV_BUILD_SHARED "Build shared library instead of static" OFF)
 option(UNICONV_NO_THREAD_LOCAL "Disable thread_local storage (may be required for some DLL builds)" OFF)
-option(UNICONV_USE_BUNDLED_LIBICONV "Use bundled libiconv sources in repository (ON preserves current behavior)" ON)
 option(UNICONV_USE_SIMDUTF "Use simdutf for SIMD-accelerated UTF conversions (optional dependency)" OFF)
 
+# libiconv 来源选择：FETCHCONTENT（推荐）、BUNDLED（旧方式）、SYSTEM（系统库）
+set(UNICONV_LIBICONV_SOURCE "FETCHCONTENT" CACHE STRING "Source for libiconv: FETCHCONTENT, BUNDLED, or SYSTEM")
+set_property(CACHE UNICONV_LIBICONV_SOURCE PROPERTY STRINGS "FETCHCONTENT" "BUNDLED" "SYSTEM")
+
+# 向后兼容旧选项
+if(DEFINED UNICONV_USE_BUNDLED_LIBICONV)
+    if(UNICONV_USE_BUNDLED_LIBICONV)
+        set(UNICONV_LIBICONV_SOURCE "BUNDLED" CACHE STRING "" FORCE)
+    else()
+        set(UNICONV_LIBICONV_SOURCE "SYSTEM" CACHE STRING "" FORCE)
+    endif()
+    message(WARNING "UNICONV_USE_BUNDLED_LIBICONV is deprecated. Use UNICONV_LIBICONV_SOURCE instead.")
+endif()
+
 # ============================================================================
-# 可选依赖：simdutf（SIMD 加速 UTF 转换）
+# 外部依赖（FetchContent）
 # ============================================================================
+
+include(FetchContent)
+
+# ----------------------------------------------------------------------------
+# libiconv 依赖处理
+# ----------------------------------------------------------------------------
+
+if(UNICONV_LIBICONV_SOURCE STREQUAL "FETCHCONTENT")
+    message(STATUS "UniConv: Using FetchContent to fetch libiconv-native 1.18")
+    
+    FetchContent_Declare(
+        libiconv
+        GIT_REPOSITORY https://github.com/hesphoros/libiconv-native.git
+        GIT_TAG        main
+        GIT_SHALLOW    TRUE
+    )
+    
+    # libiconv 构建选项
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(ICONV_ENABLE_EXTRA ON CACHE BOOL "" FORCE)
+    
+    FetchContent_MakeAvailable(libiconv)
+    
+    set(UNICONV_HAS_FETCHCONTENT_LIBICONV TRUE)
+    message(STATUS "UniConv: libiconv-native fetched successfully")
+    
+elseif(UNICONV_LIBICONV_SOURCE STREQUAL "BUNDLED")
+    message(STATUS "UniConv: Using bundled libiconv sources (deprecated, consider FETCHCONTENT)")
+    set(UNICONV_HAS_BUNDLED_LIBICONV TRUE)
+    
+elseif(UNICONV_LIBICONV_SOURCE STREQUAL "SYSTEM")
+    message(STATUS "UniConv: Using system iconv library")
+    
+    # 尝试查找系统 iconv
+    find_path(ICONV_INCLUDE_DIR iconv.h)
+    find_library(ICONV_LIBRARY NAMES iconv libiconv)
+    
+    # macOS/BSD: iconv 在 libc 中，不需要额外库
+    if(NOT ICONV_LIBRARY)
+        include(CheckFunctionExists)
+        check_function_exists(iconv ICONV_IN_LIBC)
+        if(ICONV_IN_LIBC)
+            set(ICONV_LIBRARY "")
+            message(STATUS "UniConv: iconv found in libc")
+        else()
+            message(FATAL_ERROR "UNICONV_LIBICONV_SOURCE=SYSTEM but system iconv not found. Use FETCHCONTENT or install libiconv.")
+        endif()
+    else()
+        message(STATUS "UniConv: Found system iconv library: ${ICONV_LIBRARY}")
+    endif()
+    
+    if(ICONV_INCLUDE_DIR)
+        message(STATUS "UniConv: Found system iconv include: ${ICONV_INCLUDE_DIR}")
+    endif()
+    
+    set(UNICONV_HAS_SYSTEM_LIBICONV TRUE)
+else()
+    message(FATAL_ERROR "Invalid UNICONV_LIBICONV_SOURCE: ${UNICONV_LIBICONV_SOURCE}. Use FETCHCONTENT, BUNDLED, or SYSTEM.")
+endif()
+
+# ----------------------------------------------------------------------------
+# simdutf 依赖（可选 SIMD 加速）
+# ----------------------------------------------------------------------------
 
 if(UNICONV_USE_SIMDUTF)
     message(STATUS "UniConv: SIMD acceleration enabled via simdutf")
-    
-    include(FetchContent)
     
     FetchContent_Declare(
         simdutf
@@ -70,29 +144,37 @@ else()
 endif()
 
 # ============================================================================
-# 配置文件生成
+# 配置文件生成（仅 BUNDLED 模式需要）
 # ============================================================================
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-if(UNICONV_IS_SUBPROJECT)
-    message(STATUS "UniConv: building as subproject")
-    set(UNICONV_CONFIG_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in")
-    set(UNICONV_CONFIG_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/include/iconv/config.h")
-    
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/iconv")
-    
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ConfigureConfig.cmake")
-        set(CMAKE_SOURCE_DIR_BACKUP ${CMAKE_SOURCE_DIR})
-        set(CMAKE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+if(UNICONV_HAS_BUNDLED_LIBICONV)
+    if(UNICONV_IS_SUBPROJECT)
+        message(STATUS "UniConv: building as subproject with bundled libiconv")
+        set(UNICONV_CONFIG_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in")
+        set(UNICONV_CONFIG_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/include/iconv/config.h")
+        
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include/iconv")
+        
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ConfigureConfig.cmake")
+            set(CMAKE_SOURCE_DIR_BACKUP ${CMAKE_SOURCE_DIR})
+            set(CMAKE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+            include(cmake/ConfigureConfig.cmake)
+            set(CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR_BACKUP})
+        elseif(EXISTS "${UNICONV_CONFIG_INPUT}")
+            configure_file("${UNICONV_CONFIG_INPUT}" "${UNICONV_CONFIG_OUTPUT}" @ONLY)
+        endif()
+    else()
+        message(STATUS "UniConv: building as top-level project with bundled libiconv")
         include(cmake/ConfigureConfig.cmake)
-        set(CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR_BACKUP})
-    elseif(EXISTS "${UNICONV_CONFIG_INPUT}")
-        configure_file("${UNICONV_CONFIG_INPUT}" "${UNICONV_CONFIG_OUTPUT}" @ONLY)
     endif()
 else()
-    message(STATUS "UniConv: building as top-level project")
-    include(cmake/ConfigureConfig.cmake)
+    if(UNICONV_IS_SUBPROJECT)
+        message(STATUS "UniConv: building as subproject")
+    else()
+        message(STATUS "UniConv: building as top-level project")
+    endif()
 endif()
 
 # ============================================================================
@@ -114,26 +196,13 @@ set(UNICONV_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/UniConv.cpp
 )
 
-if(UNICONV_USE_BUNDLED_LIBICONV)
+# 如果使用 BUNDLED 模式，添加内嵌的 libiconv 源文件
+if(UNICONV_HAS_BUNDLED_LIBICONV)
     list(APPEND UNICONV_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/src/iconv.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/localcharset.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/relocatable.c
     )
-else()
-    # 尝试查找系统提供的 iconv/libiconv
-    find_path(ICONV_INCLUDE_DIR iconv.h)
-    find_library(ICONV_LIBRARY NAMES iconv libiconv)
-
-    if(NOT ICONV_LIBRARY)
-        message(FATAL_ERROR "UNICONV_USE_BUNDLED_LIBICONV=OFF but system libiconv not found. Either install libiconv or enable UNICONV_USE_BUNDLED_LIBICONV.")
-    endif()
-
-    if(ICONV_INCLUDE_DIR)
-        message(STATUS "Found system iconv include: ${ICONV_INCLUDE_DIR}")
-    endif()
-    message(STATUS "Found system iconv library: ${ICONV_LIBRARY}")
-
 endif()
 
 set(UNICONV_HEADERS
@@ -192,24 +261,42 @@ target_compile_definitions(UniConv PRIVATE
     LIBDIR=""
 )
 
-# 如果使用捆绑的 libiconv，添加对应的编译定义和包含路径
-if(UNICONV_USE_BUNDLED_LIBICONV)
-    target_compile_definitions(UniConv PRIVATE
-        BUILDING_LIBICONV
-        ENABLE_RELOCATABLE=1
-        IN_LIBRARY
-        INSTALLDIR=""
-        NO_XMALLOC
-        set_relocation_prefix=libiconv_set_relocation_prefix
-        relocate=libiconv_relocate
-        HAVE_CONFIG_H
+# ============================================================================
+# libiconv 集成配置
+# ============================================================================
+
+if(UNICONV_HAS_FETCHCONTENT_LIBICONV)
+    # FetchContent 模式：链接 libiconv-native 提供的目标
+    target_link_libraries(UniConv PRIVATE iconv)
+    
+    # libiconv-native 的头文件需要 PUBLIC 暴露给使用 UniConv 的项目
+    if(libiconv_SOURCE_DIR)
+        target_include_directories(UniConv PUBLIC
+            $<BUILD_INTERFACE:${libiconv_BINARY_DIR}/include>
+        )
+    endif()
+    
+elseif(UNICONV_HAS_BUNDLED_LIBICONV)
+    # BUNDLED 模式：使用内嵌源码编译
+    target_compile_definitions(UniConv 
+        PUBLIC UNICONV_USE_BUNDLED_ICONV=1
+        PRIVATE
+            BUILDING_LIBICONV
+            ENABLE_RELOCATABLE=1
+            IN_LIBRARY
+            INSTALLDIR=""
+            NO_XMALLOC
+            set_relocation_prefix=libiconv_set_relocation_prefix
+            relocate=libiconv_relocate
+            HAVE_CONFIG_H
     )
     target_include_directories(UniConv PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv
         ${CMAKE_CURRENT_BINARY_DIR}/include/iconv
     )
-else()
-    # 使用系统 libiconv，链接库并添加包含目录（若找到）
+    
+elseif(UNICONV_HAS_SYSTEM_LIBICONV)
+    # SYSTEM 模式：使用系统 iconv
     if(ICONV_INCLUDE_DIR)
         target_include_directories(UniConv PRIVATE ${ICONV_INCLUDE_DIR})
     endif()
@@ -394,6 +481,7 @@ message(STATUS "  Subproject: ${UNICONV_IS_SUBPROJECT}")
 message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: 17")
 message(STATUS "  Shared library: ${UNICONV_BUILD_SHARED}")
+message(STATUS "  libiconv source: ${UNICONV_LIBICONV_SOURCE}")
 message(STATUS "  SIMD acceleration (simdutf): ${UNICONV_USE_SIMDUTF}")
 message(STATUS "  Tests: ${UNICONV_BUILD_TESTS}")
 if(NOT UNICONV_IS_SUBPROJECT)

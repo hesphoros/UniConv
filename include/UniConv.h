@@ -41,7 +41,13 @@
 #ifndef __UNICONV_H__
 #define __UNICONV_H__
 
-#include "iconv/iconv.h"
+// iconv header inclusion - supports bundled and system/fetchcontent modes
+#ifdef UNICONV_USE_BUNDLED_ICONV
+    #include "iconv/iconv.h"
+#else
+    #include <iconv.h>
+#endif
+
 #include <string>
 #include <unordered_map>
 #include <unordered_set>

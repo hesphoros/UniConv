@@ -6,3 +6,5 @@ CMakeLists.txt
 doc/
 docs/
 .cache/
+CMakeLists.txt
+build-test/
