@@ -41,7 +41,9 @@
 #ifndef __UNICONV_H__
 #define __UNICONV_H__
 
-#include "iconv/iconv.h"
+// iconv header - provided by libiconv-native (FetchContent) or system iconv
+#include <iconv.h>
+
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -58,7 +60,7 @@
 #include <mutex>
 #include <memory>
 #include <algorithm>
-#include "parallel_hashmap/phmap.h"
+#include <parallel_hashmap/phmap.h>
 #include <functional>
 #include <cstdlib>
 #include <type_traits>

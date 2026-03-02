@@ -43,6 +43,18 @@
 #include "UniConv.h"
 
 //==============================================================================
+// iconv 兼容性包装：处理不同平台的 const 签名差异
+// libiconv-native 使用 char**，而 POSIX/glibc 使用 const char**
+//==============================================================================
+namespace {
+inline size_t portable_iconv(iconv_t cd, const char** inbuf, size_t* inbytesleft,
+                              char** outbuf, size_t* outbytesleft) {
+    // libiconv-native and most systems use char** for the input buffer
+    return iconv(cd, const_cast<char**>(inbuf), inbytesleft, outbuf, outbytesleft);
+}
+} // anonymous namespace
+
+//==============================================================================
 // 可选：simdutf（SIMD 加速 UTF 转换）
 //==============================================================================
 #ifdef UNICONV_HAS_SIMDUTF
@@ -1461,7 +1473,7 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,const char* f
         UNICONV_PREFETCH(temp_buffer.data(), 1, 2);
 
         // 执行转换
-        std::size_t ret = iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+        std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
 
         // 计算转换的字节数 - 预测通常有数据被转换
         std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
@@ -1905,7 +1917,7 @@ StringResult UniConv::ConvertEncodingInternal(const std::string& input,const cha
         char* outbuf = temp_chunk;
         size_t outbytesleft = CHUNK_SIZE;
         
-        size_t converted = iconv(descriptor.get(), &inbuf, &inbytesleft,&outbuf, &outbytesleft);
+        size_t converted = portable_iconv(descriptor.get(), &inbuf, &inbytesleft,&outbuf, &outbytesleft);
         
         // 添加已转换的数据到结果
         size_t chunk_converted = CHUNK_SIZE - outbytesleft;
@@ -2348,7 +2360,7 @@ ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fro
         UNICONV_PREFETCH(temp_buffer.data(), 1, 2);
         
         // Execute conversion
-        std::size_t ret = iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+        std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
         
         // Append converted bytes
         std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
@@ -2892,7 +2904,7 @@ bool UniConv::ConvertEncodingBatch(
             char* outbuf_ptr = temp_buffer.data();
             std::size_t outbuf_left = temp_buffer.size();
             
-            std::size_t ret = iconv(descriptor.get(), &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+            std::size_t ret = portable_iconv(descriptor.get(), &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
             
             std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
             if (converted_bytes > 0) {
