@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
 
-# ============================================================================
-# 项目定义
-# ============================================================================
 
 # 检测是否作为子项目被包含
 if(DEFINED PROJECT_NAME)
@@ -17,10 +14,6 @@ project(UniConv
     LANGUAGES C CXX
 )
 
-# ============================================================================
-# 构建选项
-# ============================================================================
-
 # C++ 标准设置（仅主项目）
 if(NOT UNICONV_IS_SUBPROJECT)
     set(CMAKE_CXX_STANDARD 17)
@@ -34,10 +27,10 @@ if(NOT UNICONV_IS_SUBPROJECT)
 endif()
 
 # 构建选项
-option(UNICONV_BUILD_TESTS "Build tests" OFF)
-option(UNICONV_BUILD_SHARED "Build shared library instead of static" OFF)
-option(UNICONV_NO_THREAD_LOCAL "Disable thread_local storage (may be required for some DLL builds)" OFF)
-option(UNICONV_USE_SIMDUTF "Use simdutf for SIMD-accelerated UTF conversions (optional dependency)" OFF)
+option(UNICONV_BUILD_TESTS "Build tests" OFF) # 测试构建选项，默认关闭
+option(UNICONV_BUILD_SHARED "Build shared library instead of static" OFF) # 共享库构建选项，默认关闭
+option(UNICONV_NO_THREAD_LOCAL "Disable thread_local storage (may be required for some DLL builds)" OFF) # 线程局部存储选项，默认关闭
+option(UNICONV_USE_SIMDUTF "Use simdutf for SIMD-accelerated UTF conversions (optional dependency)" OFF) # SIMD 加速选项，默认关闭
 
 # libiconv 来源选择：FETCHCONTENT（推荐，自动拉取 libiconv-native）或 SYSTEM（系统库）
 set(UNICONV_LIBICONV_SOURCE "FETCHCONTENT" CACHE STRING "Source for libiconv: FETCHCONTENT or SYSTEM")
@@ -62,7 +55,6 @@ include(FetchContent)
 # ----------------------------------------------------------------------------
 # libiconv 依赖处理
 # ----------------------------------------------------------------------------
-
 if(UNICONV_LIBICONV_SOURCE STREQUAL "FETCHCONTENT")
     message(STATUS "UniConv: Using FetchContent to fetch libiconv-native 1.18")
     
@@ -74,9 +66,9 @@ if(UNICONV_LIBICONV_SOURCE STREQUAL "FETCHCONTENT")
     )
     
     # libiconv 构建选项
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    set(ICONV_ENABLE_EXTRA ON CACHE BOOL "" FORCE)
-    set(ICONV_EMBED_MODE ON CACHE BOOL "" FORCE)  # 启用嵌入模式，避免与系统 libiconv 符号冲突
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)  # 强制构建静态库，避免符号冲突
+    set(ICONV_ENABLE_EXTRA ON CACHE BOOL "" FORCE)  # 启用额外功能（如 Windows 上的 UTF-8 文件系统支持）
+    set(ICONV_EMBED_MODE ON CACHE BOOL   "" FORCE)  # 启用嵌入模式，避免与系统 libiconv 符号冲突
     
     FetchContent_MakeAvailable(libiconv)
     
@@ -116,7 +108,6 @@ endif()
 # ----------------------------------------------------------------------------
 # simdutf 依赖（可选 SIMD 加速）
 # ----------------------------------------------------------------------------
-
 if(UNICONV_USE_SIMDUTF)
     message(STATUS "UniConv: SIMD acceleration enabled via simdutf")
     
@@ -143,7 +134,6 @@ endif()
 # ----------------------------------------------------------------------------
 # parallel-hashmap 依赖（高性能并发哈希表）
 # ----------------------------------------------------------------------------
-
 # 首先尝试查找系统安装的 parallel-hashmap（vcpkg 或系统包管理器）
 find_path(PHMAP_INCLUDE_DIR "parallel_hashmap/phmap.h")
 
@@ -174,7 +164,6 @@ endif()
 # ============================================================================
 # CMake 模块路径
 # ============================================================================
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 if(UNICONV_IS_SUBPROJECT)
@@ -186,7 +175,6 @@ endif()
 # ============================================================================
 # 编译器设置
 # ============================================================================
-
 if(MSVC)
     add_compile_options(/utf-8)
     add_compile_options(/wd4996)
@@ -196,7 +184,6 @@ endif()
 # ============================================================================
 # 库目标
 # ============================================================================
-
 # 源文件
 set(UNICONV_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/UniConv.cpp
