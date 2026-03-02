@@ -17,7 +17,7 @@
 #include <memory>
 #include <vector>
 #include <thread>
-#include "../include/UniConv.h"
+#include <uniconv/UniConv.h>
 
 using namespace std;
 

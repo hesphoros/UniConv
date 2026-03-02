@@ -4,7 +4,7 @@
  * @details 测试编码名称有效性检查功能，验证热路径方法的优化效果
  */
 
-#include "../include/UniConv.h"
+#include <uniconv/UniConv.h>
 #include <iostream>
 #include <string>
 #include <chrono>

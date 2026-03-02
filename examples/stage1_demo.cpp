@@ -4,7 +4,7 @@
  * @details 展示 StringBufferPool、CompactResult 特化和高性能转换方法
  */
 
-#include "../include/UniConv.h"
+#include <uniconv/UniConv.h>
 #include <chrono>
 #include <iostream>
 #include <vector>

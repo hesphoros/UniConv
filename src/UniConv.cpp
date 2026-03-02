@@ -40,7 +40,7 @@
 
 *****************************************************************************/
 
-#include "UniConv.h"
+#include <uniconv/UniConv.h>
 
 //==============================================================================
 // iconv 兼容性包装：处理不同平台的 const 签名差异
@@ -469,7 +469,7 @@ thread_local UniConv::ThreadLocalCache UniConv::t_cache;
 
 const std::string UniConv::m_encodingNames[] = {
     #define X(name, str) str,
-    #include "encodings.inc"
+    #include <uniconv/encodings.inc>
     #undef X
 };
 

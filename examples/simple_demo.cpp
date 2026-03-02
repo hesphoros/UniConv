@@ -4,7 +4,7 @@
  * @details 演示 UniConv 库的核心编码转换功能和错误处理
  */
 
-#include "../include/UniConv.h"
+#include <uniconv/UniConv.h>
 #include <iostream>
 #include <string>
 
