@@ -19,15 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
---------------------------------------------------------------------------------
-
-This software includes code from GNU libiconv, which is distributed under
-the GNU Lesser General Public License (LGPL) v2.1 or later.
-
-The following files are from GNU libiconv:
-- src/iconv.c
-- src/localcharset.c  
-- src/relocatable.c
-
-For the complete GNU LGPL license text, see: https://www.gnu.org/licenses/lgpl-2.1.html
