@@ -76,6 +76,7 @@ if(UNICONV_LIBICONV_SOURCE STREQUAL "FETCHCONTENT")
     # libiconv 构建选项
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(ICONV_ENABLE_EXTRA ON CACHE BOOL "" FORCE)
+    set(ICONV_EMBED_MODE ON CACHE BOOL "" FORCE)  # 启用嵌入模式，避免与系统 libiconv 符号冲突
     
     FetchContent_MakeAvailable(libiconv)
     
