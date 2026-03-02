@@ -34,7 +34,7 @@ UniConv 是 GNU libiconv 的现代 C++17 封装，具有零拷贝优化、无锁
 
 ### 功能特性
 - **线程安全**: 原生多线程支持，无需外部同步
-- **零外部依赖**: 内嵌 GNU libiconv 和 parallel-hashmap
+- **轻量依赖**: 仅需 libiconv 和 parallel-hashmap（支持 vcpkg/FetchContent 自动获取）
 - **跨平台**: 支持 Windows、Linux 和 macOS
 - **100+ 编码**: 支持 Unicode、亚洲和欧洲字符集
 - **错误处理**: CompactResult 类型提供清晰的错误处理
@@ -340,12 +340,12 @@ cmake --build . --config Release
 
 ## 依赖库
 
-### 内嵌库（无需外部安装）
-- **GNU libiconv**: 核心编码转换引擎
+### 外部依赖
+- **libiconv**: 核心编码转换引擎（vcpkg 或 FetchContent 自动获取）
 - **parallel-hashmap**: 无锁并发哈希表
   - 项目地址: [greg7mdp/parallel-hashmap](https://github.com/greg7mdp/parallel-hashmap)
   - 基于 Google Abseil Swiss Tables
-  - Header-only，无需编译
+  - Header-only，vcpkg 或 FetchContent 自动获取
 
 ### 系统要求
 - C++17 编译器
