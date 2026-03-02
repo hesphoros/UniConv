@@ -140,6 +140,37 @@ else()
     message(STATUS "UniConv: SIMD acceleration disabled (use -DUNICONV_USE_SIMDUTF=ON to enable)")
 endif()
 
+# ----------------------------------------------------------------------------
+# parallel-hashmap 依赖（高性能并发哈希表）
+# ----------------------------------------------------------------------------
+
+# 首先尝试查找系统安装的 parallel-hashmap（vcpkg 或系统包管理器）
+find_path(PHMAP_INCLUDE_DIR "parallel_hashmap/phmap.h")
+
+if(PHMAP_INCLUDE_DIR)
+    message(STATUS "UniConv: Found system parallel-hashmap: ${PHMAP_INCLUDE_DIR}")
+    set(UNICONV_HAS_SYSTEM_PHMAP TRUE)
+else()
+    message(STATUS "UniConv: System parallel-hashmap not found, using FetchContent")
+    
+    FetchContent_Declare(
+        phmap
+        GIT_REPOSITORY https://github.com/greg7mdp/parallel-hashmap.git
+        GIT_TAG        v2.0.0
+        GIT_SHALLOW    TRUE
+    )
+    
+    # parallel-hashmap 构建选项
+    set(PHMAP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(PHMAP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    
+    FetchContent_MakeAvailable(phmap)
+    
+    set(PHMAP_INCLUDE_DIR "${phmap_SOURCE_DIR}")
+    set(UNICONV_HAS_FETCHCONTENT_PHMAP TRUE)
+    message(STATUS "UniConv: parallel-hashmap fetched to ${PHMAP_INCLUDE_DIR}")
+endif()
+
 # ============================================================================
 # CMake 模块路径
 # ============================================================================
@@ -201,6 +232,7 @@ target_include_directories(UniConv
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+        $<BUILD_INTERFACE:${PHMAP_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:include/UniConv>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -332,13 +364,8 @@ if(NOT UNICONV_IS_SUBPROJECT)
         )
     endif()
 
-    # 安装 parallel_hashmap 头文件（如果存在）
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/parallel_hashmap)
-        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/parallel_hashmap
-            DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
-            FILES_MATCHING PATTERN "*.h"
-        )
-    endif()
+    # parallel_hashmap 现在作为外部依赖，不再 vendor 安装
+    # 用户需要通过 vcpkg 或系统包管理器安装 parallel-hashmap
 
     # 安装 iconv 目录下的头文件
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv)
