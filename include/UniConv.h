@@ -90,6 +90,13 @@
     #else
         #define UNICONV_EXPORT
     #endif
+    // MSVC error C2492: thread_local variables cannot have DLL interface
+    // Automatically enable UNICONV_NO_THREAD_LOCAL when building as DLL on Windows
+    #if defined(UNICONV_DLL) || defined(UNICONV_DLL_IMPORT)
+        #ifndef UNICONV_NO_THREAD_LOCAL
+            #define UNICONV_NO_THREAD_LOCAL 1
+        #endif
+    #endif
 #else
     #define UNICONV_EXPORT
 #endif
