@@ -1917,7 +1917,7 @@ StringResult UniConv::ConvertEncodingInternal(const std::string& input,const cha
         char* outbuf = temp_chunk;
         size_t outbytesleft = CHUNK_SIZE;
         
-        size_t converted = portable_iconv(descriptor.get(), &inbuf, &inbytesleft,&outbuf, &outbytesleft);
+        size_t converted = portable_iconv(static_cast<iconv_t>(descriptor.get()), &inbuf, &inbytesleft,&outbuf, &outbytesleft);
         
         // 添加已转换的数据到结果
         size_t chunk_converted = CHUNK_SIZE - outbytesleft;
@@ -2904,7 +2904,7 @@ bool UniConv::ConvertEncodingBatch(
             char* outbuf_ptr = temp_buffer.data();
             std::size_t outbuf_left = temp_buffer.size();
             
-            std::size_t ret = portable_iconv(descriptor.get(), &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+            std::size_t ret = portable_iconv(static_cast<iconv_t>(descriptor.get()), &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
             
             std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
             if (converted_bytes > 0) {
