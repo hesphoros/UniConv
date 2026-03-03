@@ -300,14 +300,18 @@ if(NOT UNICONV_IS_SUBPROJECT)
         message(STATUS "Install prefix set to: ${CMAKE_INSTALL_PREFIX}")
     endif()
 
-    # 对于多配置生成器（如 Visual Studio），使用生成器表达式 $<CONFIG>
-    # 对于单配置生成器（如 Makefile），使用 CMAKE_BUILD_TYPE
-    if(CMAKE_CONFIGURATION_TYPES)
-        # 多配置生成器：Visual Studio, Xcode, Ninja Multi-Config
+    # vcpkg 使用独立的安装前缀处理 debug/release，直接使用 lib 和 bin
+    # 非 vcpkg 构建时，为多配置生成器添加配置后缀
+    if(DEFINED VCPKG_TARGET_TRIPLET OR DEFINED ENV{VCPKG_TARGET_TRIPLET})
+        # vcpkg 构建：使用标准目录结构
+        set(UNICONV_INSTALL_LIBDIR "lib")
+        set(UNICONV_INSTALL_BINDIR "bin")
+    elseif(CMAKE_CONFIGURATION_TYPES)
+        # 非 vcpkg 多配置生成器：Visual Studio, Xcode, Ninja Multi-Config
         set(UNICONV_INSTALL_LIBDIR "lib/$<CONFIG>")
         set(UNICONV_INSTALL_BINDIR "bin/$<CONFIG>")
     else()
-        # 单配置生成器：Makefile, Ninja
+        # 非 vcpkg 单配置生成器：Makefile, Ninja
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             set(UNICONV_INSTALL_CONFIG_SUFFIX "Debug")
         else()
@@ -327,7 +331,7 @@ if(NOT UNICONV_IS_SUBPROJECT)
         LIBRARY DESTINATION ${UNICONV_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${UNICONV_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${UNICONV_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
+        INCLUDES DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/uniconv
     )
 
     # 安装 simdutf 库（如果启用）
