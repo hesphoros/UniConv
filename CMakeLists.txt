@@ -9,7 +9,7 @@ else()
 endif()
 
 project(UniConv
-    VERSION 3.3.0
+    VERSION 3.3.2
     DESCRIPTION "High-performance C++ character encoding conversion library"
     LANGUAGES C CXX
 )
@@ -220,7 +220,7 @@ target_include_directories(UniConv
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<BUILD_INTERFACE:${PHMAP_INCLUDE_DIR}>
-        $<INSTALL_INTERFACE:include/uniconv>
+        $<INSTALL_INTERFACE:include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
@@ -331,7 +331,7 @@ if(NOT UNICONV_IS_SUBPROJECT)
         LIBRARY DESTINATION ${UNICONV_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${UNICONV_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${UNICONV_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/uniconv
+        INCLUDES DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}
     )
 
     # 安装 simdutf 库（如果启用）
