@@ -2,7 +2,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO hesphoros/UniConv
     REF "v${VERSION}"
-    SHA512 aa76aed82984765a842555ab770f6cfe3ddcf6cdd51bbc7745ae904b85596fce568bf5aadd65919703b7ded8d0ecead472649e0254f77bd9a13d5edfb9fcf1fd
+    SHA512 db0bd4c4408dc26e0a690e140d8bfb826baf8f42a53b1829942f49dad1ba85626d56920090a9e58fce037ef109225fc3f45ab4e9ebba6968546b0397a073a334
     HEAD_REF main
 )
 
