@@ -220,7 +220,7 @@ target_include_directories(UniConv
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<BUILD_INTERFACE:${PHMAP_INCLUDE_DIR}>
-        $<INSTALL_INTERFACE:include/UniConv>
+        $<INSTALL_INTERFACE:include/uniconv>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
