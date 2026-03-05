@@ -17,7 +17,7 @@
 #endif
 
 #include <benchmark/benchmark.h>
-#include <uniconv/UniConv.h>
+#include <UniConv/UniConv.h>
 #include <memory>
 #include <string>
 #include <vector>

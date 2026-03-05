@@ -74,7 +74,7 @@ target_link_libraries(test_uniconv PRIVATE UniConv::UniConv)
 ```cpp
 #include <iostream>
 #include <string>
-#include <uniconv/UniConv.h>
+#include <UniConv/UniConv.h>
 
 int main() {
     try {

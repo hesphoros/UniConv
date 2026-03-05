@@ -191,7 +191,7 @@ set(UNICONV_SOURCES
 )
 
 set(UNICONV_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/uniconv/UniConv.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/UniConv/UniConv.h
 )
 
 # 创建库目标
@@ -346,13 +346,13 @@ if(NOT UNICONV_IS_SUBPROJECT)
 
     # 安装主头文件 UniConv.h
     install(FILES ${UNICONV_HEADERS}
-        DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/uniconv
+        DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
     )
 
     # 安装 encodings.inc
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/uniconv/encodings.inc)
-        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/uniconv/encodings.inc
-            DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/uniconv
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/UniConv/encodings.inc)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/UniConv/encodings.inc
+            DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}/UniConv
         )
     endif()
 

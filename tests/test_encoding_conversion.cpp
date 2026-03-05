@@ -10,7 +10,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <uniconv/UniConv.h>
+#include <UniConv/UniConv.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -1349,4 +1349,542 @@ TEST_F(EncodingConversionTest, Utility_GetCurrentSystemEncodingCodePage) {
 #elif defined(__linux__) || defined(__APPLE__)
     (void)codepage;
 #endif
+}
+
+// ============================================================================
+// 31. ToWStringFromU16String (新规范名，替代 U16StringToWString)
+// ============================================================================
+TEST_F(EncodingConversionTest, ToWStringFromU16String_Ascii) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(ascii_text);
+    ASSERT_FALSE(u16.empty());
+    std::wstring result = conv->ToWStringFromU16String(u16);
+    EXPECT_FALSE(result.empty());
+}
+
+TEST_F(EncodingConversionTest, ToWStringFromU16String_Chinese) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(chinese_text);
+    ASSERT_FALSE(u16.empty());
+    std::wstring result = conv->ToWStringFromU16String(u16);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result.size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, ToWStringFromU16String_Empty) {
+    std::wstring result = conv->ToWStringFromU16String(std::u16string{});
+    EXPECT_TRUE(result.empty());
+}
+
+TEST_F(EncodingConversionTest, ToWStringFromU16String_CStyleString) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(ascii_text);
+    ASSERT_FALSE(u16.empty());
+    std::wstring result = conv->ToWStringFromU16String(u16.c_str());
+    EXPECT_FALSE(result.empty());
+}
+
+TEST_F(EncodingConversionTest, ToWStringFromU16String_NullCStr) {
+    std::wstring result = conv->ToWStringFromU16String(static_cast<const char16_t*>(nullptr));
+    EXPECT_TRUE(result.empty());
+}
+
+TEST_F(EncodingConversionTest, ToWStringFromU16String_OutputParam) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(chinese_text);
+    ASSERT_FALSE(u16.empty());
+    std::wstring output;
+    bool ok = conv->ToWStringFromU16String(u16, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output.size(), 4u);
+
+    std::wstring ret_val = conv->ToWStringFromU16String(u16);
+    EXPECT_EQ(ret_val, output);
+}
+
+// ============================================================================
+// 32. 输出参数 API: UTF-32 <-> UTF-16 系列 (Step 3)
+// ============================================================================
+TEST_F(EncodingConversionTest, OutputParam_ToUtf16LEFromUtf32LE_Ascii) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(ascii_text);
+    ASSERT_FALSE(u32.empty());
+    std::u16string output;
+    bool ok = conv->ToUtf16LEFromUtf32LE(u32, output);
+    EXPECT_TRUE(ok);
+    EXPECT_FALSE(output.empty());
+
+    std::u16string ret_val = conv->ToUtf16LEFromUtf32LE(u32);
+    EXPECT_EQ(ret_val, output);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf16LEFromUtf32LE_Chinese) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(chinese_text);
+    ASSERT_FALSE(u32.empty());
+    std::u16string output;
+    bool ok = conv->ToUtf16LEFromUtf32LE(u32, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output.size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf16LEFromUtf32LE_Empty) {
+    std::u16string output;
+    bool ok = conv->ToUtf16LEFromUtf32LE(std::u32string{}, output);
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf16LEFromUtf32LE_RoundTrip) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(full_text);
+    ASSERT_FALSE(u32.empty());
+    std::u16string u16;
+    bool ok1 = conv->ToUtf16LEFromUtf32LE(u32, u16);
+    ASSERT_TRUE(ok1);
+    std::string back = conv->ToUtf8FromUtf16LE(u16);
+    EXPECT_EQ(back, full_text);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf16BEFromUtf32LE_Ascii) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(ascii_text);
+    ASSERT_FALSE(u32.empty());
+    std::u16string output;
+    bool ok = conv->ToUtf16BEFromUtf32LE(u32, output);
+    EXPECT_TRUE(ok);
+    EXPECT_FALSE(output.empty());
+
+    std::u16string ret_val = conv->ToUtf16BEFromUtf32LE(u32);
+    EXPECT_EQ(ret_val, output);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf16BEFromUtf32LE_Chinese) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(chinese_text);
+    ASSERT_FALSE(u32.empty());
+    std::u16string output;
+    bool ok = conv->ToUtf16BEFromUtf32LE(u32, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output.size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf16BEFromUtf32LE_RoundTrip) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(full_text);
+    ASSERT_FALSE(u32.empty());
+    std::u16string u16be;
+    bool ok1 = conv->ToUtf16BEFromUtf32LE(u32, u16be);
+    ASSERT_TRUE(ok1);
+    std::string back = conv->ToUtf8FromUtf16BE(u16be);
+    EXPECT_EQ(back, full_text);
+}
+
+// ============================================================================
+// 33. 输出参数 API: UCS-4 系列 (Step 3)
+// ============================================================================
+TEST_F(EncodingConversionTest, OutputParam_ToUtf8FromUcs4_Ascii) {
+    std::wstring wide = conv->ToUcs4FromUtf8(ascii_text);
+    ASSERT_FALSE(wide.empty());
+    std::string output;
+    bool ok = conv->ToUtf8FromUcs4(wide, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output, ascii_text);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf8FromUcs4_Chinese) {
+    std::wstring wide = conv->ToUcs4FromUtf8(chinese_text);
+    ASSERT_FALSE(wide.empty());
+    std::string output;
+    bool ok = conv->ToUtf8FromUcs4(wide, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output, chinese_text);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf8FromUcs4_Empty) {
+    std::string output;
+    bool ok = conv->ToUtf8FromUcs4(std::wstring{}, output);
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf8FromUcs4_Emoji) {
+    std::wstring wide = conv->ToUcs4FromUtf8(emoji_text);
+    ASSERT_FALSE(wide.empty());
+    std::string output;
+    bool ok = conv->ToUtf8FromUcs4(wide, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output, emoji_text);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUtf8FromUcs4_ConsistencyWithReturnValue) {
+    std::wstring wide = conv->ToUcs4FromUtf8(chinese_text);
+    ASSERT_FALSE(wide.empty());
+    std::string ret_val = conv->ToUtf8FromUcs4(wide);
+    std::string out_param;
+    conv->ToUtf8FromUcs4(wide, out_param);
+    EXPECT_EQ(ret_val, out_param);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUcs4FromUtf8_Ascii) {
+    std::wstring output;
+    bool ok = conv->ToUcs4FromUtf8(ascii_text, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output.size(), ascii_text.size());
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUcs4FromUtf8_Chinese) {
+    std::wstring output;
+    bool ok = conv->ToUcs4FromUtf8(chinese_text, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output.size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUcs4FromUtf8_Empty) {
+    std::wstring output;
+    bool ok = conv->ToUcs4FromUtf8(std::string{}, output);
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUcs4FromUtf8_RoundTrip) {
+    std::wstring wide;
+    bool ok1 = conv->ToUcs4FromUtf8(full_text, wide);
+    ASSERT_TRUE(ok1);
+    std::string back;
+    bool ok2 = conv->ToUtf8FromUcs4(wide, back);
+    ASSERT_TRUE(ok2);
+    EXPECT_EQ(back, full_text);
+}
+
+TEST_F(EncodingConversionTest, OutputParam_ToUcs4FromUtf8_ConsistencyWithReturnValue) {
+    std::wstring ret_val = conv->ToUcs4FromUtf8(chinese_text);
+    std::wstring out_param;
+    conv->ToUcs4FromUtf8(chinese_text, out_param);
+    EXPECT_EQ(ret_val, out_param);
+}
+
+// ============================================================================
+// 34. Ex (CompactResult) 版 API: UTF-32 系列 (Step 4)
+// ============================================================================
+TEST_F(EncodingConversionTest, Ex_ToUtf8FromUtf32LEEx_Ascii) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(ascii_text);
+    ASSERT_FALSE(u32.empty());
+    auto result = conv->ToUtf8FromUtf32LEEx(u32);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue(), ascii_text);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf8FromUtf32LEEx_Chinese) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(chinese_text);
+    auto result = conv->ToUtf8FromUtf32LEEx(u32);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue(), chinese_text);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf8FromUtf32LEEx_Emoji) {
+    std::u32string u32 = conv->ToUtf32LEFromUtf8(emoji_text);
+    auto result = conv->ToUtf8FromUtf32LEEx(u32);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue(), emoji_text);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf8FromUtf32LEEx_Empty) {
+    auto result = conv->ToUtf8FromUtf32LEEx(std::u32string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf8Ex_Ascii) {
+    auto result = conv->ToUtf32LEFromUtf8Ex(ascii_text);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue().size(), ascii_text.size());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf8Ex_Chinese) {
+    auto result = conv->ToUtf32LEFromUtf8Ex(chinese_text);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue().size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf8Ex_Empty) {
+    auto result = conv->ToUtf32LEFromUtf8Ex(std::string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf8Ex_RoundTrip) {
+    auto u32_result = conv->ToUtf32LEFromUtf8Ex(full_text);
+    ASSERT_TRUE(u32_result.IsSuccess());
+    auto back_result = conv->ToUtf8FromUtf32LEEx(u32_result.GetValue());
+    ASSERT_TRUE(back_result.IsSuccess());
+    EXPECT_EQ(back_result.GetValue(), full_text);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf16LEEx_Chinese) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(chinese_text);
+    auto result = conv->ToUtf32LEFromUtf16LEEx(u16);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue().size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf16LEEx_Empty) {
+    auto result = conv->ToUtf32LEFromUtf16LEEx(std::u16string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf16BEEx_Chinese) {
+    std::u16string u16be = conv->ToUtf16BEFromUtf8(chinese_text);
+    auto result = conv->ToUtf32LEFromUtf16BEEx(u16be);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue().size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf32LEFromUtf16BEEx_Empty) {
+    auto result = conv->ToUtf32LEFromUtf16BEEx(std::u16string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+// ============================================================================
+// 35. Ex (CompactResult) 版 API: UTF-16 互转系列 (Step 4)
+// ============================================================================
+TEST_F(EncodingConversionTest, Ex_ToUtf16LEFromUtf16BEEx_Chinese) {
+    std::u16string be = conv->ToUtf16BEFromUtf8(chinese_text);
+    auto result = conv->ToUtf16LEFromUtf16BEEx(be);
+    EXPECT_TRUE(result.IsSuccess());
+    std::u16string le = conv->ToUtf16LEFromUtf8(chinese_text);
+    EXPECT_EQ(result.GetValue(), le);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf16LEFromUtf16BEEx_Empty) {
+    auto result = conv->ToUtf16LEFromUtf16BEEx(std::u16string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf16BEFromUtf16LEEx_Chinese) {
+    std::u16string le = conv->ToUtf16LEFromUtf8(chinese_text);
+    auto result = conv->ToUtf16BEFromUtf16LEEx(le);
+    EXPECT_TRUE(result.IsSuccess());
+    std::u16string be = conv->ToUtf16BEFromUtf8(chinese_text);
+    EXPECT_EQ(result.GetValue(), be);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf16BEFromUtf16LEEx_Empty) {
+    auto result = conv->ToUtf16BEFromUtf16LEEx(std::u16string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf16BEFromUtf16LEEx_RoundTrip) {
+    std::u16string le = conv->ToUtf16LEFromUtf8(full_text);
+    auto be_result = conv->ToUtf16BEFromUtf16LEEx(le);
+    ASSERT_TRUE(be_result.IsSuccess());
+    auto le_result = conv->ToUtf16LEFromUtf16BEEx(be_result.GetValue());
+    ASSERT_TRUE(le_result.IsSuccess());
+    EXPECT_EQ(le_result.GetValue(), le);
+}
+
+// ============================================================================
+// 36. Ex (CompactResult) 版 API: WideString / Locale 系列 (Step 4)
+// ============================================================================
+TEST_F(EncodingConversionTest, Ex_ToWideStringFromLocaleEx_Ascii) {
+    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    auto result = conv->ToWideStringFromLocaleEx(ascii_text);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_FALSE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToWideStringFromLocaleEx_Empty) {
+    auto result = conv->ToWideStringFromLocaleEx(std::string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToLocaleFromWideStringEx_Ascii) {
+    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    std::wstring wide = conv->ToWideStringFromLocale(ascii_text);
+    ASSERT_FALSE(wide.empty());
+    auto result = conv->ToLocaleFromWideStringEx(wide);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_FALSE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToLocaleFromWideStringEx_Empty) {
+    auto result = conv->ToLocaleFromWideStringEx(std::wstring{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToWideStringFromLocaleEx_RoundTrip) {
+    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    auto wide_result = conv->ToWideStringFromLocaleEx(ascii_text);
+    ASSERT_TRUE(wide_result.IsSuccess());
+    auto back_result = conv->ToLocaleFromWideStringEx(wide_result.GetValue());
+    ASSERT_TRUE(back_result.IsSuccess());
+    EXPECT_EQ(back_result.GetValue(), ascii_text);
+}
+
+// ============================================================================
+// 37. Ex (CompactResult) 版 API: UCS-4 系列 (Step 4)
+// ============================================================================
+TEST_F(EncodingConversionTest, Ex_ToUtf8FromUcs4Ex_Ascii) {
+    std::wstring wide = conv->ToUcs4FromUtf8(ascii_text);
+    ASSERT_FALSE(wide.empty());
+    auto result = conv->ToUtf8FromUcs4Ex(wide);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue(), ascii_text);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf8FromUcs4Ex_Chinese) {
+    std::wstring wide = conv->ToUcs4FromUtf8(chinese_text);
+    auto result = conv->ToUtf8FromUcs4Ex(wide);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue(), chinese_text);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUtf8FromUcs4Ex_Empty) {
+    auto result = conv->ToUtf8FromUcs4Ex(std::wstring{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUcs4FromUtf8Ex_Ascii) {
+    auto result = conv->ToUcs4FromUtf8Ex(ascii_text);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue().size(), ascii_text.size());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUcs4FromUtf8Ex_Chinese) {
+    auto result = conv->ToUcs4FromUtf8Ex(chinese_text);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue().size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUcs4FromUtf8Ex_Empty) {
+    auto result = conv->ToUcs4FromUtf8Ex(std::string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToUcs4FromUtf8Ex_RoundTrip) {
+    auto ucs4_result = conv->ToUcs4FromUtf8Ex(full_text);
+    ASSERT_TRUE(ucs4_result.IsSuccess());
+    auto back_result = conv->ToUtf8FromUcs4Ex(ucs4_result.GetValue());
+    ASSERT_TRUE(back_result.IsSuccess());
+    EXPECT_EQ(back_result.GetValue(), full_text);
+}
+
+// ============================================================================
+// 38. Ex (CompactResult) 版 API: ToWStringFromU16StringEx (Step 4)
+// ============================================================================
+TEST_F(EncodingConversionTest, Ex_ToWStringFromU16StringEx_Ascii) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(ascii_text);
+    ASSERT_FALSE(u16.empty());
+    auto result = conv->ToWStringFromU16StringEx(u16);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_FALSE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToWStringFromU16StringEx_Chinese) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(chinese_text);
+    auto result = conv->ToWStringFromU16StringEx(u16);
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_EQ(result.GetValue().size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, Ex_ToWStringFromU16StringEx_Empty) {
+    auto result = conv->ToWStringFromU16StringEx(std::u16string{});
+    EXPECT_TRUE(result.IsSuccess());
+    EXPECT_TRUE(result.GetValue().empty());
+}
+
+TEST_F(EncodingConversionTest, Ex_ToWStringFromU16StringEx_ConsistencyWithReturnValue) {
+    std::u16string u16 = conv->ToUtf16LEFromUtf8(chinese_text);
+    std::wstring ret_val = conv->ToWStringFromU16String(u16);
+    auto ex_result = conv->ToWStringFromU16StringEx(u16);
+    ASSERT_TRUE(ex_result.IsSuccess());
+    EXPECT_EQ(ex_result.GetValue(), ret_val);
+}
+
+// ============================================================================
+// 39. string_view 输入版 API: ToUtf32LEFromUtf8 (Step 5)
+// ============================================================================
+TEST_F(EncodingConversionTest, StringView_ToUtf32LEFromUtf8_Ascii) {
+    std::string_view sv = ascii_text;
+    std::u32string output;
+    bool ok = conv->ToUtf32LEFromUtf8(sv, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output.size(), ascii_text.size());
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf32LEFromUtf8_Chinese) {
+    std::string_view sv = chinese_text;
+    std::u32string output;
+    bool ok = conv->ToUtf32LEFromUtf8(sv, output);
+    EXPECT_TRUE(ok);
+    EXPECT_EQ(output.size(), 4u);
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf32LEFromUtf8_Empty) {
+    std::string_view sv = "";
+    std::u32string output;
+    bool ok = conv->ToUtf32LEFromUtf8(sv, output);
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf32LEFromUtf8_ConsistencyWithStdString) {
+    std::u32string sv_output;
+    conv->ToUtf32LEFromUtf8(std::string_view(chinese_text), sv_output);
+    std::u32string str_output;
+    conv->ToUtf32LEFromUtf8(chinese_text, str_output);
+    EXPECT_EQ(sv_output, str_output);
+}
+
+// ============================================================================
+// 40. string_view 输入版 API: Locale -> UTF-16 (Step 5)
+// ============================================================================
+TEST_F(EncodingConversionTest, StringView_ToUtf16LEFromLocale_Ascii) {
+    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    std::string_view sv = ascii_text;
+    std::u16string output;
+    bool ok = conv->ToUtf16LEFromLocale(sv, output);
+    EXPECT_TRUE(ok);
+    EXPECT_FALSE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf16LEFromLocale_Empty) {
+    std::string_view sv = "";
+    std::u16string output;
+    bool ok = conv->ToUtf16LEFromLocale(sv, output);
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf16LEFromLocale_ConsistencyWithStdString) {
+    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    std::u16string sv_output;
+    conv->ToUtf16LEFromLocale(std::string_view(ascii_text), sv_output);
+    std::u16string str_output;
+    conv->ToUtf16LEFromLocale(ascii_text, str_output);
+    EXPECT_EQ(sv_output, str_output);
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf16BEFromLocale_Ascii) {
+    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    std::string_view sv = ascii_text;
+    std::u16string output;
+    bool ok = conv->ToUtf16BEFromLocale(sv, output);
+    EXPECT_TRUE(ok);
+    EXPECT_FALSE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf16BEFromLocale_Empty) {
+    std::string_view sv = "";
+    std::u16string output;
+    bool ok = conv->ToUtf16BEFromLocale(sv, output);
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(output.empty());
+}
+
+TEST_F(EncodingConversionTest, StringView_ToUtf16BEFromLocale_ConsistencyWithStdString) {
+    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    std::u16string sv_output;
+    conv->ToUtf16BEFromLocale(std::string_view(ascii_text), sv_output);
+    std::u16string str_output;
+    conv->ToUtf16BEFromLocale(ascii_text, str_output);
+    EXPECT_EQ(sv_output, str_output);
 }

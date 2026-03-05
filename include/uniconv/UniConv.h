@@ -1991,6 +1991,83 @@ public:
 	 */
 	CompactResult<std::string> ToUtf8FromUtf16BEEx(const std::u16string& input);
 
+	/**
+	 * @brief Convert from UTF-32LE to UTF-8 with detailed error handling
+	 * @param input UTF-32LE encoded input string
+	 * @return CompactResult<std::string> with conversion result or error details
+	 */
+	CompactResult<std::string> ToUtf8FromUtf32LEEx(const std::u32string& input);
+
+	/**
+	 * @brief Convert from UTF-8 to UTF-32LE with detailed error handling
+	 * @param input UTF-8 encoded input string
+	 * @return CompactResult<std::u32string> with conversion result or error details
+	 */
+	CompactResult<std::u32string> ToUtf32LEFromUtf8Ex(const std::string& input);
+
+	/**
+	 * @brief Convert from UTF-16LE to UTF-32LE with detailed error handling
+	 * @param input UTF-16LE encoded input string
+	 * @return CompactResult<std::u32string> with conversion result or error details
+	 */
+	CompactResult<std::u32string> ToUtf32LEFromUtf16LEEx(const std::u16string& input);
+
+	/**
+	 * @brief Convert from UTF-16BE to UTF-32LE with detailed error handling
+	 * @param input UTF-16BE encoded input string
+	 * @return CompactResult<std::u32string> with conversion result or error details
+	 */
+	CompactResult<std::u32string> ToUtf32LEFromUtf16BEEx(const std::u16string& input);
+
+	/**
+	 * @brief Convert from UTF-16BE to UTF-16LE with detailed error handling
+	 * @param input UTF-16BE encoded input string
+	 * @return CompactResult<std::u16string> with conversion result or error details
+	 */
+	CompactResult<std::u16string> ToUtf16LEFromUtf16BEEx(const std::u16string& input);
+
+	/**
+	 * @brief Convert from UTF-16LE to UTF-16BE with detailed error handling
+	 * @param input UTF-16LE encoded input string
+	 * @return CompactResult<std::u16string> with conversion result or error details
+	 */
+	CompactResult<std::u16string> ToUtf16BEFromUtf16LEEx(const std::u16string& input);
+
+	/**
+	 * @brief Convert from locale to wide string with detailed error handling
+	 * @param input System locale encoded input string
+	 * @return CompactResult<std::wstring> with conversion result or error details
+	 */
+	CompactResult<std::wstring> ToWideStringFromLocaleEx(const std::string& input);
+
+	/**
+	 * @brief Convert from wide string to locale with detailed error handling
+	 * @param input Wide string input
+	 * @return CompactResult<std::string> with conversion result or error details
+	 */
+	CompactResult<std::string> ToLocaleFromWideStringEx(const std::wstring& input);
+
+	/**
+	 * @brief Convert from UCS-4 (wstring) to UTF-8 with detailed error handling
+	 * @param input UCS-4 (wstring) encoded input
+	 * @return CompactResult<std::string> with conversion result or error details
+	 */
+	CompactResult<std::string> ToUtf8FromUcs4Ex(const std::wstring& input);
+
+	/**
+	 * @brief Convert from UTF-8 to UCS-4 (wstring) with detailed error handling
+	 * @param input UTF-8 encoded input string
+	 * @return CompactResult<std::wstring> with conversion result or error details
+	 */
+	CompactResult<std::wstring> ToUcs4FromUtf8Ex(const std::string& input);
+
+	/**
+	 * @brief Convert from UTF-16LE u16string to wide string with detailed error handling
+	 * @param input UTF-16LE u16string input
+	 * @return CompactResult<std::wstring> with conversion result or error details
+	 */
+	CompactResult<std::wstring> ToWStringFromU16StringEx(const std::u16string& input);
+
 /***************************************************************************/
 /*========================= string <-> wstring ============================*/
 /***************************************************************************/
@@ -2047,14 +2124,18 @@ public:
 	 * @brief Convert wide string to local encoding.
 	 * @param sInput Wide string to convert.
 	 * @return Converted string in local encoding.
+	 * @deprecated Use ToLocaleFromWideString() instead.
 	 */
+	[[deprecated("Use ToLocaleFromWideString() instead")]]
 	std::string WideStringToLocale(const std::wstring& sInput);
 
 	/**
 	 * @brief Convert wide C-style string to local encoding.
 	 * @param sInput Wide C-style string to convert.
 	 * @return Converted string in local encoding.
+	 * @deprecated Use ToLocaleFromWideString() instead.
 	 */
+	[[deprecated("Use ToLocaleFromWideString() instead")]]
 	std::string WideStringToLocale(const wchar_t* sInput);
 
 /***************************************************************************/
@@ -2137,7 +2218,30 @@ public:
 	std::wstring         ToUcs4FromUtf8(const std::string& input);
 
 
+	/**
+	 * @brief Convert a UTF-16LE u16string to a wide string.
+	 * @param input The UTF-16LE u16string to convert.
+	 * @return The converted wide string.
+	 */
+	std::wstring         ToWStringFromU16String(const std::u16string& input);
+
+	/**
+	 * @brief Convert a UTF-16LE C-style u16string to a wide string.
+	 * @param input The UTF-16LE C-style u16string to convert.
+	 * @return The converted wide string.
+	 */
+	std::wstring         ToWStringFromU16String(const char16_t* input);
+
+	/**
+	 * @deprecated Use ToWStringFromU16String() instead.
+	 */
+	[[deprecated("Use ToWStringFromU16String() instead")]]
 	std::wstring         U16StringToWString(const std::u16string& u16str);
+
+	/**
+	 * @deprecated Use ToWStringFromU16String() instead.
+	 */
+	[[deprecated("Use ToWStringFromU16String() instead")]]
 	std::wstring		 U16StringToWString(const char16_t* u16str);
 
 	/**
@@ -2195,8 +2299,19 @@ public:
 	bool ToLocaleFromUtf16BE(const std::u16string& input, std::string& output) noexcept;
 	bool ToLocaleFromWideString(const std::wstring& input, std::string& output) noexcept;
 	
+	// UTF-32 <-> UTF-16 Conversion Series (output parameter versions)
+	bool ToUtf16LEFromUtf32LE(const std::u32string& input, std::u16string& output) noexcept;
+	bool ToUtf16BEFromUtf32LE(const std::u32string& input, std::u16string& output) noexcept;
+
+	// UCS-4 Conversion Series (output parameter versions)
+	bool ToUtf8FromUcs4(const std::wstring& input, std::string& output) noexcept;
+	bool ToUcs4FromUtf8(const std::string& input, std::wstring& output) noexcept;
+
 	// Wide String Series (output parameter versions for buffer reuse)
 	bool ToWideStringFromLocale(const std::string& input, std::wstring& output) noexcept;
+	bool ToWStringFromU16String(const std::u16string& input, std::wstring& output) noexcept;
+
+	[[deprecated("Use ToWStringFromU16String() instead")]]
 	bool U16StringToWString(const std::u16string& input, std::wstring& output) noexcept;
 	
 	/**
@@ -2244,6 +2359,9 @@ public:
 	bool ToLocaleFromUtf8(std::string_view input, std::string& output) noexcept;
 	bool ToUtf16LEFromUtf8(std::string_view input, std::u16string& output) noexcept;
 	bool ToUtf16BEFromUtf8(std::string_view input, std::u16string& output) noexcept;
+	bool ToUtf32LEFromUtf8(std::string_view input, std::u32string& output) noexcept;
+	bool ToUtf16LEFromLocale(std::string_view input, std::u16string& output) noexcept;
+	bool ToUtf16BEFromLocale(std::string_view input, std::u16string& output) noexcept;
 
 	//----------------------------------------------------------------------------------------------------------------------
 	// === High-Performance Methods using CompactResult ===

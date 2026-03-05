@@ -68,7 +68,7 @@ vcpkg install hesphoros-uniconv                            # vcpkg
 **使用**
 
 ```cpp
-#include <uniconv/UniConv.h>
+#include <UniConv/UniConv.h>
 
 auto& conv = UniConv::ThreadLocal();  // 0.75ns 获取实例
 

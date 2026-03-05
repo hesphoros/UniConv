@@ -9,3 +9,4 @@ build_test/
 build-bench/
 build-asan/
 build-simd/
+build_verify/

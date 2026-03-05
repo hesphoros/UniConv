@@ -40,7 +40,7 @@
 
 *****************************************************************************/
 
-#include <uniconv/UniConv.h>
+#include <UniConv/UniConv.h>
 
 //==============================================================================
 // iconv 兼容性包装：处理不同平台的 const 签名差异
@@ -598,7 +598,7 @@ thread_local UniConv::ThreadLocalCache UniConv::t_cache;
 
 const std::string UniConv::m_encodingNames[] = {
     #define X(name, str) str,
-    #include <uniconv/encodings.inc>
+    #include <UniConv/encodings.inc>
     #undef X
 };
 
@@ -1347,10 +1347,10 @@ std::wstring UniConv::ToUcs4FromUtf8(const std::string& input)
 
 
 
-std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
+std::wstring UniConv::ToWStringFromU16String(const std::u16string& input)
 {
-    if (u16str.empty()) return std::wstring{};
-    std::string input_bytes(reinterpret_cast<const char*>(u16str.data()), u16str.size() * sizeof(char16_t));
+    if (input.empty()) return std::wstring{};
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     auto result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_WCHAR);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
@@ -1362,11 +1362,30 @@ std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
     return std::wstring{};
 }
 
+std::wstring UniConv::ToWStringFromU16String(const char16_t* input)
+{
+    if (!input) return std::wstring{};
+    return ToWStringFromU16String(std::u16string(input));
+}
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+
+std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
+{
+    return ToWStringFromU16String(u16str);
+}
+
 std::wstring UniConv::U16StringToWString(const char16_t* u16str)
 {
-    if (!u16str) return std::wstring{};
-    return U16StringToWString(std::u16string(u16str));
+    return ToWStringFromU16String(u16str);
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 
 // ===================== Error Handling Related =====================
@@ -2179,10 +2198,180 @@ CompactResult<std::string> UniConv::ToUtf8FromUtf16BEEx(const std::u16string& in
     if (input.empty()) {
         return CompactResult<std::string>::Success(std::string{});
     }
-    
+
     std::string inputStr(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    
+
     return ConvertEncodingFast(inputStr, ENC_UTF16BE, ENC_UTF8);
+}
+
+CompactResult<std::string> UniConv::ToUtf8FromUtf32LEEx(const std::u32string& input) {
+    if (input.empty()) {
+        return CompactResult<std::string>::Success(std::string{});
+    }
+
+    std::string inputStr(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char32_t));
+    return ConvertEncodingFast(inputStr, ENC_UTF32LE, ENC_UTF8);
+}
+
+CompactResult<std::u32string> UniConv::ToUtf32LEFromUtf8Ex(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<std::u32string>::Success(std::u32string{});
+    }
+
+    auto result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF32LE);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % 4 == 0) {
+            return CompactResult<std::u32string>::Success(
+                std::u32string(reinterpret_cast<const char32_t*>(value.data()), value.size() / 4));
+        }
+        return CompactResult<std::u32string>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::u32string>::Failure(result.GetErrorCode());
+}
+
+CompactResult<std::u32string> UniConv::ToUtf32LEFromUtf16LEEx(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<std::u32string>::Success(std::u32string{});
+    }
+
+    std::string inputStr(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
+    auto result = ConvertEncodingFast(inputStr, ENC_UTF16LE, ENC_UTF32LE);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % 4 == 0) {
+            return CompactResult<std::u32string>::Success(
+                std::u32string(reinterpret_cast<const char32_t*>(value.data()), value.size() / 4));
+        }
+        return CompactResult<std::u32string>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::u32string>::Failure(result.GetErrorCode());
+}
+
+CompactResult<std::u32string> UniConv::ToUtf32LEFromUtf16BEEx(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<std::u32string>::Success(std::u32string{});
+    }
+
+    std::string inputStr(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
+    auto result = ConvertEncodingFast(inputStr, ENC_UTF16BE, ENC_UTF32LE);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % 4 == 0) {
+            return CompactResult<std::u32string>::Success(
+                std::u32string(reinterpret_cast<const char32_t*>(value.data()), value.size() / 4));
+        }
+        return CompactResult<std::u32string>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::u32string>::Failure(result.GetErrorCode());
+}
+
+CompactResult<std::u16string> UniConv::ToUtf16LEFromUtf16BEEx(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<std::u16string>::Success(std::u16string{});
+    }
+
+    std::string inputStr(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
+    auto result = ConvertEncodingFast(inputStr, ENC_UTF16BE, ENC_UTF16LE);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % 2 == 0) {
+            return CompactResult<std::u16string>::Success(
+                std::u16string(reinterpret_cast<const char16_t*>(value.data()), value.size() / 2));
+        }
+        return CompactResult<std::u16string>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::u16string>::Failure(result.GetErrorCode());
+}
+
+CompactResult<std::u16string> UniConv::ToUtf16BEFromUtf16LEEx(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<std::u16string>::Success(std::u16string{});
+    }
+
+    std::string inputStr(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
+    auto result = ConvertEncodingFast(inputStr, ENC_UTF16LE, ENC_UTF16BE);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % 2 == 0) {
+            return CompactResult<std::u16string>::Success(
+                std::u16string(reinterpret_cast<const char16_t*>(value.data()), value.size() / 2));
+        }
+        return CompactResult<std::u16string>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::u16string>::Failure(result.GetErrorCode());
+}
+
+CompactResult<std::wstring> UniConv::ToWideStringFromLocaleEx(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<std::wstring>::Success(std::wstring{});
+    }
+
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_WCHAR);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % sizeof(wchar_t) == 0) {
+            return CompactResult<std::wstring>::Success(
+                std::wstring(reinterpret_cast<const wchar_t*>(value.data()), value.size() / sizeof(wchar_t)));
+        }
+        return CompactResult<std::wstring>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::wstring>::Failure(result.GetErrorCode());
+}
+
+CompactResult<std::string> UniConv::ToLocaleFromWideStringEx(const std::wstring& input) {
+    if (input.empty()) {
+        return CompactResult<std::string>::Success(std::string{});
+    }
+
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t));
+    return ConvertEncodingFast(input_bytes, ENC_WCHAR, currentEncoding.c_str());
+}
+
+CompactResult<std::string> UniConv::ToUtf8FromUcs4Ex(const std::wstring& input) {
+    if (input.empty()) {
+        return CompactResult<std::string>::Success(std::string{});
+    }
+
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t));
+    return ConvertEncodingFast(input_bytes, ENC_WCHAR, ENC_UTF8);
+}
+
+CompactResult<std::wstring> UniConv::ToUcs4FromUtf8Ex(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<std::wstring>::Success(std::wstring{});
+    }
+
+    auto result = ConvertEncodingFast(input, ENC_UTF8, ENC_WCHAR);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % sizeof(wchar_t) == 0) {
+            return CompactResult<std::wstring>::Success(
+                std::wstring(reinterpret_cast<const wchar_t*>(value.data()), value.size() / sizeof(wchar_t)));
+        }
+        return CompactResult<std::wstring>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::wstring>::Failure(result.GetErrorCode());
+}
+
+CompactResult<std::wstring> UniConv::ToWStringFromU16StringEx(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<std::wstring>::Success(std::wstring{});
+    }
+
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_WCHAR);
+    if (result.IsSuccess()) {
+        auto& value = result.GetValue();
+        if (value.size() % sizeof(wchar_t) == 0) {
+            return CompactResult<std::wstring>::Success(
+                std::wstring(reinterpret_cast<const wchar_t*>(value.data()), value.size() / sizeof(wchar_t)));
+        }
+        return CompactResult<std::wstring>::Failure(ErrorCode::ConversionFailed);
+    }
+    return CompactResult<std::wstring>::Failure(result.GetErrorCode());
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -2551,6 +2740,69 @@ bool UniConv::ToUtf32LEFromUtf16BE(const std::u16string& input, std::u32string& 
     return false;
 }
 
+// UTF-32 <-> UTF-16 Conversion Series (output parameter versions)
+bool UniConv::ToUtf16LEFromUtf32LE(const std::u32string& input, std::u16string& output) noexcept {
+    if (input.empty()) {
+        output.clear();
+        return true;
+    }
+
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char32_t));
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input_bytes, ENC_UTF32LE, ENC_UTF16LE, temp_output);
+
+    if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
+        return true;
+    }
+    return false;
+}
+
+bool UniConv::ToUtf16BEFromUtf32LE(const std::u32string& input, std::u16string& output) noexcept {
+    if (input.empty()) {
+        output.clear();
+        return true;
+    }
+
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char32_t));
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input_bytes, ENC_UTF32LE, ENC_UTF16BE, temp_output);
+
+    if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
+        return true;
+    }
+    return false;
+}
+
+// UCS-4 Conversion Series (output parameter versions)
+bool UniConv::ToUtf8FromUcs4(const std::wstring& input, std::string& output) noexcept {
+    if (input.empty()) {
+        output.clear();
+        return true;
+    }
+
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t));
+    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ENC_WCHAR, ENC_UTF8, output);
+}
+
+bool UniConv::ToUcs4FromUtf8(const std::string& input, std::wstring& output) noexcept {
+    if (input.empty()) {
+        output.clear();
+        return true;
+    }
+
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_WCHAR, temp_output);
+
+    if (result == ErrorCode::Success && temp_output.size() % sizeof(wchar_t) == 0) {
+        output = std::wstring(reinterpret_cast<const wchar_t*>(temp_output.data()),
+                              temp_output.size() / sizeof(wchar_t));
+        return true;
+    }
+    return false;
+}
+
 // Locale Conversion Series (output parameter versions)
 bool UniConv::ToLocaleFromUtf16LE(const std::u16string& input, std::string& output) noexcept {
     if (input.empty()) {
@@ -2607,7 +2859,7 @@ bool UniConv::ToWideStringFromLocale(const std::string& input, std::wstring& out
     return false;
 }
 
-bool UniConv::U16StringToWString(const std::u16string& input, std::wstring& output) noexcept {
+bool UniConv::ToWStringFromU16String(const std::u16string& input, std::wstring& output) noexcept {
     if (input.empty()) {
         output.clear();
         return true;
@@ -2623,6 +2875,19 @@ bool UniConv::U16StringToWString(const std::u16string& input, std::wstring& outp
     }
     return false;
 }
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+
+bool UniConv::U16StringToWString(const std::u16string& input, std::wstring& output) noexcept {
+    return ToWStringFromU16String(input, output);
+}
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 // === Batch Conversion with Output Parameter (Phase 2) ===
@@ -3187,6 +3452,41 @@ bool UniConv::ToUtf16BEFromUtf8(std::string_view input, std::u16string& output) 
     if (input.empty()) { output.clear(); return true; }
     std::string temp_output;
     ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF16BE, temp_output);
+    if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
+        return true;
+    }
+    return false;
+}
+
+bool UniConv::ToUtf32LEFromUtf8(std::string_view input, std::u32string& output) noexcept {
+    if (input.empty()) { output.clear(); return true; }
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF32LE, temp_output);
+    if (result == ErrorCode::Success && temp_output.size() % 4 == 0) {
+        output = std::u32string(reinterpret_cast<const char32_t*>(temp_output.data()), temp_output.size() / 4);
+        return true;
+    }
+    return false;
+}
+
+bool UniConv::ToUtf16LEFromLocale(std::string_view input, std::u16string& output) noexcept {
+    if (input.empty()) { output.clear(); return true; }
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF16LE, temp_output);
+    if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
+        return true;
+    }
+    return false;
+}
+
+bool UniConv::ToUtf16BEFromLocale(std::string_view input, std::u16string& output) noexcept {
+    if (input.empty()) { output.clear(); return true; }
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF16BE, temp_output);
     if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
         output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
         return true;

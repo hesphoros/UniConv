@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include <uniconv/UniConv.h>
+#include <UniConv/UniConv.h>
 
 int main() {
     std::cout << "=== FetchContent UniConv Example ===" << std::endl;
