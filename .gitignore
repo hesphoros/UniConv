@@ -1,9 +1,11 @@
 build/
 .idea/
-CMakeLists.txt
 .github/prompts/*.md
 doc/
 docs/
 .cache/
-CMakeLists.txt
 build-test/
+build_test/
+build-bench/
+build-asan/
+build-simd/

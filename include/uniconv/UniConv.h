@@ -1,4 +1,4 @@
-﻿/*****************************************************************************
+/*****************************************************************************
 *  UniConv
 *  Copyright (C) 2025 hesphoros <hesphoros@gmail.com>
 *
@@ -76,7 +76,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <windows.h>
-#elif __linux__
+#elif defined(__linux__) || defined(__APPLE__)
 #include <unistd.h>
 #include <langinfo.h>
 #endif
@@ -929,7 +929,7 @@ private:
         std::string        data;
         std::atomic<bool>  in_use{false};
         size_t             tier_size;  // Pre-allocated tier size
-        
+
         explicit Buffer(size_t reserve_size = SMALL_BUFFER_SIZE) : tier_size(reserve_size) {
             data.reserve(reserve_size);
         }
@@ -1499,10 +1499,6 @@ private:
 		std::list<uint64_t> lru_order_;
 		std::unordered_map<uint64_t, std::pair<IconvSharedPtr, std::list<uint64_t>::iterator>> iconv_cache_;
 		
-		// Temporary conversion buffers (avoid frequent allocations)
-		std::vector<char> temp_conversion_buffer;
-		std::string temp_result_string;
-		
 		// System encoding cache
 		bool system_encoding_cached = false;
 		std::string system_encoding;
@@ -1664,6 +1660,15 @@ public:
 	//@} End of Supported encodings
 	//---------------------------------------------------------------------------
 
+	static constexpr const char* ENC_UTF8      = "UTF-8";
+	static constexpr const char* ENC_UTF16LE   = "UTF-16LE";
+	static constexpr const char* ENC_UTF16BE   = "UTF-16BE";
+	static constexpr const char* ENC_UTF32LE   = "UTF-32LE";
+#if defined(_WIN32)
+	static constexpr const char* ENC_WCHAR     = "UTF-16LE";
+#else
+	static constexpr const char* ENC_WCHAR     = "UTF-32LE";
+#endif
 
 	~UniConv() {
 		// clean iconv cache
@@ -2456,6 +2461,7 @@ private:
 	 * @return 估算的输出大小
 	 */
 	static size_t EstimateOutputSize(size_t input_size, const char* from_encoding, const char* to_encoding) noexcept;
+	static size_t EstimateOutputSizeById(size_t input_size, uint8_t from_id, uint8_t to_id) noexcept;
 
 	/**
 	 * @brief 快速检查编码名称是否有效
@@ -2609,6 +2615,26 @@ public:
 	 */
 	static std::unique_ptr<UniConv> Create() {
 		return std::unique_ptr<UniConv>(new UniConv());
+	}
+
+	/**
+	 * @brief Get a thread-local UniConv instance (zero creation overhead after first call)
+	 * @return Reference to a thread-local UniConv instance
+	 * @details Each thread gets its own instance, initialized lazily on first access.
+	 * Subsequent calls within the same thread return immediately (~0ns).
+	 *
+	 * Example:
+	 * @code
+	 * auto& conv = UniConv::ThreadLocal();
+	 * auto result = conv.ConvertEncodingFast("hello", "UTF-8", "UTF-16LE");
+	 * @endcode
+	 *
+	 * @note The instance lifetime is tied to the thread. Do not store the reference
+	 *       across thread boundaries. For cross-thread sharing, use Create() instead.
+	 */
+	static UniConv& ThreadLocal() noexcept {
+		thread_local UniConv instance;
+		return instance;
 	}
 
 private:

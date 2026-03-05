@@ -241,6 +241,135 @@ inline bool IsAllAscii(const std::string& input) noexcept {
 }
 
 //==============================================================================
+// 编码 ID 枚举（用于热路径整数比较，避免字符串比较开销）
+//==============================================================================
+
+enum class EncodingId : uint8_t {
+    Unknown = 0,
+    UTF8,
+    UTF16,
+    UTF16LE,
+    UTF16BE,
+    UTF32,
+    UTF32LE,
+    UTF32BE,
+    ASCII,
+    GBK,
+    GB2312,
+    GB18030,
+    BIG5,
+    ShiftJIS,
+    ISO8859_1,
+    Windows1252,
+    EUC_JP,
+    EUC_KR
+};
+
+inline EncodingId GetEncodingId(const char* encoding) noexcept {
+    if (!encoding) return EncodingId::Unknown;
+
+    char normalized[32];
+    size_t len = 0;
+    for (; encoding[len] && len < 31; ++len) {
+        char c = encoding[len];
+        normalized[len] = (c >= 'a' && c <= 'z') ? static_cast<char>(c - 32) : c;
+    }
+    normalized[len] = '\0';
+
+    uint32_t hash = detail::fnv1a_hash(normalized, len);
+
+    switch (hash) {
+        case detail::fnv1a_hash("UTF-8", 5):
+        case detail::fnv1a_hash("UTF8", 4):
+            return EncodingId::UTF8;
+        case detail::fnv1a_hash("UTF-16", 6):
+        case detail::fnv1a_hash("UTF16", 5):
+            return EncodingId::UTF16;
+        case detail::fnv1a_hash("UTF-16LE", 8):
+        case detail::fnv1a_hash("UTF16LE", 7):
+            return EncodingId::UTF16LE;
+        case detail::fnv1a_hash("UTF-16BE", 8):
+        case detail::fnv1a_hash("UTF16BE", 7):
+            return EncodingId::UTF16BE;
+        case detail::fnv1a_hash("UTF-32", 6):
+        case detail::fnv1a_hash("UTF32", 5):
+            return EncodingId::UTF32;
+        case detail::fnv1a_hash("UTF-32LE", 8):
+        case detail::fnv1a_hash("UTF32LE", 7):
+            return EncodingId::UTF32LE;
+        case detail::fnv1a_hash("UTF-32BE", 8):
+        case detail::fnv1a_hash("UTF32BE", 7):
+            return EncodingId::UTF32BE;
+        case detail::fnv1a_hash("ASCII", 5):
+        case detail::fnv1a_hash("US-ASCII", 8):
+            return EncodingId::ASCII;
+        case detail::fnv1a_hash("GBK", 3):
+            return EncodingId::GBK;
+        case detail::fnv1a_hash("GB2312", 6):
+            return EncodingId::GB2312;
+        case detail::fnv1a_hash("GB18030", 7):
+            return EncodingId::GB18030;
+        case detail::fnv1a_hash("BIG5", 4):
+        case detail::fnv1a_hash("BIG-5", 5):
+            return EncodingId::BIG5;
+        case detail::fnv1a_hash("SHIFT_JIS", 9):
+        case detail::fnv1a_hash("SHIFT-JIS", 9):
+        case detail::fnv1a_hash("SJIS", 4):
+            return EncodingId::ShiftJIS;
+        case detail::fnv1a_hash("ISO-8859-1", 10):
+        case detail::fnv1a_hash("LATIN1", 6):
+            return EncodingId::ISO8859_1;
+        case detail::fnv1a_hash("WINDOWS-1252", 12):
+        case detail::fnv1a_hash("CP1252", 6):
+            return EncodingId::Windows1252;
+        case detail::fnv1a_hash("EUC-JP", 6):
+        case detail::fnv1a_hash("EUCJP", 5):
+            return EncodingId::EUC_JP;
+        case detail::fnv1a_hash("EUC-KR", 6):
+        case detail::fnv1a_hash("EUCKR", 5):
+            return EncodingId::EUC_KR;
+        default:
+            if (strstr(normalized, "UTF-8") || strstr(normalized, "UTF8")) return EncodingId::UTF8;
+            if (strstr(normalized, "UTF-16LE") || strstr(normalized, "UTF16LE")) return EncodingId::UTF16LE;
+            if (strstr(normalized, "UTF-16BE") || strstr(normalized, "UTF16BE")) return EncodingId::UTF16BE;
+            if (strstr(normalized, "UTF-16") || strstr(normalized, "UTF16")) return EncodingId::UTF16;
+            if (strstr(normalized, "UTF-32LE") || strstr(normalized, "UTF32LE")) return EncodingId::UTF32LE;
+            if (strstr(normalized, "UTF-32BE") || strstr(normalized, "UTF32BE")) return EncodingId::UTF32BE;
+            if (strstr(normalized, "UTF-32") || strstr(normalized, "UTF32")) return EncodingId::UTF32;
+            if (strstr(normalized, "GBK")) return EncodingId::GBK;
+            if (strstr(normalized, "GB18030")) return EncodingId::GB18030;
+            if (strstr(normalized, "GB2312")) return EncodingId::GB2312;
+            return EncodingId::Unknown;
+    }
+}
+
+inline bool IsAsciiCompatibleById(EncodingId id) noexcept {
+    switch (id) {
+        case EncodingId::UTF8:
+        case EncodingId::ASCII:
+        case EncodingId::GBK:
+        case EncodingId::GB2312:
+        case EncodingId::GB18030:
+        case EncodingId::BIG5:
+        case EncodingId::ShiftJIS:
+        case EncodingId::ISO8859_1:
+        case EncodingId::Windows1252:
+        case EncodingId::EUC_JP:
+        case EncodingId::EUC_KR:
+            return true;
+        default:
+            return false;
+    }
+}
+
+inline bool AreSameEncoding(EncodingId from_id, EncodingId to_id, const char* from, const char* to) noexcept {
+    if (from_id != EncodingId::Unknown && to_id != EncodingId::Unknown) {
+        return from_id == to_id;
+    }
+    return CompareEncodingNamesEqual(from, to);
+}
+
+//==============================================================================
 // simdutf 快速路径辅助函数（仅在启用 simdutf 时编译）
 //==============================================================================
 #ifdef UNICONV_HAS_SIMDUTF
@@ -690,13 +819,14 @@ std::string UniConv::GetCurrentSystemEncoding() noexcept
 #endif // _WIN32
 
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 	setlocale(LC_ALL, "");
 	char* locstr = setlocale(LC_CTYPE, NULL);
 	char* encoding = nl_langinfo(CODESET);
-	ss << encoding;
-#endif // __linux__
-	if (ss.str().empty()) ss << "Encoding not found.";
+	if (encoding && encoding[0] != '\0')
+		ss << encoding;
+#endif
+	if (ss.str().empty()) ss << "UTF-8";
 	
 #if !UNICONV_NO_THREAD_LOCAL	
 	// Cache the result in thread-local storage
@@ -715,24 +845,19 @@ std::uint16_t UniConv::GetCurrentSystemEncodingCodePage() noexcept {
 #ifdef _WIN32
 	UINT codePage = GetACP();
 	return static_cast<std::uint16_t>(codePage);
-#endif // _WIN32
-
-
-#ifdef __linux__
+#elif defined(__linux__) || defined(__APPLE__)
 	setlocale(LC_ALL, "");
 	char* locstr = setlocale(LC_CTYPE, NULL);
 	char* encoding = nl_langinfo(CODESET);
-	auto it = m_encodingToCodePageMap.find(encoding);
-
-	if (it != m_encodingToCodePageMap.end())
-        return it->second;
-    else
-    {
-        // Encoding not found in mapping table, return default code page 0
-        return 0;
-    }
-#endif // __linux__
-	return -1; // Default return value if not found
+	if (encoding) {
+		auto it = m_encodingToCodePageMap.find(encoding);
+		if (it != m_encodingToCodePageMap.end())
+			return it->second;
+	}
+	return 0;
+#else
+	return static_cast<std::uint16_t>(-1);
+#endif
 }
 
 std::string  UniConv::GetEncodingNameByCodePage(std::uint16_t codePage) noexcept
@@ -752,7 +877,7 @@ std::string UniConv::ToUtf8FromLocale(const std::string& input) {
     if(input.empty())
         return std::string{};
     std::string currentEncoding = GetCurrentSystemEncoding();
-    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_8).c_str());
+    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF8);
     return result.IsSuccess() ? std::move(result).GetValue() : "";
 }
 
@@ -764,7 +889,7 @@ std::string UniConv::ToUtf8FromLocale(const char* input) {
 // UTF-8 -> System local encoding
 std::string UniConv::ToLocaleFromUtf8(const std::string& input) {
     std::string currentEncoding = GetCurrentSystemEncoding();
-    auto result = ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), currentEncoding.c_str());
+    auto result = ConvertEncodingFast(input, ENC_UTF8, currentEncoding.c_str());
     return result.IsSuccess() ? std::move(result).GetValue() : "";
 }
 
@@ -795,7 +920,7 @@ std::u16string UniConv::ToUtf16LEFromLocale(const char* input) {
 // System local encoding -> UTF-16BE
 std::u16string UniConv::ToUtf16BEFromLocale(const std::string& input) {
     std::string currentEncoding = GetCurrentSystemEncoding();
-    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16be).c_str());
+    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF16BE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 2 == 0) {
@@ -831,7 +956,7 @@ std::string UniConv::ToUtf8FromUtf16LE(const std::u16string& input) {
     if (input.empty()) return "";
 
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_8).c_str());
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_UTF8);
     return result.IsSuccess() ? std::move(result).GetValue() : "";
 }
 
@@ -840,7 +965,7 @@ std::string UniConv::ToUtf8FromUtf16LE(const char16_t* input, size_t len) {
     if (!input || len == 0) return "";
 
     std::string input_bytes(reinterpret_cast<const char*>(input), len * sizeof(char16_t));
-    auto result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_8).c_str());
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_UTF8);
     return result.IsSuccess() ? std::move(result).GetValue() : "";
 }
 
@@ -854,7 +979,7 @@ std::string UniConv::ToUtf8FromUtf16BE(const std::u16string& input) {
     if (input.empty()) return "";
     
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(),ToString(Encoding::utf_8).c_str());
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16BE,ENC_UTF8);
     return result.IsSuccess() ? std::move(result).GetValue() : "";
 }
 
@@ -862,7 +987,7 @@ std::string UniConv::ToUtf8FromUtf16BE(const char16_t* input, size_t len) {
     if (!input || len == 0) return "";
 
     std::string input_bytes(reinterpret_cast<const char*>(input), len * sizeof(char16_t));
-    auto result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_8).c_str());
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16BE, ENC_UTF8);
     return result.IsSuccess() ? std::move(result).GetValue() : "";
 }
 
@@ -873,7 +998,7 @@ std::string UniConv::ToUtf8FromUtf16BE(const char16_t* input) {
 
 // UTF-8 -> UTF-16LE
 std::u16string UniConv::ToUtf16LEFromUtf8(const std::string& input) {
-    auto result = ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16le).c_str());
+    auto result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF16LE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 2 == 0) {
@@ -891,7 +1016,7 @@ std::u16string UniConv::ToUtf16LEFromUtf8(const char* input) {
 
 // UTF-8 -> UTF-16BE
 std::u16string UniConv::ToUtf16BEFromUtf8(const std::string& input) {
-    auto result = ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16be).c_str());
+    auto result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF16BE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 2 == 0) {
@@ -912,7 +1037,7 @@ std::u16string UniConv::ToUtf16BEFromUtf16LE(const std::u16string& input) {
     if (input.empty()) return std::u16string();
 
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_16be).c_str());
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_UTF16BE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 2 == 0) {
@@ -933,7 +1058,7 @@ std::u16string UniConv::ToUtf16LEFromUtf16BE(const std::u16string& input) {
     if (input.empty()) return std::u16string();
     
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_16le).c_str());
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16BE, ENC_UTF16LE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 2 == 0) {
@@ -955,17 +1080,14 @@ std::u16string UniConv::ToUtf16LEFromUtf16BE(const char16_t* input) {
 std::wstring UniConv::ToWideStringFromLocale(const std::string& input) {
     if (input.empty()) return std::wstring{};
     std::string currentEncoding = this->GetCurrentSystemEncoding();
-    auto result = this->ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str());
+    auto result = this->ConvertEncodingFast(input, currentEncoding.c_str(), ENC_WCHAR);
     if (!result.IsSuccess()) return std::wstring{};
-    // Remove the BOM (if any)
     auto value = std::move(result).GetValue();
-    const char* data = value.data();
-    size_t size = value.size();
-    if (size >= 2 && (uint8_t)data[0] == 0xFF && (uint8_t)data[1] == 0xFE) {
-        data += 2;
-        size -= 2;
+    if (value.size() % sizeof(wchar_t) == 0) {
+        return std::wstring(reinterpret_cast<const wchar_t*>(value.data()),
+                            value.size() / sizeof(wchar_t));
     }
-    return std::wstring(reinterpret_cast<const wchar_t*>(data), size / sizeof(wchar_t));
+    return std::wstring{};
 }
 
 std::wstring UniConv::ToWideStringFromLocale(const char* input) {
@@ -980,10 +1102,8 @@ std::string UniConv::ToLocaleFromWideString(const std::wstring& input)
 {
 	if (input.empty()) return std::string{};
 	std::string currentEncoding = this->GetCurrentSystemEncoding();
-	auto result = this->ConvertEncodingFast
-           (std::string(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t)),
-               ToString(Encoding::wchar_t_encoding).c_str(),
-               currentEncoding.c_str());
+	std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t));
+	auto result = this->ConvertEncodingFast(input_bytes, ENC_WCHAR, currentEncoding.c_str());
 	return result.IsSuccess() ? std::move(result).GetValue() : std::string{};
 }
 
@@ -1000,7 +1120,7 @@ std::string UniConv::ToLocaleFromUtf16LE(const std::u16string& input) {
     
     std::string currentEncoding = this->GetCurrentSystemEncoding();
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = this->ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), currentEncoding.c_str());
+    auto result = this->ConvertEncodingFast(input_bytes, ENC_UTF16LE, currentEncoding.c_str());
     return result.IsSuccess() ? std::move(result).GetValue() : "";
 }
 
@@ -1052,7 +1172,7 @@ std::string UniConv::ToUtf8FromUtf32LE(const std::u32string& sInput)
 {
 	if (sInput.empty()) return std::string{};
 	std::string input_bytes(reinterpret_cast<const char*>(sInput.data()), sInput.size() * sizeof(char32_t));
-	auto result = this->ConvertEncodingFast(input_bytes, ToString(Encoding::utf_32le).c_str(), ToString(Encoding::utf_8).c_str());
+	auto result = this->ConvertEncodingFast(input_bytes, ENC_UTF32LE, ENC_UTF8);
 	return result.IsSuccess() ? std::move(result).GetValue() : std::string{};
 }
 
@@ -1066,7 +1186,7 @@ std::u16string UniConv::ToUtf16LEFromUtf32LE(const std::u32string& sInput)
 {
 	if (sInput.empty() ) return std::u16string{};
 	std::string input_bytes(reinterpret_cast<const char*>(sInput.data()), sInput.size() * sizeof(char32_t));
-	auto result = this->ConvertEncodingFast(input_bytes, ToString(Encoding::utf_32le).c_str(), ToString(Encoding::utf_16le).c_str());
+	auto result = this->ConvertEncodingFast(input_bytes, ENC_UTF32LE, ENC_UTF16LE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 2 == 0) {
@@ -1088,7 +1208,7 @@ std::u16string UniConv::ToUtf16BEFromUtf32LE(const std::u32string& input)
 {
 	if (input.empty()) return std::u16string{};
 	std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char32_t));
-    auto result = this->ConvertEncodingFast(input_bytes, ToString(Encoding::utf_32le).c_str(), ToString(Encoding::utf_16be).c_str());
+    auto result = this->ConvertEncodingFast(input_bytes, ENC_UTF32LE, ENC_UTF16BE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 2 == 0) {
@@ -1111,7 +1231,7 @@ std::u16string UniConv::ToUtf16BEFromUtf32LE(const char32_t* input)
 std::u32string UniConv::ToUtf32LEFromUtf8(const std::string& input)
 {
 	if (input.empty()) return std::u32string{};
-	auto result = this->ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_32le).c_str());
+	auto result = this->ConvertEncodingFast(input, ENC_UTF8, ENC_UTF32LE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 4 == 0) {
@@ -1135,7 +1255,7 @@ std::u32string UniConv::ToUtf32LEFromUtf16LE(const std::u16string& input)
 {
 	if (input.empty()) return std::u32string{};
 	std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = this->ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_32le).c_str());
+    auto result = this->ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_UTF32LE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 4 == 0) {
@@ -1159,7 +1279,7 @@ std::u32string UniConv::ToUtf32LEFromUtf16BE(const std::u16string& input)
 {
 	if (input.empty()) return std::u32string{};
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
-    auto result = this->ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_32le).c_str());
+    auto result = this->ConvertEncodingFast(input_bytes, ENC_UTF16BE, ENC_UTF32LE);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % 4 == 0) {
@@ -1205,8 +1325,8 @@ std::string UniConv::ToUtf8FromUcs4(const std::wstring& input)
 
     #elif defined(__linux__) || defined(__APPLE__)
         if (input.empty()) return std::string();
-        std::string utf8_str = reinterpret_cast<const char*>(input.data());
-        auto result = ConvertEncodingFast(utf8_str, ToString(Encoding::wchar_t_encoding).c_str(), ToString(Encoding::utf_8).c_str());
+        std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t));
+        auto result = ConvertEncodingFast(input_bytes, ENC_WCHAR, ENC_UTF8);
         return result.IsSuccess() ? std::move(result).GetValue() : std::string{};
     #endif
 }
@@ -1214,8 +1334,7 @@ std::string UniConv::ToUtf8FromUcs4(const std::wstring& input)
 std::wstring UniConv::ToUcs4FromUtf8(const std::string& input)
 {
     if (input.empty()) return std::wstring{};
-    // Convert UTF-8 to UCS-4 (wide string)
-    auto result = ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16le).c_str());
+    auto result = ConvertEncodingFast(input, ENC_UTF8, ENC_WCHAR);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % sizeof(wchar_t) == 0) {
@@ -1231,8 +1350,8 @@ std::wstring UniConv::ToUcs4FromUtf8(const std::string& input)
 std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
 {
     if (u16str.empty()) return std::wstring{};
-    auto result = ConvertEncodingFast(std::string(reinterpret_cast<const char*>(u16str.data()), u16str.size() * sizeof(char16_t)),
-        ToString(Encoding::utf_16le).c_str(), ToString(Encoding::wchar_t_encoding).c_str());
+    std::string input_bytes(reinterpret_cast<const char*>(u16str.data()), u16str.size() * sizeof(char16_t));
+    auto result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_WCHAR);
     if (result.IsSuccess()) {
         auto value = std::move(result).GetValue();
         if (value.size() % sizeof(wchar_t) == 0) {
@@ -1379,12 +1498,10 @@ std::string UniConv::ToString(UniConv::Encoding  enc) noexcept {
 //----------------------------------------------------------------------------------------------------------------------
 
 StringResult UniConv::ConvertEncodingFast(const std::string& input,const char* fromEncoding, const char* toEncoding) noexcept {
-    // 快速参数检查 - 预测参数通常有效
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
         return StringResult::Failure(ErrorCode::InvalidParameter);
     }
-    
-    // 快速编码名称有效性检查
+
     if (UNICONV_UNLIKELY(!IsValidEncodingName(fromEncoding))) {
         return StringResult::Failure(ErrorCode::InvalidSourceEncoding);
     }
@@ -1392,106 +1509,86 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,const char* f
         return StringResult::Failure(ErrorCode::InvalidTargetEncoding);
     }
 
-    // 预测输入通常不为空
     if (UNICONV_UNLIKELY(input.empty())) {
         return StringResult::Success(std::string{});
     }
 
-    // 同编码直接返回（零转换开销）
-    // 使用不区分大小写的比较，因为编码名称可能有大小写差异
-    if (UNICONV_LIKELY(CompareEncodingNamesEqual(fromEncoding, toEncoding))) {
+    //  一次性解析编码 ID，后续全部用整数比较
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+
+    if (UNICONV_LIKELY(AreSameEncoding(from_id, to_id, fromEncoding, toEncoding))) {
         return StringResult::Success(std::string(input));
     }
-    
-    // ASCII 内容的快速处理
-    // 对于 ASCII 兼容编码（UTF-8, ISO-8859-*, Windows-125*, ASCII 等），
-    // 如果内容全是 ASCII（所有字节 < 0x80），可以直接复制
-    if (IsAsciiCompatibleEncoding(fromEncoding) && IsAsciiCompatibleEncoding(toEncoding)) {
+
+    if (IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id)) {
         if (UNICONV_LIKELY(IsAllAscii(input))) {
             return StringResult::Success(std::string(input));
         }
     }
-    
+
     //==========================================================================
-    //  simdutf SIMD 加速快速路径（可选）
+    //  simdutf SIMD 加速快速路径
     //==========================================================================
 #ifdef UNICONV_HAS_SIMDUTF
-    // UTF-8 → UTF-16LE
-    if (IsUtf8ToUtf16LE(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF8 && to_id == EncodingId::UTF16LE) {
         return ConvertUtf8ToUtf16LE_SIMD(input);
     }
-    // UTF-16LE → UTF-8
-    if (IsUtf16LEToUtf8(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF16LE && to_id == EncodingId::UTF8) {
         return ConvertUtf16LEToUtf8_SIMD(input);
     }
-    // UTF-8 → UTF-16BE
-    if (IsUtf8ToUtf16BE(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF8 && to_id == EncodingId::UTF16BE) {
         return ConvertUtf8ToUtf16BE_SIMD(input);
     }
-    // UTF-16BE → UTF-8
-    if (IsUtf16BEToUtf8(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF16BE && to_id == EncodingId::UTF8) {
         return ConvertUtf16BEToUtf8_SIMD(input);
     }
 #endif // UNICONV_HAS_SIMDUTF
     //==========================================================================
 
-    // 预取输入数据到缓存
     UNICONV_PREFETCH(input.data(), 0, 3);
 
-    // 使用LRU缓存的iconv描述符
     auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
         return StringResult::Failure(ErrorCode::ConversionFailed);
     }
 
-    // Cast from shared_ptr<void> to iconv_t (cross-platform safe)
     iconv_t cd = static_cast<iconv_t>(descriptor.get());
 
-    // 输入缓冲区设置
     const char* inbuf_ptr = input.data();
     std::size_t inbuf_left = input.size();
 
-    // 使用智能估算预分配输出缓冲区
+    // 传入已解析的 EncodingId，避免 EstimateOutputSize 内部重复解析
+    size_t estimated_size = EstimateOutputSizeById(input.size(),
+                                                    static_cast<uint8_t>(from_id),
+                                                    static_cast<uint8_t>(to_id));
     std::string result;
-    size_t estimated_size = EstimateOutputSize(input.size(), fromEncoding, toEncoding);
-    result.reserve(estimated_size);
+    result.resize(estimated_size);
 
-    // 使用临时缓冲区进行转换，基于智能估算调整大小
-    std::size_t buffer_size = (std::max)(static_cast<std::size_t>(4096), estimated_size);
-    std::vector<char> temp_buffer(buffer_size);
-
-    // 转换循环，限制最大迭代次数防止死循环 - 预测通常一次转换成功
+    size_t written_total = 0;
     constexpr int max_iterations = 100;
     int iteration_count = 0;
 
-    // 预测大多数情况下单次转换即可完成
     while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
-        char* outbuf_ptr = temp_buffer.data();
-        std::size_t outbuf_left = temp_buffer.size();
+        char* outbuf_ptr = result.data() + written_total;
+        std::size_t outbuf_left = result.size() - written_total;
 
-        // 预取临时缓冲区到缓存
-        UNICONV_PREFETCH(temp_buffer.data(), 1, 2);
+        UNICONV_PREFETCH(outbuf_ptr, 1, 2);
 
-        // 执行转换
         std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
 
-        // 计算转换的字节数 - 预测通常有数据被转换
-        std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
-        if (UNICONV_LIKELY(converted_bytes > 0)) {
-            result.append(temp_buffer.data(), converted_bytes);
-        }
+        written_total = result.size() - outbuf_left;
 
-        // 错误处理 - 预测大多数情况下转换成功
         if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
             int current_errno = errno;
             switch (current_errno) {
-                case E2BIG:
-                    // 输出缓冲区太小，扩容继续 - 预测不会超过限制
-                    if (UNICONV_UNLIKELY(temp_buffer.size() >= 1048576 * 10)) { // 10MB限制
+                case E2BIG: {
+                    if (UNICONV_UNLIKELY(result.size() >= 1048576 * 10)) {
                         return StringResult::Failure(ErrorCode::BufferTooSmall);
                     }
-                    temp_buffer.resize(temp_buffer.size() * 2);
+                    result.resize(result.size() * 2);
                     continue;
+                }
                 case EILSEQ:
                     return StringResult::Failure(ErrorCode::InvalidSequence);
                 case EINVAL:
@@ -1500,16 +1597,15 @@ StringResult UniConv::ConvertEncodingFast(const std::string& input,const char* f
                     return StringResult::Failure(ErrorCode::ConversionFailed);
             }
         } else {
-            // 转换成功完成 - 最常见的情况
             break;
         }
     }
 
-    // 预测很少会达到最大迭代次数
     if (UNICONV_UNLIKELY(iteration_count >= max_iterations)) {
         return StringResult::Failure(ErrorCode::InternalError);
     }
 
+    result.resize(written_total);
     return StringResult::Success(std::move(result));
 }
 
@@ -1533,8 +1629,7 @@ IntResult UniConv::GetSystemCodePageFast() noexcept {
 #ifdef _WIN32
     UINT codepage = GetACP();
     return IntResult::Success(static_cast<int>(codepage));
-#elif defined(__linux__)
-    // Linux下的实现
+#elif defined(__linux__) || defined(__APPLE__)
     setlocale(LC_ALL, "");
     char* encoding = nl_langinfo(CODESET);
     if (encoding) {
@@ -1543,7 +1638,7 @@ IntResult UniConv::GetSystemCodePageFast() noexcept {
             return IntResult::Success(static_cast<int>(it->second));
         }
     }
-    return IntResult::Failure(ErrorCode::SystemError);
+    return IntResult::Failure(ErrorCode::EncodingNotFound);
 #else
     return IntResult::Failure(ErrorCode::SystemError);
 #endif
@@ -1558,107 +1653,6 @@ IntResult UniConv::GetSystemCodePageFast() noexcept {
 // ===================================================================================================================
 
 namespace {
-    // Encoding ID for fast lookup (avoid string comparisons in hot path)
-    enum class EncodingId : uint8_t {
-        Unknown = 0,
-        UTF8,
-        UTF16,
-        UTF16LE,
-        UTF16BE,
-        UTF32,
-        UTF32LE,
-        UTF32BE,
-        ASCII,
-        GBK,
-        GB2312,
-        GB18030,
-        BIG5,
-        ShiftJIS,
-        ISO8859_1,
-        Windows1252,
-        EUC_JP,
-        EUC_KR
-    };
-    
-    // Fast encoding name to ID lookup using hash
-    EncodingId GetEncodingId(const char* encoding) noexcept {
-        if (!encoding) return EncodingId::Unknown;
-        
-        // Normalize to uppercase for comparison
-        char normalized[32];
-        size_t len = 0;
-        for (; encoding[len] && len < 31; ++len) {
-            char c = encoding[len];
-            normalized[len] = (c >= 'a' && c <= 'z') ? (c - 32) : c;
-        }
-        normalized[len] = '\0';
-        
-        // Use hash for fast lookup
-        uint32_t hash = detail::fnv1a_hash(normalized, len);
-        
-        // Common encodings (ordered by frequency)
-        switch (hash) {
-            case detail::fnv1a_hash("UTF-8", 5):
-            case detail::fnv1a_hash("UTF8", 4):
-                return EncodingId::UTF8;
-            case detail::fnv1a_hash("UTF-16", 6):
-            case detail::fnv1a_hash("UTF16", 5):
-                return EncodingId::UTF16;
-            case detail::fnv1a_hash("UTF-16LE", 8):
-            case detail::fnv1a_hash("UTF16LE", 7):
-                return EncodingId::UTF16LE;
-            case detail::fnv1a_hash("UTF-16BE", 8):
-            case detail::fnv1a_hash("UTF16BE", 7):
-                return EncodingId::UTF16BE;
-            case detail::fnv1a_hash("UTF-32", 6):
-            case detail::fnv1a_hash("UTF32", 5):
-                return EncodingId::UTF32;
-            case detail::fnv1a_hash("UTF-32LE", 8):
-            case detail::fnv1a_hash("UTF32LE", 7):
-                return EncodingId::UTF32LE;
-            case detail::fnv1a_hash("UTF-32BE", 8):
-            case detail::fnv1a_hash("UTF32BE", 7):
-                return EncodingId::UTF32BE;
-            case detail::fnv1a_hash("ASCII", 5):
-            case detail::fnv1a_hash("US-ASCII", 8):
-                return EncodingId::ASCII;
-            case detail::fnv1a_hash("GBK", 3):
-                return EncodingId::GBK;
-            case detail::fnv1a_hash("GB2312", 6):
-                return EncodingId::GB2312;
-            case detail::fnv1a_hash("GB18030", 7):
-                return EncodingId::GB18030;
-            case detail::fnv1a_hash("BIG5", 4):
-            case detail::fnv1a_hash("BIG-5", 5):
-                return EncodingId::BIG5;
-            case detail::fnv1a_hash("SHIFT_JIS", 9):
-            case detail::fnv1a_hash("SHIFT-JIS", 9):
-            case detail::fnv1a_hash("SJIS", 4):
-                return EncodingId::ShiftJIS;
-            case detail::fnv1a_hash("ISO-8859-1", 10):
-            case detail::fnv1a_hash("LATIN1", 6):
-                return EncodingId::ISO8859_1;
-            case detail::fnv1a_hash("WINDOWS-1252", 12):
-            case detail::fnv1a_hash("CP1252", 6):
-                return EncodingId::Windows1252;
-            case detail::fnv1a_hash("EUC-JP", 6):
-            case detail::fnv1a_hash("EUCJP", 5):
-                return EncodingId::EUC_JP;
-            case detail::fnv1a_hash("EUC-KR", 6):
-            case detail::fnv1a_hash("EUCKR", 5):
-                return EncodingId::EUC_KR;
-            default:
-                // Fallback: check for common substrings
-                if (strstr(normalized, "UTF-8") || strstr(normalized, "UTF8")) return EncodingId::UTF8;
-                if (strstr(normalized, "UTF-16") || strstr(normalized, "UTF16")) return EncodingId::UTF16;
-                if (strstr(normalized, "UTF-32") || strstr(normalized, "UTF32")) return EncodingId::UTF32;
-                if (strstr(normalized, "GBK")) return EncodingId::GBK;
-                if (strstr(normalized, "GB18030")) return EncodingId::GB18030;
-                if (strstr(normalized, "GB2312")) return EncodingId::GB2312;
-                return EncodingId::Unknown;
-        }
-    }
-    
     // Encoding expansion factor table (from_id, to_id) -> factor
     // Factor < 1.0 means output is smaller, > 1.0 means output is larger
     constexpr double GetExpansionFactor(EncodingId from, EncodingId to) noexcept {
@@ -1765,28 +1759,27 @@ namespace {
 }
 
 size_t UniConv::EstimateOutputSize(size_t input_size, const char* from_encoding, const char* to_encoding) noexcept {
-    // Fast path: empty input
-    if (input_size == 0) return 512;  // Minimum buffer
-    
-    // Fast path: same encoding
-    if (from_encoding && to_encoding && CompareEncodingNamesEqual(from_encoding, to_encoding)) {
-        return input_size + 16;  // Just add small safety margin
+    return EstimateOutputSizeById(input_size,
+                                  static_cast<uint8_t>(GetEncodingId(from_encoding)),
+                                  static_cast<uint8_t>(GetEncodingId(to_encoding)));
+}
+
+size_t UniConv::EstimateOutputSizeById(size_t input_size, uint8_t from_raw, uint8_t to_raw) noexcept {
+    if (input_size == 0) return 512;
+
+    auto from_id = static_cast<EncodingId>(from_raw);
+    auto to_id   = static_cast<EncodingId>(to_raw);
+
+    if (from_id == to_id && from_id != EncodingId::Unknown) {
+        return input_size + 16;
     }
-    
-    // Get encoding IDs for fast lookup
-    EncodingId from_id = GetEncodingId(from_encoding);
-    EncodingId to_id = GetEncodingId(to_encoding);
-    
-    // Get expansion factor from table
+
     double expansion_factor = GetExpansionFactor(from_id, to_id);
-    
-    // Add safety margin (15%)
     double estimated = static_cast<double>(input_size) * expansion_factor * 1.15;
-    
-    // Clamp to reasonable bounds
+
     constexpr size_t MIN_BUFFER_SIZE = 512;
-    constexpr size_t MAX_REASONABLE_SIZE = 32 * 1024 * 1024; // 32MB
-    
+    constexpr size_t MAX_REASONABLE_SIZE = 32 * 1024 * 1024;
+
     return std::clamp(static_cast<size_t>(estimated), MIN_BUFFER_SIZE, MAX_REASONABLE_SIZE);
 }
 
@@ -1905,9 +1898,9 @@ StringResult UniConv::ConvertEncodingInternal(const std::string& input,const cha
     const char* inbuf = input.data();
     size_t inbytesleft = input.size();
 
-    // 使用栈分配的临时缓冲区进行分块转换
-    constexpr size_t CHUNK_SIZE = 8192;  // 8KB块大小
-    char temp_chunk[CHUNK_SIZE];
+    //  16 字节对齐的栈缓冲区，利于缓存行和 SIMD 操作
+    constexpr size_t CHUNK_SIZE = 8192;
+    alignas(16) char temp_chunk[CHUNK_SIZE];
 
     // 转换循环
     constexpr int MAX_ITERATIONS = 1000;  // 防止无限循环
@@ -1985,39 +1978,48 @@ std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::s
         return results;
     }
     
-    // 预取inputs数据到缓存
     if (UNICONV_LIKELY(!inputs.empty())) {
         UNICONV_PREFETCH(inputs.data(), 0, 2);
     }
     
-    // 预先获取iconv描述符以避免重复创建 - 预测通常能成功获取
     auto descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
-        // 为所有输入返回错误结果
         for (size_t i = 0; i < inputs.size(); ++i) {
             results.emplace_back(StringResult::Failure(ErrorCode::InvalidSourceEncoding));
         }
         return results;
     }
     
-    // 批量处理每个输入
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+    const bool same_encoding = AreSameEncoding(from_id, to_id, fromEncoding, toEncoding);
+    const bool both_ascii    = IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id);
+    const uint8_t from_raw   = static_cast<uint8_t>(from_id);
+    const uint8_t to_raw     = static_cast<uint8_t>(to_id);
+
     for (const auto& input : inputs) {
         if (input.empty()) {
             results.emplace_back(StringResult::Success(std::string{}));
             continue;
         }
         
-        // 估算输出大小
-        size_t estimated = EstimateOutputSize(input.size(), fromEncoding, toEncoding);
+        if (UNICONV_UNLIKELY(same_encoding)) {
+            results.emplace_back(StringResult::Success(std::string(input)));
+            continue;
+        }
+        if (both_ascii && IsAllAscii(input)) {
+            results.emplace_back(StringResult::Success(std::string(input)));
+            continue;
+        }
         
-        // 获取缓冲区 - 使用估算大小选择合适的缓冲区层级
+        size_t estimated = EstimateOutputSizeById(input.size(), from_raw, to_raw);
+        
         auto buffer_lease = m_stringBufferPool.acquire(estimated);
         if (!buffer_lease.valid()) {
             results.emplace_back(StringResult::Failure(ErrorCode::OutOfMemory));
             continue;
         }
         
-        // 转换并添加结果
         results.emplace_back(ConvertEncodingInternal(input, fromEncoding, toEncoding, buffer_lease, estimated));
     }
     
@@ -2102,7 +2104,7 @@ CompactResult<std::string> UniConv::ToUtf8FromLocaleEx(const std::string& input)
     }
     
     std::string currentEncoding = GetCurrentSystemEncoding();
-    return ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_8).c_str());
+    return ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF8);
 }
 
 CompactResult<std::string> UniConv::ToLocaleFromUtf8Ex(const std::string& input) {
@@ -2111,7 +2113,7 @@ CompactResult<std::string> UniConv::ToLocaleFromUtf8Ex(const std::string& input)
     }
     
     std::string currentEncoding = GetCurrentSystemEncoding();
-    return ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), currentEncoding.c_str());
+    return ConvertEncodingFast(input, ENC_UTF8, currentEncoding.c_str());
 }
 
 CompactResult<std::u16string> UniConv::ToUtf16LEFromLocaleEx(const std::string& input) {
@@ -2120,28 +2122,19 @@ CompactResult<std::u16string> UniConv::ToUtf16LEFromLocaleEx(const std::string& 
     }
     
     std::string currentEncoding = GetCurrentSystemEncoding();
-    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str());
+    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF16LE);
     
     if (!result.IsSuccess()) {
         return CompactResult<std::u16string>::Failure(result.GetErrorCode());
     }
     
-    // Convert std::string to std::u16string
     const std::string& str = result.GetValue();
     if (str.size() % 2 != 0) {
         return CompactResult<std::u16string>::Failure(ErrorCode::InvalidSequence);
     }
     
-    std::u16string u16str;
-    u16str.reserve(str.size() / 2);
-    
-    for (size_t i = 0; i < str.size(); i += 2) {
-        char16_t ch = static_cast<char16_t>(static_cast<unsigned char>(str[i])) |
-                      (static_cast<char16_t>(static_cast<unsigned char>(str[i + 1])) << 8);
-        u16str.push_back(ch);
-    }
-    
-    return CompactResult<std::u16string>::Success(std::move(u16str));
+    return CompactResult<std::u16string>::Success(
+        std::u16string(reinterpret_cast<const char16_t*>(str.data()), str.size() / 2));
 }
 
 CompactResult<std::u16string> UniConv::ToUtf16BEFromLocaleEx(const std::string& input) {
@@ -2150,28 +2143,19 @@ CompactResult<std::u16string> UniConv::ToUtf16BEFromLocaleEx(const std::string& 
     }
     
     std::string currentEncoding = GetCurrentSystemEncoding();
-    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16be).c_str());
+    auto result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF16BE);
     
     if (!result.IsSuccess()) {
         return CompactResult<std::u16string>::Failure(result.GetErrorCode());
     }
     
-    // Convert std::string to std::u16string (big-endian)
     const std::string& str = result.GetValue();
     if (str.size() % 2 != 0) {
         return CompactResult<std::u16string>::Failure(ErrorCode::InvalidSequence);
     }
     
-    std::u16string u16str;
-    u16str.reserve(str.size() / 2);
-    
-    for (size_t i = 0; i < str.size(); i += 2) {
-        char16_t ch = (static_cast<char16_t>(static_cast<unsigned char>(str[i])) << 8) |
-                      static_cast<char16_t>(static_cast<unsigned char>(str[i + 1]));
-        u16str.push_back(ch);
-    }
-    
-    return CompactResult<std::u16string>::Success(std::move(u16str));
+    return CompactResult<std::u16string>::Success(
+        std::u16string(reinterpret_cast<const char16_t*>(str.data()), str.size() / 2));
 }
 
 CompactResult<std::string> UniConv::ToUtf8FromUtf16LEEx(const std::u16string& input) {
@@ -2188,7 +2172,7 @@ CompactResult<std::string> UniConv::ToUtf8FromUtf16LEEx(const std::u16string& in
         inputStr.push_back(static_cast<char>((ch >> 8) & 0xFF));
     }
     
-    return ConvertEncodingFast(inputStr, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_8).c_str());
+    return ConvertEncodingFast(inputStr, ENC_UTF16LE, ENC_UTF8);
 }
 
 CompactResult<std::string> UniConv::ToUtf8FromUtf16BEEx(const std::u16string& input) {
@@ -2196,16 +2180,9 @@ CompactResult<std::string> UniConv::ToUtf8FromUtf16BEEx(const std::u16string& in
         return CompactResult<std::string>::Success(std::string{});
     }
     
-    // Convert std::u16string to std::string for iconv processing (big-endian)
-    std::string inputStr;
-    inputStr.reserve(input.size() * 2);
+    std::string inputStr(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     
-    for (char16_t ch : input) {
-        inputStr.push_back(static_cast<char>((ch >> 8) & 0xFF));
-        inputStr.push_back(static_cast<char>(ch & 0xFF));
-    }
-    
-    return ConvertEncodingFast(inputStr, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_8).c_str());
+    return ConvertEncodingFast(inputStr, ENC_UTF16BE, ENC_UTF8);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -2218,170 +2195,126 @@ bool UniConv::ConvertEncoding(const std::string& input, const char* fromEncoding
 }
 
 ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
-    // Clear output and reserve space
     output.clear();
-    
-    // Fast parameter check
+
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
         return ErrorCode::InvalidParameter;
     }
-    
-    // 快速编码名称有效性检查
+
     if (UNICONV_UNLIKELY(!IsValidEncodingName(fromEncoding))) {
         return ErrorCode::InvalidSourceEncoding;
     }
     if (UNICONV_UNLIKELY(!IsValidEncodingName(toEncoding))) {
         return ErrorCode::InvalidTargetEncoding;
     }
-    
-    // Fast empty input check
+
     if (UNICONV_UNLIKELY(input.empty())) {
         return ErrorCode::Success;
     }
-    
 
-    
-    // 同编码直接返回（零转换开销）
-    if (UNICONV_LIKELY(CompareEncodingNamesEqual(fromEncoding, toEncoding))) {
+    // 一次性解析编码 ID
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+
+    if (UNICONV_LIKELY(AreSameEncoding(from_id, to_id, fromEncoding, toEncoding))) {
         output = input;
         return ErrorCode::Success;
     }
-    
-    // 纯 ASCII 内容的快速处理
-    if (IsAsciiCompatibleEncoding(fromEncoding) && IsAsciiCompatibleEncoding(toEncoding)) {
+
+    if (IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id)) {
         if (UNICONV_LIKELY(IsAllAscii(input))) {
             output = input;
             return ErrorCode::Success;
         }
     }
-    
+
     //==========================================================================
-    // P1: simdutf SIMD 加速快速路径（可选）
+    // simdutf SIMD 加速快速路径
     //==========================================================================
 #ifdef UNICONV_HAS_SIMDUTF
-    // UTF-8 → UTF-16LE
-    if (IsUtf8ToUtf16LE(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF8 && to_id == EncodingId::UTF16LE) {
         auto result = ConvertUtf8ToUtf16LE_SIMD(input);
-        if (result.IsSuccess()) {
-            output = std::move(result).GetValue();
-            return ErrorCode::Success;
-        }
+        if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
         return result.GetErrorCode();
     }
-    // UTF-16LE → UTF-8
-    if (IsUtf16LEToUtf8(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF16LE && to_id == EncodingId::UTF8) {
         auto result = ConvertUtf16LEToUtf8_SIMD(input);
-        if (result.IsSuccess()) {
-            output = std::move(result).GetValue();
-            return ErrorCode::Success;
-        }
+        if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
         return result.GetErrorCode();
     }
-    // UTF-8 → UTF-16BE
-    if (IsUtf8ToUtf16BE(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF8 && to_id == EncodingId::UTF16BE) {
         auto result = ConvertUtf8ToUtf16BE_SIMD(input);
-        if (result.IsSuccess()) {
-            output = std::move(result).GetValue();
-            return ErrorCode::Success;
-        }
+        if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
         return result.GetErrorCode();
     }
-    // UTF-16BE → UTF-8
-    if (IsUtf16BEToUtf8(fromEncoding, toEncoding)) {
+    if (from_id == EncodingId::UTF16BE && to_id == EncodingId::UTF8) {
         auto result = ConvertUtf16BEToUtf8_SIMD(input);
-        if (result.IsSuccess()) {
-            output = std::move(result).GetValue();
-            return ErrorCode::Success;
-        }
+        if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
         return result.GetErrorCode();
     }
 #endif // UNICONV_HAS_SIMDUTF
     //==========================================================================
-    
-    // Prefetch input data to cache
+
     UNICONV_PREFETCH(input.data(), 0, 3);
-    
-    // 使用预计算哈希作为缓存键 - 避免字符串拼接分配
+
     const size_t from_len = strlen(fromEncoding);
     const size_t to_len   = strlen(toEncoding);
     const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
-    
-    // Try cache first (thread-safe in both modes)
+
 #if UNICONV_NO_THREAD_LOCAL
-    // DLL mode: lock the instance cache
     auto cache_lock = GetCacheLock();
 #endif
     auto descriptor = GetCache().GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
-        // Fallback to global cache
         descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
         if (UNICONV_UNLIKELY(!descriptor)) {
             return ErrorCode::ConversionFailed;
         }
     }
-    
-    // Cast from shared_ptr<void> to iconv_t (cross-platform safe)
+
     iconv_t cd = static_cast<iconv_t>(descriptor.get());
-    
-    // Input buffer setup
+
     const char* inbuf_ptr = input.data();
     std::size_t inbuf_left = input.size();
-    
-    // Estimate output size and reserve
-    size_t estimated_size = EstimateOutputSize(input.size(), fromEncoding, toEncoding);
+
+    // 传入已解析的 EncodingId，避免重复字符串解析
+    size_t estimated_size = EstimateOutputSizeById(input.size(),
+                                                    static_cast<uint8_t>(from_id),
+                                                    static_cast<uint8_t>(to_id));
     try {
-        output.reserve(estimated_size);
+        output.resize(estimated_size);
     } catch (...) {
         return ErrorCode::OutOfMemory;
     }
-    
-    // Use temp buffer for conversion
-    std::size_t buffer_size = (std::max)(static_cast<std::size_t>(4096), estimated_size);
-    std::vector<char>& temp_buffer = GetCache().temp_conversion_buffer;
-    
-    // Reuse thread-local temp buffer
-    if (temp_buffer.size() < buffer_size) {
-        try {
-            temp_buffer.resize(buffer_size);
-        } catch (...) {
-            return ErrorCode::OutOfMemory;
-        }
-    }
-    
-    // Conversion loop
+
+    size_t written_total = 0;
     constexpr int max_iterations = 100;
     int iteration_count = 0;
-    
+
     while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
-        char* outbuf_ptr = temp_buffer.data();
-        std::size_t outbuf_left = temp_buffer.size();
-        
-        // Prefetch temp buffer
-        UNICONV_PREFETCH(temp_buffer.data(), 1, 2);
-        
-        // Execute conversion
+        char* outbuf_ptr = output.data() + written_total;
+        std::size_t outbuf_left = output.size() - written_total;
+
+        UNICONV_PREFETCH(outbuf_ptr, 1, 2);
+
         std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
-        
-        // Append converted bytes
-        std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
-        if (UNICONV_LIKELY(converted_bytes > 0)) {
-            try {
-                output.append(temp_buffer.data(), converted_bytes);
-            } catch (...) {
-                return ErrorCode::OutOfMemory;
-            }
-        }
-        
-        // Error handling
+
+        written_total = output.size() - outbuf_left;
+
         if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
             int current_errno = errno;
             switch (current_errno) {
-                case E2BIG:
-                    if (UNICONV_UNLIKELY(temp_buffer.size() >= 1048576 * 10)) { // 10MB limit
+                case E2BIG: {
+                    if (UNICONV_UNLIKELY(output.size() >= 1048576 * 10)) {
                         return ErrorCode::BufferTooSmall;
                     }
-                    temp_buffer.resize(temp_buffer.size() * 2);
+                    try {
+                        output.resize(output.size() * 2);
+                    } catch (...) {
+                        return ErrorCode::OutOfMemory;
+                    }
                     continue;
+                }
                 case EILSEQ:
                     return ErrorCode::InvalidSequence;
                 case EINVAL:
@@ -2393,11 +2326,12 @@ ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fro
             break;
         }
     }
-    
+
     if (UNICONV_UNLIKELY(iteration_count >= max_iterations)) {
         return ErrorCode::InternalError;
     }
-    
+
+    output.resize(written_total);
     return ErrorCode::Success;
 }
 
@@ -2408,7 +2342,7 @@ bool UniConv::ToUtf8FromLocale(const std::string& input, std::string& output) no
         return true;
     }
     std::string currentEncoding = GetCurrentSystemEncoding();
-    return ErrorCode::Success == ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_8).c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF8, output);
 }
 
 bool UniConv::ToLocaleFromUtf8(const std::string& input, std::string& output) noexcept {
@@ -2417,7 +2351,7 @@ bool UniConv::ToLocaleFromUtf8(const std::string& input, std::string& output) no
         return true;
     }
     std::string currentEncoding = GetCurrentSystemEncoding();
-    return ErrorCode::Success == ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), currentEncoding.c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input, ENC_UTF8, currentEncoding.c_str(), output);
 }
 
 bool UniConv::ToUtf8FromUtf16LE(const std::u16string& input, std::string& output) noexcept {
@@ -2433,7 +2367,7 @@ bool UniConv::ToUtf8FromUtf16LE(const std::u16string& input, std::string& output
         input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
     }
     
-    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_8).c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_UTF8, output);
 }
 
 bool UniConv::ToUtf8FromUtf16BE(const std::u16string& input, std::string& output) noexcept {
@@ -2442,14 +2376,9 @@ bool UniConv::ToUtf8FromUtf16BE(const std::u16string& input, std::string& output
         return true;
     }
     
-    std::string input_bytes;
-    input_bytes.reserve(input.size() * 2);
-    for (char16_t ch : input) {
-        input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
-        input_bytes.push_back(static_cast<char>(ch & 0xFF));
-    }
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     
-    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_8).c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ENC_UTF16BE, ENC_UTF8, output);
 }
 
 bool UniConv::ToUtf8FromUtf32LE(const std::u32string& input, std::string& output) noexcept {
@@ -2467,7 +2396,7 @@ bool UniConv::ToUtf8FromUtf32LE(const std::u32string& input, std::string& output
         input_bytes.push_back(static_cast<char>((ch >> 24) & 0xFF));
     }
     
-    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ToString(Encoding::utf_32le).c_str(), ToString(Encoding::utf_8).c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ENC_UTF32LE, ENC_UTF8, output);
 }
 
 // UTF-16 Conversion Series (output parameter versions)
@@ -2478,16 +2407,10 @@ bool UniConv::ToUtf16LEFromUtf8(const std::string& input, std::u16string& output
     }
     
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16le).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF16LE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 2);
-        for (size_t i = 0; i < temp_output.size(); i += 2) {
-            char16_t ch = static_cast<char16_t>(static_cast<unsigned char>(temp_output[i])) |
-                          (static_cast<char16_t>(static_cast<unsigned char>(temp_output[i + 1])) << 8);
-            output.push_back(ch);
-        }
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
         return true;
     }
     return false;
@@ -2500,16 +2423,10 @@ bool UniConv::ToUtf16BEFromUtf8(const std::string& input, std::u16string& output
     }
     
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_16be).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF16BE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 2);
-        for (size_t i = 0; i < temp_output.size(); i += 2) {
-            char16_t ch = (static_cast<char16_t>(static_cast<unsigned char>(temp_output[i])) << 8) |
-                          static_cast<char16_t>(static_cast<unsigned char>(temp_output[i + 1]));
-            output.push_back(ch);
-        }
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
         return true;
     }
     return false;
@@ -2523,16 +2440,10 @@ bool UniConv::ToUtf16LEFromLocale(const std::string& input, std::u16string& outp
     
     std::string currentEncoding = GetCurrentSystemEncoding();
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF16LE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 2);
-        for (size_t i = 0; i < temp_output.size(); i += 2) {
-            char16_t ch = static_cast<char16_t>(static_cast<unsigned char>(temp_output[i])) |
-                          (static_cast<char16_t>(static_cast<unsigned char>(temp_output[i + 1])) << 8);
-            output.push_back(ch);
-        }
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
         return true;
     }
     return false;
@@ -2546,16 +2457,10 @@ bool UniConv::ToUtf16BEFromLocale(const std::string& input, std::u16string& outp
     
     std::string currentEncoding = GetCurrentSystemEncoding();
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16be).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF16BE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 2);
-        for (size_t i = 0; i < temp_output.size(); i += 2) {
-            char16_t ch = (static_cast<char16_t>(static_cast<unsigned char>(temp_output[i])) << 8) |
-                          static_cast<char16_t>(static_cast<unsigned char>(temp_output[i + 1]));
-            output.push_back(ch);
-        }
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
         return true;
     }
     return false;
@@ -2567,24 +2472,12 @@ bool UniConv::ToUtf16BEFromUtf16LE(const std::u16string& input, std::u16string& 
         return true;
     }
     
-    std::string input_bytes;
-    input_bytes.reserve(input.size() * 2);
-    for (char16_t ch : input) {
-        input_bytes.push_back(static_cast<char>(ch & 0xFF));
-        input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
-    }
-    
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_16be).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_UTF16BE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 2);
-        for (size_t i = 0; i < temp_output.size(); i += 2) {
-            char16_t ch = (static_cast<char16_t>(static_cast<unsigned char>(temp_output[i])) << 8) |
-                          static_cast<char16_t>(static_cast<unsigned char>(temp_output[i + 1]));
-            output.push_back(ch);
-        }
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
         return true;
     }
     return false;
@@ -2596,24 +2489,12 @@ bool UniConv::ToUtf16LEFromUtf16BE(const std::u16string& input, std::u16string& 
         return true;
     }
     
-    std::string input_bytes;
-    input_bytes.reserve(input.size() * 2);
-    for (char16_t ch : input) {
-        input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
-        input_bytes.push_back(static_cast<char>(ch & 0xFF));
-    }
-    
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_16le).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input_bytes, ENC_UTF16BE, ENC_UTF16LE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 2);
-        for (size_t i = 0; i < temp_output.size(); i += 2) {
-            char16_t ch = static_cast<char16_t>(static_cast<unsigned char>(temp_output[i])) |
-                          (static_cast<char16_t>(static_cast<unsigned char>(temp_output[i + 1])) << 8);
-            output.push_back(ch);
-        }
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
         return true;
     }
     return false;
@@ -2627,18 +2508,10 @@ bool UniConv::ToUtf32LEFromUtf8(const std::string& input, std::u32string& output
     }
     
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input, ToString(Encoding::utf_8).c_str(), ToString(Encoding::utf_32le).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF32LE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 4 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 4);
-        for (size_t i = 0; i < temp_output.size(); i += 4) {
-            char32_t ch = static_cast<char32_t>(static_cast<unsigned char>(temp_output[i])) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 1])) << 8) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 2])) << 16) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 3])) << 24);
-            output.push_back(ch);
-        }
+        output = std::u32string(reinterpret_cast<const char32_t*>(temp_output.data()), temp_output.size() / 4);
         return true;
     }
     return false;
@@ -2650,26 +2523,12 @@ bool UniConv::ToUtf32LEFromUtf16LE(const std::u16string& input, std::u32string& 
         return true;
     }
     
-    std::string input_bytes;
-    input_bytes.reserve(input.size() * 2);
-    for (char16_t ch : input) {
-        input_bytes.push_back(static_cast<char>(ch & 0xFF));
-        input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
-    }
-    
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::utf_32le).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_UTF32LE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 4 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 4);
-        for (size_t i = 0; i < temp_output.size(); i += 4) {
-            char32_t ch = static_cast<char32_t>(static_cast<unsigned char>(temp_output[i])) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 1])) << 8) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 2])) << 16) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 3])) << 24);
-            output.push_back(ch);
-        }
+        output = std::u32string(reinterpret_cast<const char32_t*>(temp_output.data()), temp_output.size() / 4);
         return true;
     }
     return false;
@@ -2681,26 +2540,12 @@ bool UniConv::ToUtf32LEFromUtf16BE(const std::u16string& input, std::u32string& 
         return true;
     }
     
-    std::string input_bytes;
-    input_bytes.reserve(input.size() * 2);
-    for (char16_t ch : input) {
-        input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
-        input_bytes.push_back(static_cast<char>(ch & 0xFF));
-    }
-    
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(), ToString(Encoding::utf_32le).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input_bytes, ENC_UTF16BE, ENC_UTF32LE, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % 4 == 0) {
-        output.clear();
-        output.reserve(temp_output.size() / 4);
-        for (size_t i = 0; i < temp_output.size(); i += 4) {
-            char32_t ch = static_cast<char32_t>(static_cast<unsigned char>(temp_output[i])) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 1])) << 8) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 2])) << 16) |
-                          (static_cast<char32_t>(static_cast<unsigned char>(temp_output[i + 3])) << 24);
-            output.push_back(ch);
-        }
+        output = std::u32string(reinterpret_cast<const char32_t*>(temp_output.data()), temp_output.size() / 4);
         return true;
     }
     return false;
@@ -2714,14 +2559,9 @@ bool UniConv::ToLocaleFromUtf16LE(const std::u16string& input, std::string& outp
     }
     
     std::string currentEncoding = GetCurrentSystemEncoding();
-    std::string input_bytes;
-    input_bytes.reserve(input.size() * 2);
-    for (char16_t ch : input) {
-        input_bytes.push_back(static_cast<char>(ch & 0xFF));
-        input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
-    }
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     
-    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), currentEncoding.c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ENC_UTF16LE, currentEncoding.c_str(), output);
 }
 
 bool UniConv::ToLocaleFromUtf16BE(const std::u16string& input, std::string& output) noexcept {
@@ -2731,14 +2571,9 @@ bool UniConv::ToLocaleFromUtf16BE(const std::u16string& input, std::string& outp
     }
     
     std::string currentEncoding = GetCurrentSystemEncoding();
-    std::string input_bytes;
-    input_bytes.reserve(input.size() * 2);
-    for (char16_t ch : input) {
-        input_bytes.push_back(static_cast<char>((ch >> 8) & 0xFF));
-        input_bytes.push_back(static_cast<char>(ch & 0xFF));
-    }
+    std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     
-    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16be).c_str(), currentEncoding.c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ENC_UTF16BE, currentEncoding.c_str(), output);
 }
 
 bool UniConv::ToLocaleFromWideString(const std::wstring& input, std::string& output) noexcept {
@@ -2750,7 +2585,7 @@ bool UniConv::ToLocaleFromWideString(const std::wstring& input, std::string& out
     std::string currentEncoding = GetCurrentSystemEncoding();
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(wchar_t));
     
-    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ToString(Encoding::wchar_t_encoding).c_str(), currentEncoding.c_str(), output);
+    return ErrorCode::Success == ConvertEncodingFast(input_bytes, ENC_WCHAR, currentEncoding.c_str(), output);
 }
 
 // Wide String Series (output parameter versions)
@@ -2762,17 +2597,11 @@ bool UniConv::ToWideStringFromLocale(const std::string& input, std::wstring& out
     
     std::string currentEncoding = GetCurrentSystemEncoding();
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ToString(Encoding::utf_16le).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input, currentEncoding.c_str(), ENC_WCHAR, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % sizeof(wchar_t) == 0) {
-        // Remove BOM if present
-        const char* data = temp_output.data();
-        size_t size = temp_output.size();
-        if (size >= 2 && (uint8_t)data[0] == 0xFF && (uint8_t)data[1] == 0xFE) {
-            data += 2;
-            size -= 2;
-        }
-        output = std::wstring(reinterpret_cast<const wchar_t*>(data), size / sizeof(wchar_t));
+        output = std::wstring(reinterpret_cast<const wchar_t*>(temp_output.data()),
+                              temp_output.size() / sizeof(wchar_t));
         return true;
     }
     return false;
@@ -2786,7 +2615,7 @@ bool UniConv::U16StringToWString(const std::u16string& input, std::wstring& outp
     
     std::string input_bytes(reinterpret_cast<const char*>(input.data()), input.size() * sizeof(char16_t));
     std::string temp_output;
-    ErrorCode result = ConvertEncodingFast(input_bytes, ToString(Encoding::utf_16le).c_str(), ToString(Encoding::wchar_t_encoding).c_str(), temp_output);
+    ErrorCode result = ConvertEncodingFast(input_bytes, ENC_UTF16LE, ENC_WCHAR, temp_output);
     
     if (result == ErrorCode::Success && temp_output.size() % sizeof(wchar_t) == 0) {
         output = std::wstring(reinterpret_cast<const wchar_t*>(temp_output.data()), temp_output.size() / sizeof(wchar_t));
@@ -2854,77 +2683,71 @@ bool UniConv::ConvertEncodingBatch(
         }
     }
     
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+    const bool same_encoding = AreSameEncoding(from_id, to_id, fromEncoding, toEncoding);
+    const bool both_ascii_compatible = IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id);
+
+    iconv_t cd = static_cast<iconv_t>(descriptor.get());
     bool all_success = true;
-    
-    // Process each input
+
     for (size_t i = 0; i < inputs.size(); ++i) {
         const std::string& input = inputs[i];
         std::string& output = outputs[i];
-        
-        // Clear output for this conversion
+
         output.clear();
-        
-        // Handle empty input
+
         if (input.empty()) {
             continue;
         }
-        
-        // Estimate and reserve output size
-        size_t estimated_size = EstimateOutputSize(input.size(), fromEncoding, toEncoding);
+
+        if (UNICONV_UNLIKELY(same_encoding)) {
+            output = input;
+            continue;
+        }
+        if (both_ascii_compatible && IsAllAscii(input)) {
+            output = input;
+            continue;
+        }
+
+        size_t estimated_size = EstimateOutputSizeById(input.size(),
+                                                       static_cast<uint8_t>(from_id),
+                                                       static_cast<uint8_t>(to_id));
         try {
-            output.reserve(estimated_size);
+            output.resize(estimated_size);
         } catch (...) {
             all_success = false;
             continue;
         }
-        
-        // Setup conversion parameters
+
         const char* inbuf_ptr = input.data();
         std::size_t inbuf_left = input.size();
-        
-        // Use temp buffer (protected by cache lock in DLL mode)
-        std::vector<char>& temp_buffer = GetCache().temp_conversion_buffer;
-        std::size_t buffer_size = (std::max)(static_cast<std::size_t>(4096), estimated_size);
-        
-        if (temp_buffer.size() < buffer_size) {
-            try {
-                temp_buffer.resize(buffer_size);
-            } catch (...) {
-                all_success = false;
-                continue;
-            }
-        }
-        
-        // Conversion loop
+        size_t written_total = 0;
         constexpr int max_iterations = 100;
         int iteration_count = 0;
         bool conversion_success = true;
-        
-        while (inbuf_left > 0 && iteration_count++ < max_iterations) {
-            char* outbuf_ptr = temp_buffer.data();
-            std::size_t outbuf_left = temp_buffer.size();
-            
-            std::size_t ret = portable_iconv(static_cast<iconv_t>(descriptor.get()), &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
-            
-            std::size_t converted_bytes = temp_buffer.size() - outbuf_left;
-            if (converted_bytes > 0) {
-                try {
-                    output.append(temp_buffer.data(), converted_bytes);
-                } catch (...) {
-                    conversion_success = false;
-                    break;
-                }
-            }
-            
-            if (static_cast<std::size_t>(-1) == ret) {
+
+        while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
+            char* outbuf_ptr = output.data() + written_total;
+            std::size_t outbuf_left = output.size() - written_total;
+
+            std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+            written_total = output.size() - outbuf_left;
+
+            if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
                 int current_errno = errno;
                 switch (current_errno) {
                     case E2BIG:
-                        if (temp_buffer.size() >= 1048576 * 10) {
+                        if (UNICONV_UNLIKELY(output.size() >= 1048576 * 10)) {
                             conversion_success = false;
                             break;
                         }
-                        temp_buffer.resize(temp_buffer.size() * 2);
+                        try {
+                            output.resize(output.size() * 2);
+                        } catch (...) {
+                            conversion_success = false;
+                            break;
+                        }
                         continue;
                     case EILSEQ:
                     case EINVAL:
@@ -2937,13 +2760,17 @@ bool UniConv::ConvertEncodingBatch(
                 break;
             }
         }
-        
-        if (!conversion_success || iteration_count >= max_iterations) {
+
+        if (UNICONV_UNLIKELY(!conversion_success || iteration_count >= max_iterations)) {
             all_success = false;
-            output.clear();  // Clear failed output
+            output.clear();
+        } else {
+            output.resize(written_total);
         }
+
+        portable_iconv(cd, nullptr, nullptr, nullptr, nullptr);
     }
-    
+
     return all_success;
 }
 
@@ -2958,68 +2785,117 @@ std::vector<StringResult> UniConv::ConvertEncodingBatchParallel(
     std::vector<StringResult> results;
     results.reserve(inputs.size());
     
-    // Initialize with empty success results
     for (size_t i = 0; i < inputs.size(); ++i) {
         results.emplace_back(StringResult::Success(std::string{}));
     }
     
-    // Parameter validation
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
-        for (size_t i = 0; i < inputs.size(); ++i) {
-            results[i] = StringResult::Failure(ErrorCode::InvalidParameter);
-        }
+        for (auto& r : results) r = StringResult::Failure(ErrorCode::InvalidParameter);
         return results;
     }
-    
-    // 快速编码名称有效性检查
     if (UNICONV_UNLIKELY(!IsValidEncodingName(fromEncoding))) {
-        for (size_t i = 0; i < inputs.size(); ++i) {
-            results[i] = StringResult::Failure(ErrorCode::InvalidSourceEncoding);
-        }
+        for (auto& r : results) r = StringResult::Failure(ErrorCode::InvalidSourceEncoding);
         return results;
     }
     if (UNICONV_UNLIKELY(!IsValidEncodingName(toEncoding))) {
-        for (size_t i = 0; i < inputs.size(); ++i) {
-            results[i] = StringResult::Failure(ErrorCode::InvalidTargetEncoding);
-        }
+        for (auto& r : results) r = StringResult::Failure(ErrorCode::InvalidTargetEncoding);
         return results;
     }
     
-    // Calculate total bytes for adaptive strategy
     size_t total_bytes = 0;
     for (const auto& input : inputs) {
         total_bytes += input.size();
     }
     
-    // Use adaptive parallel policy to determine strategy
     ThreadPool& pool = UniConvThreadPool::GetInstance();
     size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
     size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
         inputs.size(), total_bytes, max_threads);
     
-    // Use serial processing if recommended
     if (recommended_threads == 0) {
         return ConvertEncodingBatch(inputs, fromEncoding, toEncoding);
     }
     
-    // Use thread pool for parallel processing
-    auto* self = this;  // Capture for lambda
-    
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+    const bool same_encoding = AreSameEncoding(from_id, to_id, fromEncoding, toEncoding);
+    const bool both_ascii    = IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id);
+    const uint8_t from_raw   = static_cast<uint8_t>(from_id);
+    const uint8_t to_raw     = static_cast<uint8_t>(to_id);
+
     pool.ParallelFor(inputs.size(), 
-        [self, &inputs, &results, fromEncoding, toEncoding](size_t start, size_t end) {
+        [this, &inputs, &results, fromEncoding, toEncoding,
+         same_encoding, both_ascii, from_raw, to_raw](size_t start, size_t end) {
+
+            auto& cache = GetCache();
+            const size_t from_len = strlen(fromEncoding);
+            const size_t to_len   = strlen(toEncoding);
+            const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
+            auto descriptor = cache.GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
+            if (UNICONV_UNLIKELY(!descriptor)) {
+                descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
+                if (UNICONV_UNLIKELY(!descriptor)) {
+                    for (size_t i = start; i < end; ++i)
+                        results[i] = StringResult::Failure(ErrorCode::ConversionFailed);
+                    return;
+                }
+            }
+            iconv_t cd = static_cast<iconv_t>(descriptor.get());
+
             for (size_t i = start; i < end; ++i) {
                 const auto& input = inputs[i];
-                
-                if (input.empty()) {
-                    results[i] = StringResult::Success(std::string{});
+                if (input.empty()) continue;
+
+                if (UNICONV_UNLIKELY(same_encoding)) {
+                    results[i] = StringResult::Success(std::string(input));
                     continue;
                 }
-                
-                // Convert using ConvertEncodingFast
-                results[i] = self->ConvertEncodingFast(input, fromEncoding, toEncoding);
+                if (both_ascii && IsAllAscii(input)) {
+                    results[i] = StringResult::Success(std::string(input));
+                    continue;
+                }
+
+                size_t estimated_size = EstimateOutputSizeById(input.size(), from_raw, to_raw);
+                std::string result;
+                result.resize(estimated_size);
+
+                const char* inbuf_ptr = input.data();
+                std::size_t inbuf_left = input.size();
+                size_t written_total = 0;
+                constexpr int max_iterations = 100;
+                int iteration_count = 0;
+                bool ok = true;
+
+                while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
+                    char* outbuf_ptr = result.data() + written_total;
+                    std::size_t outbuf_left = result.size() - written_total;
+
+                    std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+                    written_total = result.size() - outbuf_left;
+
+                    if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
+                        int e = errno;
+                        if (e == E2BIG && result.size() < 1048576 * 10) {
+                            result.resize(result.size() * 2);
+                            continue;
+                        }
+                        ok = false;
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (UNICONV_UNLIKELY(!ok || iteration_count >= max_iterations)) {
+                    results[i] = StringResult::Failure(ErrorCode::ConversionFailed);
+                } else {
+                    result.resize(written_total);
+                    results[i] = StringResult::Success(std::move(result));
+                }
+                portable_iconv(cd, nullptr, nullptr, nullptr, nullptr);
             }
         }, 
-        1  // min_chunk_size
+        1
     );
     
     return results;
@@ -3035,62 +2911,120 @@ bool UniConv::ConvertEncodingBatchParallel(
     outputs.clear();
     outputs.resize(inputs.size());
     
-    // Parameter validation
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
         return false;
     }
-    
-    // 快速编码名称有效性检查
     if (UNICONV_UNLIKELY(!IsValidEncodingName(fromEncoding) || !IsValidEncodingName(toEncoding))) {
         return false;
     }
     
-    // Calculate total bytes for adaptive strategy
     size_t total_bytes = 0;
     for (const auto& input : inputs) {
         total_bytes += input.size();
     }
     
-    // Use adaptive parallel policy to determine strategy
     ThreadPool& pool = UniConvThreadPool::GetInstance();
     size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
     size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
         inputs.size(), total_bytes, max_threads);
     
-    // Use serial processing if recommended
     if (recommended_threads == 0) {
         return ConvertEncodingBatch(inputs, fromEncoding, toEncoding, outputs);
     }
     
-    // Track success across threads
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+    const bool same_encoding = AreSameEncoding(from_id, to_id, fromEncoding, toEncoding);
+    const bool both_ascii    = IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id);
+    const uint8_t from_raw   = static_cast<uint8_t>(from_id);
+    const uint8_t to_raw     = static_cast<uint8_t>(to_id);
+
     std::atomic<bool> all_success{true};
-    auto* self = this;  // Capture for lambda
     
-    // Use thread pool for parallel processing
     pool.ParallelFor(inputs.size(),
-        [self, &inputs, &outputs, &all_success, fromEncoding, toEncoding](size_t start, size_t end) {
-            bool chunk_success = true;
-            
-            for (size_t i = start; i < end; ++i) {
-                const auto& input = inputs[i];
-                
-                if (input.empty()) {
-                    outputs[i].clear();
-                    continue;
-                }
-                
-                // Use ConvertEncodingFast output parameter version
-                bool success = (self->ConvertEncodingFast(input, fromEncoding, toEncoding, outputs[i]) == ErrorCode::Success);
-                if (!success) {
-                    chunk_success = false;
+        [this, &inputs, &outputs, &all_success, fromEncoding, toEncoding,
+         same_encoding, both_ascii, from_raw, to_raw](size_t start, size_t end) {
+
+            auto& cache = GetCache();
+            const size_t from_len = strlen(fromEncoding);
+            const size_t to_len   = strlen(toEncoding);
+            const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
+            auto descriptor = cache.GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
+            if (UNICONV_UNLIKELY(!descriptor)) {
+                descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
+                if (UNICONV_UNLIKELY(!descriptor)) {
+                    all_success.store(false, std::memory_order_relaxed);
+                    return;
                 }
             }
-            
+            iconv_t cd = static_cast<iconv_t>(descriptor.get());
+            bool chunk_success = true;
+
+            for (size_t i = start; i < end; ++i) {
+                const auto& input = inputs[i];
+                std::string& output = outputs[i];
+                output.clear();
+
+                if (input.empty()) continue;
+
+                if (UNICONV_UNLIKELY(same_encoding)) {
+                    output = input;
+                    continue;
+                }
+                if (both_ascii && IsAllAscii(input)) {
+                    output = input;
+                    continue;
+                }
+
+                size_t estimated_size = EstimateOutputSizeById(input.size(), from_raw, to_raw);
+                try {
+                    output.resize(estimated_size);
+                } catch (...) {
+                    chunk_success = false;
+                    continue;
+                }
+
+                const char* inbuf_ptr = input.data();
+                std::size_t inbuf_left = input.size();
+                size_t written_total = 0;
+                constexpr int max_iterations = 100;
+                int iteration_count = 0;
+                bool ok = true;
+
+                while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
+                    char* outbuf_ptr = output.data() + written_total;
+                    std::size_t outbuf_left = output.size() - written_total;
+
+                    std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+                    written_total = output.size() - outbuf_left;
+
+                    if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
+                        int e = errno;
+                        if (e == E2BIG && output.size() < 1048576 * 10) {
+                            try { output.resize(output.size() * 2); } catch (...) { ok = false; break; }
+                            continue;
+                        }
+                        ok = false;
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (UNICONV_UNLIKELY(!ok || iteration_count >= max_iterations)) {
+                    chunk_success = false;
+                    output.clear();
+                } else {
+                    output.resize(written_total);
+                }
+                portable_iconv(cd, nullptr, nullptr, nullptr, nullptr);
+            }
+
             if (!chunk_success) {
                 all_success.store(false, std::memory_order_relaxed);
             }
         },
-        1  // min_chunk_size
+        1
     );
     
     return all_success.load(std::memory_order_relaxed);
@@ -3101,33 +3035,162 @@ bool UniConv::ConvertEncodingBatchParallel(
 // ===================================================================================================================
 
 bool UniConv::ConvertEncoding(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
-    // Wrap string_view as std::string for now (could be optimized to avoid copy in future)
-    std::string temp_input(input);
-    return ConvertEncoding(temp_input, fromEncoding, toEncoding, output);
+    return ConvertEncodingFast(input, fromEncoding, toEncoding, output) == ErrorCode::Success;
 }
 
 ErrorCode UniConv::ConvertEncodingFast(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
-    std::string temp_input(input);
-    return ConvertEncodingFast(temp_input, fromEncoding, toEncoding, output);
+    output.clear();
+
+    if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
+        return ErrorCode::InvalidParameter;
+    }
+    if (UNICONV_UNLIKELY(!IsValidEncodingName(fromEncoding))) {
+        return ErrorCode::InvalidSourceEncoding;
+    }
+    if (UNICONV_UNLIKELY(!IsValidEncodingName(toEncoding))) {
+        return ErrorCode::InvalidTargetEncoding;
+    }
+    if (UNICONV_UNLIKELY(input.empty())) {
+        return ErrorCode::Success;
+    }
+
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+
+    if (UNICONV_LIKELY(AreSameEncoding(from_id, to_id, fromEncoding, toEncoding))) {
+        output.assign(input.data(), input.size());
+        return ErrorCode::Success;
+    }
+
+    if (IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id)) {
+        bool all_ascii = true;
+        const auto* data = reinterpret_cast<const unsigned char*>(input.data());
+        size_t i = 0;
+        for (; i + 8 <= input.size(); i += 8) {
+            uint64_t block;
+            std::memcpy(&block, data + i, 8);
+            if (block & 0x8080808080808080ULL) { all_ascii = false; break; }
+        }
+        if (all_ascii) {
+            for (; i < input.size(); ++i) {
+                if (data[i] >= 0x80) { all_ascii = false; break; }
+            }
+        }
+        if (all_ascii) {
+            output.assign(input.data(), input.size());
+            return ErrorCode::Success;
+        }
+    }
+
+    UNICONV_PREFETCH(input.data(), 0, 3);
+
+    const size_t from_len = strlen(fromEncoding);
+    const size_t to_len   = strlen(toEncoding);
+    const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
+
+#if UNICONV_NO_THREAD_LOCAL
+    auto cache_lock = GetCacheLock();
+#endif
+    auto descriptor = GetCache().GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
+    if (UNICONV_UNLIKELY(!descriptor)) {
+        descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
+        if (UNICONV_UNLIKELY(!descriptor)) {
+            return ErrorCode::ConversionFailed;
+        }
+    }
+
+    iconv_t cd = static_cast<iconv_t>(descriptor.get());
+
+    // [优化9] 直接用 string_view 的指针，不构造临时 std::string
+    const char* inbuf_ptr = input.data();
+    std::size_t inbuf_left = input.size();
+
+    size_t estimated_size = EstimateOutputSizeById(input.size(),
+                                                    static_cast<uint8_t>(from_id),
+                                                    static_cast<uint8_t>(to_id));
+    try {
+        output.resize(estimated_size);
+    } catch (...) {
+        return ErrorCode::OutOfMemory;
+    }
+
+    size_t written_total = 0;
+    constexpr int max_iterations = 100;
+    int iteration_count = 0;
+
+    while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
+        char* outbuf_ptr = output.data() + written_total;
+        std::size_t outbuf_left = output.size() - written_total;
+
+        std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+
+        written_total = output.size() - outbuf_left;
+
+        if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
+            int current_errno = errno;
+            switch (current_errno) {
+                case E2BIG: {
+                    if (UNICONV_UNLIKELY(output.size() >= 1048576 * 10)) {
+                        return ErrorCode::BufferTooSmall;
+                    }
+                    try {
+                        output.resize(output.size() * 2);
+                    } catch (...) {
+                        return ErrorCode::OutOfMemory;
+                    }
+                    continue;
+                }
+                case EILSEQ:
+                    return ErrorCode::InvalidSequence;
+                case EINVAL:
+                    return ErrorCode::IncompleteSequence;
+                default:
+                    return ErrorCode::ConversionFailed;
+            }
+        } else {
+            break;
+        }
+    }
+
+    if (UNICONV_UNLIKELY(iteration_count >= max_iterations)) {
+        return ErrorCode::InternalError;
+    }
+
+    output.resize(written_total);
+    return ErrorCode::Success;
 }
 
 bool UniConv::ToUtf8FromLocale(std::string_view input, std::string& output) noexcept {
-    std::string temp_input(input);
-    return ToUtf8FromLocale(temp_input, output);
+    if (input.empty()) { output.clear(); return true; }
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    return ConvertEncodingFast(input, currentEncoding.c_str(), ENC_UTF8, output) == ErrorCode::Success;
 }
 
 bool UniConv::ToLocaleFromUtf8(std::string_view input, std::string& output) noexcept {
-    std::string temp_input(input);
-    return ToLocaleFromUtf8(temp_input, output);
+    if (input.empty()) { output.clear(); return true; }
+    std::string currentEncoding = GetCurrentSystemEncoding();
+    return ConvertEncodingFast(input, ENC_UTF8, currentEncoding.c_str(), output) == ErrorCode::Success;
 }
 
 bool UniConv::ToUtf16LEFromUtf8(std::string_view input, std::u16string& output) noexcept {
-    std::string temp_input(input);
-    return ToUtf16LEFromUtf8(temp_input, output);
+    if (input.empty()) { output.clear(); return true; }
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF16LE, temp_output);
+    if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
+        return true;
+    }
+    return false;
 }
 
 bool UniConv::ToUtf16BEFromUtf8(std::string_view input, std::u16string& output) noexcept {
-    std::string temp_input(input);
-    return ToUtf16BEFromUtf8(temp_input, output);
+    if (input.empty()) { output.clear(); return true; }
+    std::string temp_output;
+    ErrorCode result = ConvertEncodingFast(input, ENC_UTF8, ENC_UTF16BE, temp_output);
+    if (result == ErrorCode::Success && temp_output.size() % 2 == 0) {
+        output = std::u16string(reinterpret_cast<const char16_t*>(temp_output.data()), temp_output.size() / 2);
+        return true;
+    }
+    return false;
 }
 

@@ -28,6 +28,7 @@ endif()
 
 # 构建选项
 option(UNICONV_BUILD_TESTS "Build tests" OFF) # 测试构建选项，默认关闭
+option(UNICONV_BUILD_BENCHMARKS "Build benchmarks" OFF) # 性能基准测试，默认关闭
 option(UNICONV_BUILD_SHARED "Build shared library instead of static" OFF) # 共享库构建选项，默认关闭
 option(UNICONV_NO_THREAD_LOCAL "Disable thread_local storage (may be required for some DLL builds)" OFF) # 线程局部存储选项，默认关闭
 option(UNICONV_USE_SIMDUTF "Use simdutf for SIMD-accelerated UTF conversions (optional dependency)" OFF) # SIMD 加速选项，默认关闭
@@ -427,6 +428,21 @@ if(NOT UNICONV_IS_SUBPROJECT)
 endif()
 
 # ============================================================================
+# 测试（仅主项目且 UNICONV_BUILD_TESTS=ON）
+# ============================================================================
+if(UNICONV_BUILD_TESTS AND NOT UNICONV_IS_SUBPROJECT)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+# ============================================================================
+# 性能基准测试（仅主项目且 UNICONV_BUILD_BENCHMARKS=ON）
+# ============================================================================
+if(UNICONV_BUILD_BENCHMARKS AND NOT UNICONV_IS_SUBPROJECT)
+    add_subdirectory(benchmarks)
+endif()
+
+# ============================================================================
 # 示例程序（仅主项目）
 # ============================================================================
 
@@ -449,6 +465,7 @@ message(STATUS "  Shared library: ${UNICONV_BUILD_SHARED}")
 message(STATUS "  libiconv source: ${UNICONV_LIBICONV_SOURCE}")
 message(STATUS "  SIMD acceleration (simdutf): ${UNICONV_USE_SIMDUTF}")
 message(STATUS "  Tests: ${UNICONV_BUILD_TESTS}")
+message(STATUS "  Benchmarks: ${UNICONV_BUILD_BENCHMARKS}")
 if(NOT UNICONV_IS_SUBPROJECT)
     message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 endif()

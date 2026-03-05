@@ -126,7 +126,11 @@ X(utf_7, "UTF-7")
 
 // Locale dependent
 X(char_encoding, "CHAR_T")
-X(wchar_t_encoding, "WCHAR_T")
+#if defined(_WIN32)
+X(wchar_t_encoding, "UTF-16LE")
+#else
+X(wchar_t_encoding, "UTF-32LE")
+#endif
 
 // EBCDIC compatible (not ASCII compatible, very rarely used)
 X(ibm_037, "IBM-037")
