@@ -34,6 +34,22 @@ protected:
         return !result.empty();
     }
 
+    bool IsLocaleChineseCapable() {
+        if (!IsLocaleAvailable()) return false;
+        std::string locale_encoded = conv->ToLocaleFromUtf8(chinese_text);
+        if (locale_encoded.empty()) return false;
+        std::string back = conv->ToUtf8FromLocale(locale_encoded);
+        return back == chinese_text;
+    }
+
+    bool IsLocaleEmojiCapable() {
+        if (!IsLocaleAvailable()) return false;
+        std::string locale_encoded = conv->ToLocaleFromUtf8(emoji_text);
+        if (locale_encoded.empty()) return false;
+        std::string back = conv->ToUtf8FromLocale(locale_encoded);
+        return back == emoji_text;
+    }
+
     std::unique_ptr<UniConv> conv;
 
     // 常用测试字符串 (UTF-8 encoded)
@@ -1050,11 +1066,12 @@ TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromUtf16LE_U16String) {
 }
 
 TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromUtf16LE_U16String_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    std::u16string u16 = conv->ToUtf16LEFromLocale(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    std::u16string u16 = conv->ToUtf16LEFromLocale(locale_chinese);
     ASSERT_FALSE(u16.empty());
     std::string back = conv->ToLocaleFromUtf16LE(u16);
-    EXPECT_EQ(back, chinese_text);
+    EXPECT_EQ(back, locale_chinese);
 }
 
 TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromUtf16BE_U16String) {
@@ -1066,11 +1083,12 @@ TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromUtf16BE_U16String) {
 }
 
 TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromUtf16BE_U16String_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    std::u16string u16 = conv->ToUtf16BEFromLocale(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    std::u16string u16 = conv->ToUtf16BEFromLocale(locale_chinese);
     ASSERT_FALSE(u16.empty());
     std::string back = conv->ToLocaleFromUtf16BE(u16);
-    EXPECT_EQ(back, chinese_text);
+    EXPECT_EQ(back, locale_chinese);
 }
 
 TEST_F(EncodingConversionTest, ReturnVal_ToUtf16BEFromUtf32LE_CStyleString) {
@@ -1091,11 +1109,12 @@ TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromWideString_CStyleString) {
 }
 
 TEST_F(EncodingConversionTest, ReturnVal_WideStringToLocale_CStyleString) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    std::wstring wide = conv->ToWideStringFromLocale(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    std::wstring wide = conv->ToWideStringFromLocale(locale_chinese);
     ASSERT_FALSE(wide.empty());
     std::string back = conv->WideStringToLocale(wide.c_str());
-    EXPECT_EQ(back, chinese_text);
+    EXPECT_EQ(back, locale_chinese);
 }
 
 // ============================================================================
@@ -1166,9 +1185,10 @@ TEST_F(EncodingConversionTest, U16StringToWString_Empty) {
 // 28. 输出参数版多字节数据覆盖
 // ============================================================================
 TEST_F(EncodingConversionTest, OutputParam_ToUtf8FromLocale_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
     std::string output;
-    bool ok = conv->ToUtf8FromLocale(chinese_text, output);
+    bool ok = conv->ToUtf8FromLocale(locale_chinese, output);
     EXPECT_TRUE(ok);
     EXPECT_EQ(output, chinese_text);
 }
@@ -1186,61 +1206,67 @@ TEST_F(EncodingConversionTest, OutputParam_ToLocaleFromUtf8_Chinese) {
 }
 
 TEST_F(EncodingConversionTest, OutputParam_ToWideStringFromLocale_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
     std::wstring output;
-    bool ok = conv->ToWideStringFromLocale(chinese_text, output);
+    bool ok = conv->ToWideStringFromLocale(locale_chinese, output);
     EXPECT_TRUE(ok);
     EXPECT_FALSE(output.empty());
 }
 
 TEST_F(EncodingConversionTest, OutputParam_ToLocaleFromWideString_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    std::wstring wide = conv->ToWideStringFromLocale(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    std::wstring wide = conv->ToWideStringFromLocale(locale_chinese);
     ASSERT_FALSE(wide.empty());
     std::string output;
     bool ok = conv->ToLocaleFromWideString(wide, output);
     EXPECT_TRUE(ok);
-    EXPECT_EQ(output, chinese_text);
+    EXPECT_EQ(output, locale_chinese);
 }
 
 TEST_F(EncodingConversionTest, OutputParam_ToUtf16LEFromLocale_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
     std::u16string output;
-    bool ok = conv->ToUtf16LEFromLocale(chinese_text, output);
+    bool ok = conv->ToUtf16LEFromLocale(locale_chinese, output);
     EXPECT_TRUE(ok);
     EXPECT_FALSE(output.empty());
-    std::string back = conv->ToUtf8FromUtf16LE(output);
-    EXPECT_EQ(back, chinese_text);
+    std::string back_locale = conv->ToLocaleFromUtf16LE(output);
+    EXPECT_EQ(back_locale, locale_chinese);
 }
 
 TEST_F(EncodingConversionTest, OutputParam_ToUtf16BEFromLocale_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
     std::u16string output;
-    bool ok = conv->ToUtf16BEFromLocale(chinese_text, output);
+    bool ok = conv->ToUtf16BEFromLocale(locale_chinese, output);
     EXPECT_TRUE(ok);
     EXPECT_FALSE(output.empty());
-    std::string back = conv->ToUtf8FromUtf16BE(output);
-    EXPECT_EQ(back, chinese_text);
+    std::string back_locale = conv->ToLocaleFromUtf16BE(output);
+    EXPECT_EQ(back_locale, locale_chinese);
 }
 
 TEST_F(EncodingConversionTest, OutputParam_ToLocaleFromUtf16LE_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    std::u16string u16 = conv->ToUtf16LEFromLocale(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    std::u16string u16 = conv->ToUtf16LEFromLocale(locale_chinese);
     ASSERT_FALSE(u16.empty());
     std::string output;
     bool ok = conv->ToLocaleFromUtf16LE(u16, output);
     EXPECT_TRUE(ok);
-    EXPECT_EQ(output, chinese_text);
+    EXPECT_EQ(output, locale_chinese);
 }
 
 TEST_F(EncodingConversionTest, OutputParam_ToLocaleFromUtf16BE_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    std::u16string u16 = conv->ToUtf16BEFromLocale(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    std::u16string u16 = conv->ToUtf16BEFromLocale(locale_chinese);
     ASSERT_FALSE(u16.empty());
     std::string output;
     bool ok = conv->ToLocaleFromUtf16BE(u16, output);
     EXPECT_TRUE(ok);
-    EXPECT_EQ(output, chinese_text);
+    EXPECT_EQ(output, locale_chinese);
 }
 
 TEST_F(EncodingConversionTest, OutputParam_U16StringToWString_Chinese) {
@@ -1256,8 +1282,9 @@ TEST_F(EncodingConversionTest, OutputParam_U16StringToWString_Chinese) {
 // 29. Ex (CompactResult) 版多字节数据覆盖
 // ============================================================================
 TEST_F(EncodingConversionTest, Ex_ToUtf8FromLocaleEx_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    auto result = conv->ToUtf8FromLocaleEx(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    auto result = conv->ToUtf8FromLocaleEx(locale_chinese);
     EXPECT_TRUE(result.IsSuccess());
     EXPECT_EQ(result.GetValue(), chinese_text);
 }
@@ -1273,22 +1300,25 @@ TEST_F(EncodingConversionTest, Ex_ToLocaleFromUtf8Ex_Chinese) {
 }
 
 TEST_F(EncodingConversionTest, Ex_ToUtf16LEFromLocaleEx_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    auto result = conv->ToUtf16LEFromLocaleEx(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    auto result = conv->ToUtf16LEFromLocaleEx(locale_chinese);
     EXPECT_TRUE(result.IsSuccess());
     EXPECT_FALSE(result.GetValue().empty());
 }
 
 TEST_F(EncodingConversionTest, Ex_ToUtf16BEFromLocaleEx_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    auto result = conv->ToUtf16BEFromLocaleEx(chinese_text);
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
+    std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
+    auto result = conv->ToUtf16BEFromLocaleEx(locale_chinese);
     EXPECT_TRUE(result.IsSuccess());
     EXPECT_FALSE(result.GetValue().empty());
 }
 
 TEST_F(EncodingConversionTest, Ex_ToUtf8FromLocaleEx_Emoji) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
-    auto result = conv->ToUtf8FromLocaleEx(emoji_text);
+    if (!IsLocaleEmojiCapable()) GTEST_SKIP() << "Locale cannot represent Emoji characters";
+    std::string locale_emoji = conv->ToLocaleFromUtf8(emoji_text);
+    auto result = conv->ToUtf8FromLocaleEx(locale_emoji);
     EXPECT_TRUE(result.IsSuccess());
     EXPECT_EQ(result.GetValue(), emoji_text);
 }

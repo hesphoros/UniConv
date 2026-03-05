@@ -10,6 +10,12 @@
  *   - 不同文本类型的影响 (ASCII vs CJK vs Emoji vs Mixed)
  */
 
+#ifdef _WIN32
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#endif
+
 #include <benchmark/benchmark.h>
 #include <uniconv/UniConv.h>
 #include <memory>
