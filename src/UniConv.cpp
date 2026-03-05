@@ -1129,45 +1129,6 @@ std::string UniConv::ToLocaleFromUtf16LE(const char16_t* input) {
     return this->ToLocaleFromUtf16LE(std::u16string(input));
 }
 
-// ===================== Helper Functions =====================
-std::string UniConv::WideStringToLocale(const std::wstring& sInput) {
-#ifdef _WIN32
-    if (sInput.empty()) return "";
-    
-    int bytes_needed = WideCharToMultiByte(CP_ACP, 0, sInput.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (bytes_needed <= 0) return "";
-    
-    std::string result(bytes_needed - 1, '\0');
-    WideCharToMultiByte(CP_ACP, 0, sInput.c_str(), -1, &result[0], bytes_needed, nullptr, nullptr);    return result;
-#else
-    // Linux implementation - use iconv for conversion
-    if (sInput.empty()) return std::string();
-    
-    // Convert wstring to UTF-32LE byte representation first
-    std::string utf32_bytes;
-    utf32_bytes.reserve(sInput.size() * 4);
-    
-    for (wchar_t wc : sInput) {
-        // Convert each wchar_t to UTF-32LE bytes
-        uint32_t codepoint = static_cast<uint32_t>(wc);
-        utf32_bytes.push_back(static_cast<char>(codepoint & 0xFF));
-        utf32_bytes.push_back(static_cast<char>((codepoint >> 8) & 0xFF));
-        utf32_bytes.push_back(static_cast<char>((codepoint >> 16) & 0xFF));
-        utf32_bytes.push_back(static_cast<char>((codepoint >> 24) & 0xFF));
-    }
-    
-    // Use iconv to convert UTF-32LE to locale encoding
-    std::string currentEncoding = GetCurrentSystemEncoding(); 
-    auto result = ConvertEncodingFast(utf32_bytes, "UTF-32LE", currentEncoding.c_str());
-    return result.IsSuccess() ? result.GetValue() : std::string{};
-#endif
-}
-
-std::string UniConv::WideStringToLocale(const wchar_t* sInput) {
-    if (!sInput) return "";
-    return WideStringToLocale(std::wstring(sInput));
-}
-
 std::string UniConv::ToUtf8FromUtf32LE(const std::u32string& sInput)
 {
 	if (sInput.empty()) return std::string{};
@@ -1367,26 +1328,6 @@ std::wstring UniConv::ToWStringFromU16String(const char16_t* input)
     if (!input) return std::wstring{};
     return ToWStringFromU16String(std::u16string(input));
 }
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4996)
-#endif
-
-std::wstring UniConv::U16StringToWString(const std::u16string& u16str)
-{
-    return ToWStringFromU16String(u16str);
-}
-
-std::wstring UniConv::U16StringToWString(const char16_t* u16str)
-{
-    return ToWStringFromU16String(u16str);
-}
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
 
 // ===================== Error Handling Related =====================
 
@@ -2875,19 +2816,6 @@ bool UniConv::ToWStringFromU16String(const std::u16string& input, std::wstring& 
     }
     return false;
 }
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4996)
-#endif
-
-bool UniConv::U16StringToWString(const std::u16string& input, std::wstring& output) noexcept {
-    return ToWStringFromU16String(input, output);
-}
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 //----------------------------------------------------------------------------------------------------------------------
 // === Batch Conversion with Output Parameter (Phase 2) ===

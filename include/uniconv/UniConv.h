@@ -2118,27 +2118,6 @@ public:
 	std::string ToLocaleFromUtf16LE(const char16_t* input);
 
 /***************************************************************************/
-/*======================= Wide String Helpers ===========================*/
-/***************************************************************************/
-	/**
-	 * @brief Convert wide string to local encoding.
-	 * @param sInput Wide string to convert.
-	 * @return Converted string in local encoding.
-	 * @deprecated Use ToLocaleFromWideString() instead.
-	 */
-	[[deprecated("Use ToLocaleFromWideString() instead")]]
-	std::string WideStringToLocale(const std::wstring& sInput);
-
-	/**
-	 * @brief Convert wide C-style string to local encoding.
-	 * @param sInput Wide C-style string to convert.
-	 * @return Converted string in local encoding.
-	 * @deprecated Use ToLocaleFromWideString() instead.
-	 */
-	[[deprecated("Use ToLocaleFromWideString() instead")]]
-	std::string WideStringToLocale(const wchar_t* sInput);
-
-/***************************************************************************/
 /*=========================== UTF32 <=> other ============================*/
 /***************************************************************************/
 	/**
@@ -2233,18 +2212,6 @@ public:
 	std::wstring         ToWStringFromU16String(const char16_t* input);
 
 	/**
-	 * @deprecated Use ToWStringFromU16String() instead.
-	 */
-	[[deprecated("Use ToWStringFromU16String() instead")]]
-	std::wstring         U16StringToWString(const std::u16string& u16str);
-
-	/**
-	 * @deprecated Use ToWStringFromU16String() instead.
-	 */
-	[[deprecated("Use ToWStringFromU16String() instead")]]
-	std::wstring		 U16StringToWString(const char16_t* u16str);
-
-	/**
 	 * @brief Encoding to string
 	 *
 	 */
@@ -2310,9 +2277,6 @@ public:
 	// Wide String Series (output parameter versions for buffer reuse)
 	bool ToWideStringFromLocale(const std::string& input, std::wstring& output) noexcept;
 	bool ToWStringFromU16String(const std::u16string& input, std::wstring& output) noexcept;
-
-	[[deprecated("Use ToWStringFromU16String() instead")]]
-	bool U16StringToWString(const std::u16string& input, std::wstring& output) noexcept;
 	
 	/**
 	 * @brief Batch encoding conversion with output parameter (zero-copy, memory reuse)

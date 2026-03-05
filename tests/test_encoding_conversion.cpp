@@ -338,16 +338,13 @@ TEST_F(EncodingConversionTest, LocaleToWideString_CStyleString) {
     EXPECT_EQ(back, "wide test");
 }
 
-TEST_F(EncodingConversionTest, WideStringToLocale_Aliases) {
+TEST_F(EncodingConversionTest, ToLocaleFromWideString_Aliases) {
     if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
     std::wstring wide = conv->ToWideStringFromLocale(ascii_text);
     ASSERT_FALSE(wide.empty());
     std::string a = conv->ToLocaleFromWideString(wide);
-    std::string b = conv->WideStringToLocale(wide);
+    std::string b = conv->ToLocaleFromWideString(wide.c_str());
     EXPECT_EQ(a, b);
-
-    std::string c = conv->WideStringToLocale(wide.c_str());
-    EXPECT_EQ(a, c);
 }
 
 // ============================================================================
@@ -372,21 +369,21 @@ TEST_F(EncodingConversionTest, Ucs4ToUtf8_Emoji) {
 // ============================================================================
 // 11. U16String <-> WString
 // ============================================================================
-TEST_F(EncodingConversionTest, U16StringToWString_RoundTrip) {
+TEST_F(EncodingConversionTest, ToWStringFromU16String_RoundTrip) {
     if (!IsLocaleAvailable()) GTEST_SKIP() << "U16String/WString conversion depends on locale";
     std::u16string u16 = conv->ToUtf16LEFromUtf8(ascii_text);
     ASSERT_FALSE(u16.empty());
 
-    std::wstring wide = conv->U16StringToWString(u16);
+    std::wstring wide = conv->ToWStringFromU16String(u16);
     EXPECT_FALSE(wide.empty());
 }
 
-TEST_F(EncodingConversionTest, U16StringToWString_CStyleString) {
+TEST_F(EncodingConversionTest, ToWStringFromU16String_CStyleString_Legacy) {
     if (!IsLocaleAvailable()) GTEST_SKIP() << "U16String/WString conversion depends on locale";
     std::u16string u16 = conv->ToUtf16LEFromUtf8(ascii_text);
     ASSERT_FALSE(u16.empty());
 
-    std::wstring wide = conv->U16StringToWString(u16.c_str());
+    std::wstring wide = conv->ToWStringFromU16String(u16.c_str());
     EXPECT_FALSE(wide.empty());
 }
 
@@ -582,11 +579,11 @@ TEST_F(EncodingConversionTest, OutputParam_ToWideStringFromLocale) {
     EXPECT_FALSE(output.empty());
 }
 
-TEST_F(EncodingConversionTest, OutputParam_U16StringToWString) {
+TEST_F(EncodingConversionTest, OutputParam_ToWStringFromU16String_Legacy) {
     if (!IsLocaleAvailable()) GTEST_SKIP() << "U16String/WString depends on locale";
     std::u16string u16 = conv->ToUtf16LEFromUtf8(ascii_text);
     std::wstring output;
-    bool ok = conv->U16StringToWString(u16, output);
+    bool ok = conv->ToWStringFromU16String(u16, output);
     EXPECT_TRUE(ok);
     EXPECT_FALSE(output.empty());
 }
@@ -1108,17 +1105,17 @@ TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromWideString_CStyleString) {
     EXPECT_EQ(back, ascii_text);
 }
 
-TEST_F(EncodingConversionTest, ReturnVal_WideStringToLocale_CStyleString) {
+TEST_F(EncodingConversionTest, ReturnVal_ToLocaleFromWideString_CStyleString_Chinese) {
     if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
     std::string locale_chinese = conv->ToLocaleFromUtf8(chinese_text);
     std::wstring wide = conv->ToWideStringFromLocale(locale_chinese);
     ASSERT_FALSE(wide.empty());
-    std::string back = conv->WideStringToLocale(wide.c_str());
+    std::string back = conv->ToLocaleFromWideString(wide.c_str());
     EXPECT_EQ(back, locale_chinese);
 }
 
 // ============================================================================
-// 27. UCS-4 / U16StringToWString 深度测试
+// 27. UCS-4 / ToWStringFromU16String 深度测试
 // ============================================================================
 TEST_F(EncodingConversionTest, Ucs4ToUtf8_Ascii) {
     std::wstring ucs4 = conv->ToUcs4FromUtf8(ascii_text);
@@ -1152,32 +1149,32 @@ TEST_F(EncodingConversionTest, Ucs4ToUtf8_Empty) {
     EXPECT_TRUE(back.empty());
 }
 
-TEST_F(EncodingConversionTest, U16StringToWString_Chinese) {
+TEST_F(EncodingConversionTest, ToWStringFromU16String_Chinese_Deep) {
     std::u16string u16 = conv->ToUtf16LEFromUtf8(chinese_text);
     ASSERT_FALSE(u16.empty());
-    std::wstring wide = conv->U16StringToWString(u16);
+    std::wstring wide = conv->ToWStringFromU16String(u16);
     ASSERT_FALSE(wide.empty());
     EXPECT_EQ(wide.size(), 4u);
 }
 
-TEST_F(EncodingConversionTest, U16StringToWString_ContentVerification) {
+TEST_F(EncodingConversionTest, ToWStringFromU16String_ContentVerification) {
     std::u16string u16 = conv->ToUtf16LEFromUtf8(ascii_text);
     ASSERT_FALSE(u16.empty());
-    std::wstring wide = conv->U16StringToWString(u16);
+    std::wstring wide = conv->ToWStringFromU16String(u16);
     ASSERT_FALSE(wide.empty());
     std::wstring expected(ascii_text.begin(), ascii_text.end());
     EXPECT_EQ(wide, expected);
 }
 
-TEST_F(EncodingConversionTest, U16StringToWString_Emoji) {
+TEST_F(EncodingConversionTest, ToWStringFromU16String_Emoji_Deep) {
     std::u16string u16 = conv->ToUtf16LEFromUtf8(emoji_text);
     ASSERT_FALSE(u16.empty());
-    std::wstring wide = conv->U16StringToWString(u16);
+    std::wstring wide = conv->ToWStringFromU16String(u16);
     EXPECT_FALSE(wide.empty());
 }
 
-TEST_F(EncodingConversionTest, U16StringToWString_Empty) {
-    std::wstring wide = conv->U16StringToWString(std::u16string{});
+TEST_F(EncodingConversionTest, ToWStringFromU16String_Empty_Deep) {
+    std::wstring wide = conv->ToWStringFromU16String(std::u16string{});
     EXPECT_TRUE(wide.empty());
 }
 
@@ -1269,11 +1266,11 @@ TEST_F(EncodingConversionTest, OutputParam_ToLocaleFromUtf16BE_Chinese) {
     EXPECT_EQ(output, locale_chinese);
 }
 
-TEST_F(EncodingConversionTest, OutputParam_U16StringToWString_Chinese) {
+TEST_F(EncodingConversionTest, OutputParam_ToWStringFromU16String_Chinese_Deep) {
     std::u16string u16 = conv->ToUtf16LEFromUtf8(chinese_text);
     ASSERT_FALSE(u16.empty());
     std::wstring output;
-    bool ok = conv->U16StringToWString(u16, output);
+    bool ok = conv->ToWStringFromU16String(u16, output);
     EXPECT_TRUE(ok);
     EXPECT_EQ(output.size(), 4u);
 }
