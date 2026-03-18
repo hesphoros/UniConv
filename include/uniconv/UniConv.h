@@ -2217,8 +2217,95 @@ public:
 	 */
 	static std::string ToString(UniConv::Encoding enc) noexcept;
 
+/***************************************************************************/
+/*===================== Integer Conversion Support ========================*/
+/***************************************************************************/
+	/**
+	 * @brief Convert int32_t to std::string
+	 * @param value The integer value to convert
+	 * @return The string representation of the integer
+	 */
+	std::string ToStringFromInt32(int32_t value);
+
+	/**
+	 * @brief Convert int64_t to std::string
+	 * @param value The integer value to convert
+	 * @return The string representation of the integer
+	 */
+	std::string ToStringFromInt64(int64_t value);
+
+	/**
+	 * @brief Convert int32_t to std::u16string
+	 * @param value The integer value to convert
+	 * @return The UTF-16LE string representation of the integer
+	 */
+	std::u16string ToU16StringFromInt32(int32_t value);
+
+	/**
+	 * @brief Convert int64_t to std::u16string
+	 * @param value The integer value to convert
+	 * @return The UTF-16LE string representation of the integer
+	 */
+	std::u16string ToU16StringFromInt64(int64_t value);
+
+	/**
+	 * @brief Convert int32_t to std::wstring
+	 * @param value The integer value to convert
+	 * @return The wide string representation of the integer
+	 */
+	std::wstring ToWStringFromInt32(int32_t value);
+
+	/**
+	 * @brief Convert int64_t to std::wstring
+	 * @param value The integer value to convert
+	 * @return The wide string representation of the integer
+	 */
+	std::wstring ToWStringFromInt64(int64_t value);
+
+	/**
+	 * @brief Convert std::string to int32_t
+	 * @param input The string to convert
+	 * @return CompactResult containing the converted integer or error
+	 */
+	CompactResult<int32_t> ToInt32FromString(const std::string& input);
+
+	/**
+	 * @brief Convert std::string to int64_t
+	 * @param input The string to convert
+	 * @return CompactResult containing the converted integer or error
+	 */
+	CompactResult<int64_t> ToInt64FromString(const std::string& input);
+
+	/**
+	 * @brief Convert std::u16string to int32_t
+	 * @param input The UTF-16LE string to convert
+	 * @return CompactResult containing the converted integer or error
+	 */
+	CompactResult<int32_t> ToInt32FromU16String(const std::u16string& input);
+
+	/**
+	 * @brief Convert std::u16string to int64_t
+	 * @param input The UTF-16LE string to convert
+	 * @return CompactResult containing the converted integer or error
+	 */
+	CompactResult<int64_t> ToInt64FromU16String(const std::u16string& input);
+
+	/**
+	 * @brief Convert std::wstring to int32_t
+	 * @param input The wide string to convert
+	 * @return CompactResult containing the converted integer or error
+	 */
+	CompactResult<int32_t> ToInt32FromWString(const std::wstring& input);
+
+	/**
+	 * @brief Convert std::wstring to int64_t
+	 * @param input The wide string to convert
+	 * @return CompactResult containing the converted integer or error
+	 */
+	CompactResult<int64_t> ToInt64FromWString(const std::wstring& input);
+
 	//----------------------------------------------------------------------------------------------------------------------
-	// === Zero-Copy Output Parameter API (High Performance) 
+	// === Zero-Copy Output Parameter API (High Performance)
 	//----------------------------------------------------------------------------------------------------------------------
 	/**
 	 * @brief Core conversion with output parameter (zero-copy, memory reuse)

@@ -11,6 +11,7 @@ add_executable(zero_copy_demo zero_copy_demo.cpp)
 add_executable(parallel_batch_demo parallel_batch_demo.cpp)
 add_executable(instance_usage_demo instance_usage_demo.cpp)
 add_executable(encoding_validation_test encoding_validation_test.cpp)
+add_executable(integer_conversion_demo integer_conversion_demo.cpp)
 
 # 链接UniConv库
 target_link_libraries(simple_demo PRIVATE UniConv)
@@ -21,17 +22,19 @@ target_link_libraries(zero_copy_demo PRIVATE UniConv)
 target_link_libraries(parallel_batch_demo PRIVATE UniConv)
 target_link_libraries(instance_usage_demo PRIVATE UniConv)
 target_link_libraries(encoding_validation_test PRIVATE UniConv)
+target_link_libraries(integer_conversion_demo PRIVATE UniConv)
 
 # 设置输出目录
 set_target_properties(
-    simple_demo 
-    stage1_demo 
-    branch_prediction_demo 
-    lru_cache_demo 
-    zero_copy_demo 
+    simple_demo
+    stage1_demo
+    branch_prediction_demo
+    lru_cache_demo
+    zero_copy_demo
     parallel_batch_demo
     instance_usage_demo
     encoding_validation_test
+    integer_conversion_demo
     PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
 )

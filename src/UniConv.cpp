@@ -1454,6 +1454,179 @@ std::string UniConv::ToString(UniConv::Encoding  enc) noexcept {
 }
 
 //----------------------------------------------------------------------------------------------------------------------
+// === Integer Conversion Support Implementation ===
+//----------------------------------------------------------------------------------------------------------------------
+
+std::string UniConv::ToStringFromInt32(int32_t value) {
+    return std::to_string(value);
+}
+
+std::string UniConv::ToStringFromInt64(int64_t value) {
+    return std::to_string(value);
+}
+
+std::u16string UniConv::ToU16StringFromInt32(int32_t value) {
+    std::string str = std::to_string(value);
+    std::u16string result;
+    result.reserve(str.size());
+    for (char c : str) {
+        result.push_back(static_cast<char16_t>(c));
+    }
+    return result;
+}
+
+std::u16string UniConv::ToU16StringFromInt64(int64_t value) {
+    std::string str = std::to_string(value);
+    std::u16string result;
+    result.reserve(str.size());
+    for (char c : str) {
+        result.push_back(static_cast<char16_t>(c));
+    }
+    return result;
+}
+
+std::wstring UniConv::ToWStringFromInt32(int32_t value) {
+    std::string str = std::to_string(value);
+    std::wstring result;
+    result.reserve(str.size());
+    for (char c : str) {
+        result.push_back(static_cast<wchar_t>(c));
+    }
+    return result;
+}
+
+std::wstring UniConv::ToWStringFromInt64(int64_t value) {
+    std::string str = std::to_string(value);
+    std::wstring result;
+    result.reserve(str.size());
+    for (char c : str) {
+        result.push_back(static_cast<wchar_t>(c));
+    }
+    return result;
+}
+
+CompactResult<int32_t> UniConv::ToInt32FromString(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<int32_t>::Failure(ErrorCode::InvalidParameter);
+    }
+
+    try {
+        size_t pos = 0;
+        long long value = std::stoll(input, &pos);
+
+        // Check if the entire string was consumed
+        if (pos != input.size()) {
+            return CompactResult<int32_t>::Failure(ErrorCode::InvalidSequence);
+        }
+
+        // Check if value is within int32_t range
+        if (value < std::numeric_limits<int32_t>::min() || value > std::numeric_limits<int32_t>::max()) {
+            return CompactResult<int32_t>::Failure(ErrorCode::ConversionFailed);
+        }
+
+        return CompactResult<int32_t>::Success(static_cast<int32_t>(value));
+    } catch (const std::invalid_argument&) {
+        return CompactResult<int32_t>::Failure(ErrorCode::InvalidSequence);
+    } catch (const std::out_of_range&) {
+        return CompactResult<int32_t>::Failure(ErrorCode::ConversionFailed);
+    }
+}
+
+CompactResult<int64_t> UniConv::ToInt64FromString(const std::string& input) {
+    if (input.empty()) {
+        return CompactResult<int64_t>::Failure(ErrorCode::InvalidParameter);
+    }
+
+    try {
+        size_t pos = 0;
+        long long value = std::stoll(input, &pos);
+
+        // Check if the entire string was consumed
+        if (pos != input.size()) {
+            return CompactResult<int64_t>::Failure(ErrorCode::InvalidSequence);
+        }
+
+        return CompactResult<int64_t>::Success(static_cast<int64_t>(value));
+    } catch (const std::invalid_argument&) {
+        return CompactResult<int64_t>::Failure(ErrorCode::InvalidSequence);
+    } catch (const std::out_of_range&) {
+        return CompactResult<int64_t>::Failure(ErrorCode::ConversionFailed);
+    }
+}
+
+CompactResult<int32_t> UniConv::ToInt32FromU16String(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<int32_t>::Failure(ErrorCode::InvalidParameter);
+    }
+
+    // Convert u16string to string (ASCII numeric characters only)
+    std::string str;
+    str.reserve(input.size());
+    for (char16_t c : input) {
+        if (c > 127) {
+            return CompactResult<int32_t>::Failure(ErrorCode::InvalidSequence);
+        }
+        str.push_back(static_cast<char>(c));
+    }
+
+    return ToInt32FromString(str);
+}
+
+CompactResult<int64_t> UniConv::ToInt64FromU16String(const std::u16string& input) {
+    if (input.empty()) {
+        return CompactResult<int64_t>::Failure(ErrorCode::InvalidParameter);
+    }
+
+    // Convert u16string to string (ASCII numeric characters only)
+    std::string str;
+    str.reserve(input.size());
+    for (char16_t c : input) {
+        if (c > 127) {
+            return CompactResult<int64_t>::Failure(ErrorCode::InvalidSequence);
+        }
+        str.push_back(static_cast<char>(c));
+    }
+
+    return ToInt64FromString(str);
+}
+
+CompactResult<int32_t> UniConv::ToInt32FromWString(const std::wstring& input) {
+    if (input.empty()) {
+        return CompactResult<int32_t>::Failure(ErrorCode::InvalidParameter);
+    }
+
+    // Convert wstring to string (ASCII numeric characters only)
+    std::string str;
+    str.reserve(input.size());
+    for (wchar_t c : input) {
+        if (c > 127) {
+            return CompactResult<int32_t>::Failure(ErrorCode::InvalidSequence);
+        }
+        str.push_back(static_cast<char>(c));
+    }
+
+    return ToInt32FromString(str);
+}
+
+CompactResult<int64_t> UniConv::ToInt64FromWString(const std::wstring& input) {
+    if (input.empty()) {
+        return CompactResult<int64_t>::Failure(ErrorCode::InvalidParameter);
+    }
+
+    // Convert wstring to string (ASCII numeric characters only)
+    std::string str;
+    str.reserve(input.size());
+    for (wchar_t c : input) {
+        if (c > 127) {
+            return CompactResult<int64_t>::Failure(ErrorCode::InvalidSequence);
+        }
+        str.push_back(static_cast<char>(c));
+    }
+
+    return ToInt64FromString(str);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
 // === High-Performance Methods Implementation ===
 //----------------------------------------------------------------------------------------------------------------------
 

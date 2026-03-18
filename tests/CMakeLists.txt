@@ -31,6 +31,7 @@ add_executable(UniConvTests
     test_basic.cpp
     test_encoding_conversion.cpp
     test_robustness.cpp
+    test_integer_conversion.cpp
 )
 
 target_link_libraries(UniConvTests
