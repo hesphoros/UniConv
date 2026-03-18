@@ -530,10 +530,10 @@ public:
 //----------------------------------------------------------------------------------------------------------------------
 
 /**
- * @brief Lock-free thread pool for parallel batch processing
+ * @brief Thread pool for parallel batch processing
  * @details Provides efficient task scheduling with:
  *          - Pre-created worker threads (no creation overhead per batch)
- *          - Lock-free task queue using condition variable
+ *          - Mutex + condition_variable task queue
  *          - Automatic thread count based on hardware
  *          - Support for waiting on specific task batches
  */
@@ -1567,20 +1567,24 @@ private:
 	/**
 	 * @brief Get reference to the appropriate cache (thread-local or instance-level)
 	 * @return Reference to ThreadLocalCache
-	 * @details When UNICONV_NO_THREAD_LOCAL is enabled, returns instance cache with mutex protection.
-	 * Otherwise returns thread-local cache for better multi-threading performance.
+	 * @details In UNICONV_NO_THREAD_LOCAL mode, use a DLL-safe function-local thread_local cache.
+	 * Otherwise returns class-level thread-local cache for better multi-threading performance.
 	 */
 	inline ThreadLocalCache& GetCache() const noexcept {
 #if UNICONV_NO_THREAD_LOCAL
-		return m_instanceCache.cache;
+		return GetDllThreadLocalCache();
 #else
 		return t_cache;
 #endif
 	}
 
+#if UNICONV_NO_THREAD_LOCAL
+	static ThreadLocalCache& GetDllThreadLocalCache() noexcept;
+#endif
+
 	/**
 	 * @brief Get cache with lock (for UNICONV_NO_THREAD_LOCAL mode)
-	 * @details This method should be used in DLL mode where thread_local is disabled
+	 * @details Legacy helper retained for compatibility.
 	 */
 #if UNICONV_NO_THREAD_LOCAL
 	inline std::unique_lock<std::mutex> GetCacheLock() const noexcept {
@@ -2218,6 +2222,43 @@ public:
 	static std::string ToString(UniConv::Encoding enc) noexcept;
 
 	//----------------------------------------------------------------------------------------------------------------------
+	// === API Layer Mode Control ===
+	//----------------------------------------------------------------------------------------------------------------------
+	/**
+	 * @brief API layer mode for conversion behavior
+	 * @details
+	 * - Convenience: default mode, uses internal caches/pools for ease of use.
+	 * - Stateless: no implicit shared cache usage on conversion hot paths.
+	 */
+	enum class ApiLayerMode : uint8_t {
+		Convenience = 0,
+		Stateless = 1
+	};
+
+	/**
+	 * @brief Set API layer mode
+	 * @param mode Desired API layer mode
+	 */
+	void SetApiLayerMode(ApiLayerMode mode) noexcept;
+
+	/**
+	 * @brief Get current API layer mode
+	 */
+	[[nodiscard]] ApiLayerMode GetApiLayerMode() const noexcept;
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Stateless Performance Layer (No Shared Cache/Pool) ===
+	//----------------------------------------------------------------------------------------------------------------------
+	/**
+	 * @brief Stateless conversion with caller-provided output buffer
+	 * @details Does not use internal shared descriptor cache or shared string buffer pool.
+	 */
+	bool ConvertEncodingStateless(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+	ErrorCode ConvertEncodingStatelessFast(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+	bool ConvertEncodingStateless(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+	ErrorCode ConvertEncodingStatelessFast(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept;
+
+	//----------------------------------------------------------------------------------------------------------------------
 	// === Zero-Copy Output Parameter API (High Performance) 
 	//----------------------------------------------------------------------------------------------------------------------
 	/**
@@ -2437,7 +2478,7 @@ private:
 	static const std::unordered_map<std::uint16_t,EncodingInfo>  m_encodingMap;                /*!< Encoding map           */
 	static const std::unordered_map<std::string,std::uint16_t>   m_encodingToCodePageMap;      /*!< Iconv code page map    */
 
-	// Lock-free concurrent LRU cache for iconv descriptors using parallel-hashmap
+	// Concurrent LRU-like cache for iconv descriptors using parallel-hashmap
 	struct IconvCacheEntry {
 		IconvSharedPtr                         descriptor;
 		mutable std::atomic<uint64_t>  last_used{0};     // 最后使用时间戳
@@ -2491,7 +2532,7 @@ private:
 		}
 	};
 
-	// Lock-free parallel hash map for iconv descriptor cache (thread-safe, no mutex needed)
+	// Concurrent parallel hash map for iconv descriptor cache (thread-safe sharded locking)
 	// Using uint64_t keys (pre-computed hash) instead of std::string for:
 	// - No string allocation/copy on each lookup
 	// - Faster hash computation (identity hash)
@@ -2501,7 +2542,7 @@ private:
 		phmap::priv::hash_default_eq<uint64_t>,
 		phmap::priv::Allocator<phmap::priv::Pair<const uint64_t, IconvCacheEntry>>,
 		4,  // 4-way parallel (16 submaps for better concurrency)
-		std::mutex> m_iconvDescriptorCacheMap;    /*!< Lock-free iconv descriptor cache with LRU */
+		std::mutex> m_iconvDescriptorCacheMap;    /*!< Concurrent iconv descriptor cache with LRU */
 	static constexpr size_t                                      MAX_CACHE_SIZE = 128;         /*!< Increased cache size for better hit rate */
 	mutable std::atomic<uint64_t>                                m_cacheHitCount{0};           /*!< Cache hit statistics */
 	mutable std::atomic<uint64_t>                                m_cacheMissCount{0};          /*!< Cache miss statistics */
@@ -2513,6 +2554,7 @@ private:
 	// 性能统计（调试和优化用）
 	mutable std::atomic<size_t>                                  m_totalConversions{0};        /*!< Total conversion count */
 	mutable std::atomic<size_t>                                  m_poolCacheHits{0};           /*!< Pool cache hit count   */
+	mutable std::atomic<ApiLayerMode>                            m_apiLayerMode{ApiLayerMode::Convenience}; /*!< API layer mode */
 	
 #if UNICONV_NO_THREAD_LOCAL
 	// When thread_local is disabled (e.g., in DLL builds), use instance member with mutex protection

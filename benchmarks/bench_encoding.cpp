@@ -23,6 +23,10 @@
 #include <vector>
 #include <algorithm>
 
+#ifdef UNICONV_HAS_SIMDUTF
+#include <simdutf.h>
+#endif
+
 // ============================================================================
 // 测试数据生成
 // ============================================================================
@@ -124,6 +128,99 @@ static void BM_Utf16LEToUtf8(benchmark::State& state) {
     state.SetLabel(std::to_string(input.size() * 2) + "B");
 }
 BENCHMARK(BM_Utf16LEToUtf8)->RangeMultiplier(4)->Range(64, 1 << 20);
+
+// ============================================================================
+// 1.1 UTF-8 <-> UTF-16LE 多线程吞吐量（用于 SIMD 对照）
+// ============================================================================
+
+static void BM_MT_Utf8ToUtf16LE(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    std::string input = GenerateChinese(static_cast<size_t>(state.range(0)));
+
+    for (auto _ : state) {
+        auto output = conv->ToUtf16LEFromUtf8(input);
+        benchmark::DoNotOptimize(output);
+    }
+
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                            static_cast<int64_t>(input.size()));
+    state.SetLabel(std::to_string(input.size()) + "B x T" + std::to_string(state.threads()));
+}
+BENCHMARK(BM_MT_Utf8ToUtf16LE)
+    ->Args({4096})
+    ->Args({65536})
+    ->Args({1 << 20})
+    ->UseRealTime()
+    ->ThreadRange(1, 16);
+
+static void BM_MT_Utf16LEToUtf8(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    std::string src = GenerateChinese(static_cast<size_t>(state.range(0)));
+    std::u16string input = conv->ToUtf16LEFromUtf8(src);
+
+    for (auto _ : state) {
+        auto output = conv->ToUtf8FromUtf16LE(input);
+        benchmark::DoNotOptimize(output);
+    }
+
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                            static_cast<int64_t>(input.size()) * 2);
+    state.SetLabel(std::to_string(input.size() * 2) + "B x T" + std::to_string(state.threads()));
+}
+BENCHMARK(BM_MT_Utf16LEToUtf8)
+    ->Args({4096})
+    ->Args({65536})
+    ->Args({1 << 20})
+    ->UseRealTime()
+    ->ThreadRange(1, 16);
+
+#ifdef UNICONV_HAS_SIMDUTF
+static void BM_MT_SIMDUTF_RAW_Utf8ToUtf16LE(benchmark::State& state) {
+    std::string input = GenerateChinese(static_cast<size_t>(state.range(0)));
+    size_t utf16_len = simdutf::utf16_length_from_utf8(input.data(), input.size());
+    std::u16string output(utf16_len, u'\0');
+
+    for (auto _ : state) {
+        size_t written = simdutf::convert_utf8_to_utf16le(input.data(), input.size(), output.data());
+        benchmark::DoNotOptimize(written);
+        benchmark::ClobberMemory();
+    }
+
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                            static_cast<int64_t>(input.size()));
+    state.SetLabel(std::to_string(input.size()) + "B x T" + std::to_string(state.threads()));
+}
+BENCHMARK(BM_MT_SIMDUTF_RAW_Utf8ToUtf16LE)
+    ->Args({65536})
+    ->Args({1 << 20})
+    ->UseRealTime()
+    ->ThreadRange(1, 16);
+
+static void BM_MT_SIMDUTF_RAW_Utf16LEToUtf8(benchmark::State& state) {
+    std::string src = GenerateChinese(static_cast<size_t>(state.range(0)));
+    size_t utf16_len = simdutf::utf16_length_from_utf8(src.data(), src.size());
+    std::u16string input(utf16_len, u'\0');
+    (void)simdutf::convert_utf8_to_utf16le(src.data(), src.size(), input.data());
+
+    size_t utf8_len = simdutf::utf8_length_from_utf16le(input.data(), input.size());
+    std::string output(utf8_len, '\0');
+
+    for (auto _ : state) {
+        size_t written = simdutf::convert_utf16le_to_utf8(input.data(), input.size(), output.data());
+        benchmark::DoNotOptimize(written);
+        benchmark::ClobberMemory();
+    }
+
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                            static_cast<int64_t>(input.size()) * 2);
+    state.SetLabel(std::to_string(input.size() * 2) + "B x T" + std::to_string(state.threads()));
+}
+BENCHMARK(BM_MT_SIMDUTF_RAW_Utf16LEToUtf8)
+    ->Args({65536})
+    ->Args({1 << 20})
+    ->UseRealTime()
+    ->ThreadRange(1, 16);
+#endif
 
 static void BM_Utf8ToUtf16BE(benchmark::State& state) {
     auto conv = UniConv::Create();
@@ -447,3 +544,165 @@ static void BM_StringCopy(benchmark::State& state) {
     state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * static_cast<int64_t>(input.size()));
 }
 BENCHMARK(BM_StringCopy)->RangeMultiplier(16)->Range(64, 1 << 20);
+
+// ============================================================================
+// 9. 第一阶段专项维度（并行策略与编码组合）
+// ============================================================================
+
+static void BM_Phase1_SmallMany_Parallel_Auto(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    const int count = static_cast<int>(state.range(0));
+    std::vector<std::string> inputs(count, GenerateChinese(64));
+    int64_t total_bytes = 0;
+    for (const auto& s : inputs) total_bytes += static_cast<int64_t>(s.size());
+
+    for (auto _ : state) {
+        auto results = conv->ConvertEncodingBatchParallel(inputs, "UTF-8", "UTF-16LE", 0);
+        benchmark::DoNotOptimize(results);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * total_bytes);
+    state.SetLabel("small-many auto");
+}
+BENCHMARK(BM_Phase1_SmallMany_Parallel_Auto)->RangeMultiplier(2)->Range(128, 8192);
+
+static void BM_Phase1_LargeFew_Parallel_Auto(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    const int count = static_cast<int>(state.range(0));
+    std::vector<std::string> inputs;
+    inputs.reserve(count);
+    for (int i = 0; i < count; ++i) {
+        inputs.emplace_back(GenerateChinese(256 * 1024));
+    }
+    int64_t total_bytes = 0;
+    for (const auto& s : inputs) total_bytes += static_cast<int64_t>(s.size());
+
+    for (auto _ : state) {
+        auto results = conv->ConvertEncodingBatchParallel(inputs, "UTF-8", "UTF-16LE", 0);
+        benchmark::DoNotOptimize(results);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * total_bytes);
+    state.SetLabel("large-few auto");
+}
+BENCHMARK(BM_Phase1_LargeFew_Parallel_Auto)->RangeMultiplier(2)->Range(2, 32);
+
+static void BM_Phase1_AsciiCompatiblePair(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    std::string input = GenerateAscii(static_cast<size_t>(state.range(0)));
+    for (auto _ : state) {
+        auto result = conv->ConvertEncodingFast(input, "UTF-8", "ISO-8859-1");
+        benchmark::DoNotOptimize(result);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * static_cast<int64_t>(input.size()));
+    state.SetLabel("ASCII-compatible");
+}
+BENCHMARK(BM_Phase1_AsciiCompatiblePair)->RangeMultiplier(16)->Range(64, 1 << 20);
+
+static void BM_Phase1_NonAsciiCompatiblePair(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    std::string input = GenerateChinese(static_cast<size_t>(state.range(0)));
+    for (auto _ : state) {
+        auto result = conv->ConvertEncodingFast(input, "UTF-8", "UTF-16LE");
+        benchmark::DoNotOptimize(result);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * static_cast<int64_t>(input.size()));
+    state.SetLabel("non-ASCII-compatible");
+}
+BENCHMARK(BM_Phase1_NonAsciiCompatiblePair)->RangeMultiplier(16)->Range(64, 1 << 20);
+
+// ============================================================================
+// 10. API Layer Mode 对照：Convenience vs Stateless
+// ============================================================================
+
+static void BM_Mode_Convenience_Single(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    conv->SetApiLayerMode(UniConv::ApiLayerMode::Convenience);
+    std::string input = GenerateChinese(static_cast<size_t>(state.range(0)));
+    std::string output;
+    for (auto _ : state) {
+        conv->ConvertEncodingFast(input, "UTF-8", "UTF-16LE", output);
+        benchmark::DoNotOptimize(output);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * static_cast<int64_t>(input.size()));
+}
+BENCHMARK(BM_Mode_Convenience_Single)->RangeMultiplier(16)->Range(64, 1 << 20);
+
+static void BM_Mode_Stateless_Single(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    conv->SetApiLayerMode(UniConv::ApiLayerMode::Stateless);
+    std::string input = GenerateChinese(static_cast<size_t>(state.range(0)));
+    std::string output;
+    for (auto _ : state) {
+        conv->ConvertEncodingFast(input, "UTF-8", "UTF-16LE", output);
+        benchmark::DoNotOptimize(output);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * static_cast<int64_t>(input.size()));
+}
+BENCHMARK(BM_Mode_Stateless_Single)->RangeMultiplier(16)->Range(64, 1 << 20);
+
+static void BM_Mode_Convenience_BatchSerial(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    conv->SetApiLayerMode(UniConv::ApiLayerMode::Convenience);
+    const int count = static_cast<int>(state.range(0));
+    std::vector<std::string> inputs(count, GenerateChinese(256));
+    std::vector<std::string> outputs;
+    int64_t total_bytes = 0;
+    for (const auto& s : inputs) total_bytes += static_cast<int64_t>(s.size());
+
+    for (auto _ : state) {
+        conv->ConvertEncodingBatch(inputs, "UTF-8", "UTF-16LE", outputs);
+        benchmark::DoNotOptimize(outputs);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * total_bytes);
+}
+BENCHMARK(BM_Mode_Convenience_BatchSerial)->RangeMultiplier(4)->Range(16, 4096);
+
+static void BM_Mode_Stateless_BatchSerial(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    conv->SetApiLayerMode(UniConv::ApiLayerMode::Stateless);
+    const int count = static_cast<int>(state.range(0));
+    std::vector<std::string> inputs(count, GenerateChinese(256));
+    std::vector<std::string> outputs;
+    int64_t total_bytes = 0;
+    for (const auto& s : inputs) total_bytes += static_cast<int64_t>(s.size());
+
+    for (auto _ : state) {
+        conv->ConvertEncodingBatch(inputs, "UTF-8", "UTF-16LE", outputs);
+        benchmark::DoNotOptimize(outputs);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * total_bytes);
+}
+BENCHMARK(BM_Mode_Stateless_BatchSerial)->RangeMultiplier(4)->Range(16, 4096);
+
+static void BM_Mode_Convenience_BatchParallel(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    conv->SetApiLayerMode(UniConv::ApiLayerMode::Convenience);
+    const int count = static_cast<int>(state.range(0));
+    std::vector<std::string> inputs(count, GenerateChinese(256));
+    std::vector<std::string> outputs;
+    int64_t total_bytes = 0;
+    for (const auto& s : inputs) total_bytes += static_cast<int64_t>(s.size());
+
+    for (auto _ : state) {
+        conv->ConvertEncodingBatchParallel(inputs, "UTF-8", "UTF-16LE", outputs, 0);
+        benchmark::DoNotOptimize(outputs);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * total_bytes);
+}
+BENCHMARK(BM_Mode_Convenience_BatchParallel)->RangeMultiplier(4)->Range(16, 4096);
+
+static void BM_Mode_Stateless_BatchParallel(benchmark::State& state) {
+    auto conv = UniConv::Create();
+    conv->SetApiLayerMode(UniConv::ApiLayerMode::Stateless);
+    const int count = static_cast<int>(state.range(0));
+    std::vector<std::string> inputs(count, GenerateChinese(256));
+    std::vector<std::string> outputs;
+    int64_t total_bytes = 0;
+    for (const auto& s : inputs) total_bytes += static_cast<int64_t>(s.size());
+
+    for (auto _ : state) {
+        conv->ConvertEncodingBatchParallel(inputs, "UTF-8", "UTF-16LE", outputs, 0);
+        benchmark::DoNotOptimize(outputs);
+    }
+    state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * total_bytes);
+}
+BENCHMARK(BM_Mode_Stateless_BatchParallel)->RangeMultiplier(4)->Range(16, 4096);

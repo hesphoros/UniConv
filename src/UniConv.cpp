@@ -369,6 +369,13 @@ inline bool AreSameEncoding(EncodingId from_id, EncodingId to_id, const char* fr
     return CompareEncodingNamesEqual(from, to);
 }
 
+inline size_t ComputeMinChunkSize(size_t total_items, size_t target_tasks) noexcept {
+    if (target_tasks == 0 || total_items == 0) {
+        return 1;
+    }
+    return (total_items + target_tasks - 1) / target_tasks;
+}
+
 //==============================================================================
 // simdutf 快速路径辅助函数（仅在启用 simdutf 时编译）
 //==============================================================================
@@ -594,6 +601,13 @@ inline StringResult ConvertUtf16BEToUtf8_SIMD(const std::string& input) noexcept
 #if !UNICONV_NO_THREAD_LOCAL
 // Thread-local cache instance definition (only when thread_local is enabled)
 thread_local UniConv::ThreadLocalCache UniConv::t_cache;
+#endif
+
+#if UNICONV_NO_THREAD_LOCAL
+UniConv::ThreadLocalCache& UniConv::GetDllThreadLocalCache() noexcept {
+    static thread_local ThreadLocalCache cache;
+    return cache;
+}
 #endif
 
 const std::string UniConv::m_encodingNames[] = {
@@ -1344,7 +1358,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     const size_t to_len   = strlen(tocode);
     const uint64_t key = detail::MakeEncodingPairKey(fromcode, from_len, tocode, to_len);
 
-    // Lock-free cache lookup using parallel-hashmap's concurrent operations
+    // Concurrent cache lookup using parallel-hashmap sharded buckets
     // Try to find in cache (thread-safe read)
     IconvCacheEntry entry;
     if (UNICONV_LIKELY(m_iconvDescriptorCacheMap.if_contains(key, [&](const auto& item) {
@@ -1372,7 +1386,7 @@ UniConv::IconvSharedPtr UniConv::GetIconvDescriptor(const char* fromcode, const 
     // Cast iconv_t to void* for std::shared_ptr<void>
     auto iconvPtr = std::shared_ptr<void>(static_cast<void*>(cd), IconvDeleter());
     
-    // LRU cache size management (lock-free)
+    // LRU cache size management (concurrent but not lock-free)
     if (UNICONV_UNLIKELY(m_iconvDescriptorCacheMap.size() >= MAX_CACHE_SIZE)) {
         EvictLRUCacheEntries();
     }
@@ -1438,7 +1452,7 @@ std::pair<UniConv::BomEncoding, std::wstring_view> UniConv::DetectAndRemoveBom(c
 
 
 void UniConv::CleanupIconvCache() {
-    // Lock-free clear using phmap's thread-safe operations
+    // Concurrent clear using phmap's thread-safe operations
     m_iconvDescriptorCacheMap.clear();
     
     #if defined(UNICONV_DEBUG_MODE) && UNICONV_DEBUG_MODE
@@ -1912,6 +1926,21 @@ StringResult UniConv::ConvertEncodingInternal(const std::string& input,const cha
 //----------------------------------------------------------------------------------------------------------------------
 
 std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::string>& inputs,const char* fromEncoding,const char* toEncoding) noexcept {
+    if (UNICONV_UNLIKELY(GetApiLayerMode() == ApiLayerMode::Stateless)) {
+        std::vector<StringResult> results;
+        results.reserve(inputs.size());
+        for (const auto& input : inputs) {
+            std::string output;
+            ErrorCode ec = ConvertEncodingStatelessFast(input, fromEncoding, toEncoding, output);
+            if (ec == ErrorCode::Success) {
+                results.emplace_back(StringResult::Success(std::move(output)));
+            } else {
+                results.emplace_back(StringResult::Failure(ec));
+            }
+        }
+        return results;
+    }
+
     std::vector<StringResult> results;
     results.reserve(inputs.size());
     
@@ -1988,7 +2017,7 @@ std::vector<StringResult> UniConv::ConvertEncodingBatch(const std::vector<std::s
 
 void UniConv::EvictLRUCacheEntries()
 {
-    // Lock-free eviction using phmap's concurrent operations
+    // Concurrent eviction using phmap's thread-safe operations
     if (m_iconvDescriptorCacheMap.empty()) {
         return;
     }
@@ -2029,7 +2058,7 @@ UniConv::PoolStats UniConv::GetPoolStatistics() const {
         stats.hit_rate = 0.0;
     }
     
-    // Lock-free iconv cache statistics using phmap
+    // Concurrent iconv cache statistics using phmap
     stats.iconv_cache_size = m_iconvDescriptorCacheMap.size();
     stats.iconv_cache_hits = m_cacheHitCount.load(std::memory_order_relaxed);
     stats.iconv_cache_misses = m_cacheMissCount.load(std::memory_order_relaxed);
@@ -2319,12 +2348,176 @@ CompactResult<std::wstring> UniConv::ToWStringFromU16StringEx(const std::u16stri
 // === Zero-Copy Output Parameter API Implementation ===
 //----------------------------------------------------------------------------------------------------------------------
 
+void UniConv::SetApiLayerMode(ApiLayerMode mode) noexcept {
+    m_apiLayerMode.store(mode, std::memory_order_relaxed);
+}
+
+UniConv::ApiLayerMode UniConv::GetApiLayerMode() const noexcept {
+    return m_apiLayerMode.load(std::memory_order_relaxed);
+}
+
+bool UniConv::ConvertEncodingStateless(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
+    return ConvertEncodingStatelessFast(std::string_view{input}, fromEncoding, toEncoding, output) == ErrorCode::Success;
+}
+
+ErrorCode UniConv::ConvertEncodingStatelessFast(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
+    return ConvertEncodingStatelessFast(std::string_view{input}, fromEncoding, toEncoding, output);
+}
+
+bool UniConv::ConvertEncodingStateless(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
+    return ConvertEncodingStatelessFast(input, fromEncoding, toEncoding, output) == ErrorCode::Success;
+}
+
+ErrorCode UniConv::ConvertEncodingStatelessFast(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
+    output.clear();
+
+    if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
+        return ErrorCode::InvalidParameter;
+    }
+    if (UNICONV_UNLIKELY(!IsValidEncodingName(fromEncoding))) {
+        return ErrorCode::InvalidSourceEncoding;
+    }
+    if (UNICONV_UNLIKELY(!IsValidEncodingName(toEncoding))) {
+        return ErrorCode::InvalidTargetEncoding;
+    }
+    if (UNICONV_UNLIKELY(input.empty())) {
+        return ErrorCode::Success;
+    }
+
+    const EncodingId from_id = GetEncodingId(fromEncoding);
+    const EncodingId to_id   = GetEncodingId(toEncoding);
+
+    if (UNICONV_LIKELY(AreSameEncoding(from_id, to_id, fromEncoding, toEncoding))) {
+        output.assign(input.data(), input.size());
+        return ErrorCode::Success;
+    }
+
+    if (IsAsciiCompatibleById(from_id) && IsAsciiCompatibleById(to_id)) {
+        bool all_ascii = true;
+        const auto* data = reinterpret_cast<const unsigned char*>(input.data());
+        size_t i = 0;
+        for (; i + 8 <= input.size(); i += 8) {
+            uint64_t block;
+            std::memcpy(&block, data + i, 8);
+            if (block & 0x8080808080808080ULL) { all_ascii = false; break; }
+        }
+        if (all_ascii) {
+            for (; i < input.size(); ++i) {
+                if (data[i] >= 0x80) { all_ascii = false; break; }
+            }
+        }
+        if (all_ascii) {
+            output.assign(input.data(), input.size());
+            return ErrorCode::Success;
+        }
+    }
+
+#ifdef UNICONV_HAS_SIMDUTF
+    {
+        std::string input_str(input.data(), input.size());
+        if (from_id == EncodingId::UTF8 && to_id == EncodingId::UTF16LE) {
+            auto result = ConvertUtf8ToUtf16LE_SIMD(input_str);
+            if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
+            return result.GetErrorCode();
+        }
+        if (from_id == EncodingId::UTF16LE && to_id == EncodingId::UTF8) {
+            auto result = ConvertUtf16LEToUtf8_SIMD(input_str);
+            if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
+            return result.GetErrorCode();
+        }
+        if (from_id == EncodingId::UTF8 && to_id == EncodingId::UTF16BE) {
+            auto result = ConvertUtf8ToUtf16BE_SIMD(input_str);
+            if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
+            return result.GetErrorCode();
+        }
+        if (from_id == EncodingId::UTF16BE && to_id == EncodingId::UTF8) {
+            auto result = ConvertUtf16BEToUtf8_SIMD(input_str);
+            if (result.IsSuccess()) { output = std::move(result).GetValue(); return ErrorCode::Success; }
+            return result.GetErrorCode();
+        }
+    }
+#endif
+
+    iconv_t cd = iconv_open(toEncoding, fromEncoding);
+    if (UNICONV_UNLIKELY(cd == reinterpret_cast<iconv_t>(-1))) {
+        return ErrorCode::ConversionFailed;
+    }
+
+    const char* inbuf_ptr = input.data();
+    std::size_t inbuf_left = input.size();
+
+    size_t estimated_size = EstimateOutputSizeById(input.size(),
+                                                    static_cast<uint8_t>(from_id),
+                                                    static_cast<uint8_t>(to_id));
+    try {
+        output.resize(estimated_size);
+    } catch (...) {
+        iconv_close(cd);
+        return ErrorCode::OutOfMemory;
+    }
+
+    size_t written_total = 0;
+    constexpr int max_iterations = 100;
+    int iteration_count = 0;
+
+    while (UNICONV_LIKELY(inbuf_left > 0) && UNICONV_LIKELY(iteration_count++ < max_iterations)) {
+        char* outbuf_ptr = output.data() + written_total;
+        std::size_t outbuf_left = output.size() - written_total;
+
+        std::size_t ret = portable_iconv(cd, &inbuf_ptr, &inbuf_left, &outbuf_ptr, &outbuf_left);
+        written_total = output.size() - outbuf_left;
+
+        if (UNICONV_UNLIKELY(static_cast<std::size_t>(-1) == ret)) {
+            int current_errno = errno;
+            switch (current_errno) {
+                case E2BIG: {
+                    if (UNICONV_UNLIKELY(output.size() >= 1048576 * 10)) {
+                        iconv_close(cd);
+                        return ErrorCode::BufferTooSmall;
+                    }
+                    try {
+                        output.resize(output.size() * 2);
+                    } catch (...) {
+                        iconv_close(cd);
+                        return ErrorCode::OutOfMemory;
+                    }
+                    continue;
+                }
+                case EILSEQ:
+                    iconv_close(cd);
+                    return ErrorCode::InvalidSequence;
+                case EINVAL:
+                    iconv_close(cd);
+                    return ErrorCode::IncompleteSequence;
+                default:
+                    iconv_close(cd);
+                    return ErrorCode::ConversionFailed;
+            }
+        } else {
+            break;
+        }
+    }
+
+    if (UNICONV_UNLIKELY(iteration_count >= max_iterations)) {
+        iconv_close(cd);
+        return ErrorCode::InternalError;
+    }
+
+    output.resize(written_total);
+    iconv_close(cd);
+    return ErrorCode::Success;
+}
+
 bool UniConv::ConvertEncoding(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
     ErrorCode result = ConvertEncodingFast(input, fromEncoding, toEncoding, output);
     return result == ErrorCode::Success;
 }
 
 ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
+    if (UNICONV_UNLIKELY(GetApiLayerMode() == ApiLayerMode::Stateless)) {
+        return ConvertEncodingStatelessFast(input, fromEncoding, toEncoding, output);
+    }
+
     output.clear();
 
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
@@ -2391,9 +2584,6 @@ ErrorCode UniConv::ConvertEncodingFast(const std::string& input, const char* fro
     const size_t to_len   = strlen(toEncoding);
     const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
 
-#if UNICONV_NO_THREAD_LOCAL
-    auto cache_lock = GetCacheLock();
-#endif
     auto descriptor = GetCache().GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
         descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
@@ -2826,6 +3016,20 @@ bool UniConv::ConvertEncodingBatch(
     const char* fromEncoding,
     const char* toEncoding,
     std::vector<std::string>& outputs) noexcept {
+
+    if (UNICONV_UNLIKELY(GetApiLayerMode() == ApiLayerMode::Stateless)) {
+        outputs.clear();
+        outputs.resize(inputs.size());
+        bool all_success = true;
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            ErrorCode ec = ConvertEncodingStatelessFast(inputs[i], fromEncoding, toEncoding, outputs[i]);
+            if (ec != ErrorCode::Success) {
+                outputs[i].clear();
+                all_success = false;
+            }
+        }
+        return all_success;
+    }
     
     // Parameter validation
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
@@ -2862,10 +3066,6 @@ bool UniConv::ConvertEncodingBatch(
     const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
     
     // Try cache first (thread-safe in both modes)
-#if UNICONV_NO_THREAD_LOCAL
-    // DLL mode: lock the instance cache
-    auto cache_lock = GetCacheLock();
-#endif
     auto descriptor = GetCache().GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
         // Fallback to global cache
@@ -2974,6 +3174,56 @@ std::vector<StringResult> UniConv::ConvertEncodingBatchParallel(
     const char* fromEncoding,
     const char* toEncoding,
     size_t numThreads) noexcept {
+
+    if (UNICONV_UNLIKELY(GetApiLayerMode() == ApiLayerMode::Stateless)) {
+        std::vector<StringResult> results;
+        results.reserve(inputs.size());
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            results.emplace_back(StringResult::Success(std::string{}));
+        }
+
+        if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
+            for (auto& r : results) r = StringResult::Failure(ErrorCode::InvalidParameter);
+            return results;
+        }
+
+        size_t total_bytes = 0;
+        for (const auto& input : inputs) {
+            total_bytes += input.size();
+        }
+
+        ThreadPool& pool = UniConvThreadPool::GetInstance();
+        size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
+        size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
+            inputs.size(), total_bytes, max_threads);
+        const size_t min_chunk_size = ComputeMinChunkSize(inputs.size(), recommended_threads);
+
+        if (recommended_threads == 0) {
+            for (size_t i = 0; i < inputs.size(); ++i) {
+                std::string output;
+                ErrorCode ec = ConvertEncodingStatelessFast(inputs[i], fromEncoding, toEncoding, output);
+                results[i] = (ec == ErrorCode::Success)
+                    ? StringResult::Success(std::move(output))
+                    : StringResult::Failure(ec);
+            }
+            return results;
+        }
+
+        pool.ParallelFor(inputs.size(),
+            [this, &inputs, &results, fromEncoding, toEncoding](size_t start, size_t end) {
+                for (size_t i = start; i < end; ++i) {
+                    std::string output;
+                    ErrorCode ec = ConvertEncodingStatelessFast(inputs[i], fromEncoding, toEncoding, output);
+                    results[i] = (ec == ErrorCode::Success)
+                        ? StringResult::Success(std::move(output))
+                        : StringResult::Failure(ec);
+                }
+            },
+            min_chunk_size
+        );
+
+        return results;
+    }
     
     std::vector<StringResult> results;
     results.reserve(inputs.size());
@@ -3004,6 +3254,8 @@ std::vector<StringResult> UniConv::ConvertEncodingBatchParallel(
     size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
     size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
         inputs.size(), total_bytes, max_threads);
+    const size_t min_chunk_size = ComputeMinChunkSize(inputs.size(), recommended_threads);
+
     
     if (recommended_threads == 0) {
         return ConvertEncodingBatch(inputs, fromEncoding, toEncoding);
@@ -3020,11 +3272,14 @@ std::vector<StringResult> UniConv::ConvertEncodingBatchParallel(
         [this, &inputs, &results, fromEncoding, toEncoding,
          same_encoding, both_ascii, from_raw, to_raw](size_t start, size_t end) {
 
-            auto& cache = GetCache();
             const size_t from_len = strlen(fromEncoding);
             const size_t to_len   = strlen(toEncoding);
             const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
-            auto descriptor = cache.GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
+            IconvSharedPtr descriptor;
+            {
+                auto& cache = GetCache();
+                descriptor = cache.GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
+            }
             if (UNICONV_UNLIKELY(!descriptor)) {
                 descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
                 if (UNICONV_UNLIKELY(!descriptor)) {
@@ -3088,7 +3343,7 @@ std::vector<StringResult> UniConv::ConvertEncodingBatchParallel(
                 portable_iconv(cd, nullptr, nullptr, nullptr, nullptr);
             }
         }, 
-        1
+        min_chunk_size
     );
     
     return results;
@@ -3100,6 +3355,58 @@ bool UniConv::ConvertEncodingBatchParallel(
     const char* toEncoding,
     std::vector<std::string>& outputs,
     size_t numThreads) noexcept {
+
+    if (UNICONV_UNLIKELY(GetApiLayerMode() == ApiLayerMode::Stateless)) {
+        outputs.clear();
+        outputs.resize(inputs.size());
+
+        if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
+            return false;
+        }
+
+        size_t total_bytes = 0;
+        for (const auto& input : inputs) {
+            total_bytes += input.size();
+        }
+
+        ThreadPool& pool = UniConvThreadPool::GetInstance();
+        size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
+        size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
+            inputs.size(), total_bytes, max_threads);
+        const size_t min_chunk_size = ComputeMinChunkSize(inputs.size(), recommended_threads);
+
+        if (recommended_threads == 0) {
+            bool all_success = true;
+            for (size_t i = 0; i < inputs.size(); ++i) {
+                ErrorCode ec = ConvertEncodingStatelessFast(inputs[i], fromEncoding, toEncoding, outputs[i]);
+                if (ec != ErrorCode::Success) {
+                    outputs[i].clear();
+                    all_success = false;
+                }
+            }
+            return all_success;
+        }
+
+        std::atomic<bool> all_success{true};
+        pool.ParallelFor(inputs.size(),
+            [this, &inputs, &outputs, &all_success, fromEncoding, toEncoding](size_t start, size_t end) {
+                bool chunk_success = true;
+                for (size_t i = start; i < end; ++i) {
+                    ErrorCode ec = ConvertEncodingStatelessFast(inputs[i], fromEncoding, toEncoding, outputs[i]);
+                    if (ec != ErrorCode::Success) {
+                        outputs[i].clear();
+                        chunk_success = false;
+                    }
+                }
+                if (!chunk_success) {
+                    all_success.store(false, std::memory_order_relaxed);
+                }
+            },
+            min_chunk_size
+        );
+
+        return all_success.load(std::memory_order_relaxed);
+    }
     
     outputs.clear();
     outputs.resize(inputs.size());
@@ -3120,6 +3427,8 @@ bool UniConv::ConvertEncodingBatchParallel(
     size_t max_threads = (numThreads > 0) ? numThreads : pool.GetThreadCount();
     size_t recommended_threads = AdaptiveParallelPolicy::GetRecommendedThreads(
         inputs.size(), total_bytes, max_threads);
+    const size_t min_chunk_size = ComputeMinChunkSize(inputs.size(), recommended_threads);
+
     
     if (recommended_threads == 0) {
         return ConvertEncodingBatch(inputs, fromEncoding, toEncoding, outputs);
@@ -3138,11 +3447,14 @@ bool UniConv::ConvertEncodingBatchParallel(
         [this, &inputs, &outputs, &all_success, fromEncoding, toEncoding,
          same_encoding, both_ascii, from_raw, to_raw](size_t start, size_t end) {
 
-            auto& cache = GetCache();
             const size_t from_len = strlen(fromEncoding);
             const size_t to_len   = strlen(toEncoding);
             const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
-            auto descriptor = cache.GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
+            IconvSharedPtr descriptor;
+            {
+                auto& cache = GetCache();
+                descriptor = cache.GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
+            }
             if (UNICONV_UNLIKELY(!descriptor)) {
                 descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
                 if (UNICONV_UNLIKELY(!descriptor)) {
@@ -3217,7 +3529,7 @@ bool UniConv::ConvertEncodingBatchParallel(
                 all_success.store(false, std::memory_order_relaxed);
             }
         },
-        1
+        min_chunk_size
     );
     
     return all_success.load(std::memory_order_relaxed);
@@ -3232,6 +3544,10 @@ bool UniConv::ConvertEncoding(std::string_view input, const char* fromEncoding, 
 }
 
 ErrorCode UniConv::ConvertEncodingFast(std::string_view input, const char* fromEncoding, const char* toEncoding, std::string& output) noexcept {
+    if (UNICONV_UNLIKELY(GetApiLayerMode() == ApiLayerMode::Stateless)) {
+        return ConvertEncodingStatelessFast(input, fromEncoding, toEncoding, output);
+    }
+
     output.clear();
 
     if (UNICONV_UNLIKELY(!fromEncoding || !toEncoding)) {
@@ -3281,9 +3597,6 @@ ErrorCode UniConv::ConvertEncodingFast(std::string_view input, const char* fromE
     const size_t to_len   = strlen(toEncoding);
     const uint64_t key = detail::MakeEncodingPairKey(fromEncoding, from_len, toEncoding, to_len);
 
-#if UNICONV_NO_THREAD_LOCAL
-    auto cache_lock = GetCacheLock();
-#endif
     auto descriptor = GetCache().GetOrCreateIconvDescriptor(key, fromEncoding, toEncoding);
     if (UNICONV_UNLIKELY(!descriptor)) {
         descriptor = GetIconvDescriptor(fromEncoding, toEncoding);
