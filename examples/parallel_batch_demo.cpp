@@ -4,8 +4,6 @@
  * @details 展示并行批量转换的性能优势，对比串行与并行处理
  */
 
-#pragma execution_character_set("utf-8")
-
 #include <iostream>
 #include <chrono>
 #include <vector>

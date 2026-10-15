@@ -22,6 +22,23 @@ target_link_libraries(parallel_batch_demo PRIVATE UniConv)
 target_link_libraries(instance_usage_demo PRIVATE UniConv)
 target_link_libraries(encoding_validation_test PRIVATE UniConv)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"
+   OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC"
+   OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    foreach(example_target
+        simple_demo
+        stage1_demo
+        branch_prediction_demo
+        lru_cache_demo
+        zero_copy_demo
+        parallel_batch_demo
+        instance_usage_demo
+        encoding_validation_test
+    )
+        target_compile_options(${example_target} PRIVATE /utf-8)
+    endforeach()
+endif()
+
 # 设置输出目录
 set_target_properties(
     simple_demo 

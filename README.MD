@@ -100,7 +100,33 @@ cmake .. -DUNICONV_BUILD_TESTS=ON                      # 单元测试 (Google Te
 cmake .. -DUNICONV_BUILD_BENCHMARKS=ON                 # 性能基准 (Google Benchmark)
 ```
 
-191 项测试在 ASan + UBSan 下全部通过，零内存安全问题。
+测试套件包含运行时转换回归、头文件契约、`char8_t` 配置和混合 C++ 标准测试。
+
+## 编译期宏与 UTF-8
+
+UniConv 4.0 在 `<UniConv/UniConv.h>` 中提供两个只读检测宏：
+
+| 宏 | 含义 |
+|---|---|
+| `UNICONV_CXX_STANDARD` | 当前翻译单元的 C++ 标准值，如 `201703L`、`202002L` |
+| `UNICONV_HAS_CHAR8_T` | 当前翻译单元是否启用了 `char8_t`，值固定为 `0` 或 `1` |
+
+```cpp
+#include <UniConv/UniConv.h>
+
+#if UNICONV_CXX_STANDARD >= 202002L && UNICONV_HAS_CHAR8_T
+// 当前翻译单元启用了 C++20 char8_t
+#endif
+```
+
+这两个宏由 UniConv 计算，调用方不能预定义或覆盖。UniConv 4.0 要求 C++17，并移除了旧的无前缀 `CPP_STANDARD`、头文件自动执行字符集 pragma，以及字面量/代码页包装宏。
+
+UTF-8 字面量有两种明确路线：
+
+- `u8"..."` 明确表示 UTF-8 code unit；C++17 中元素类型是 `char`，启用 `char8_t` 的 C++20 中是 `char8_t`，不能直接传给现有 `std::string_view` API。
+- 普通窄字面量 `"..."` 保持 `char` 类型；消费方应在自己的目标上配置 UTF-8 编译选项，例如 MSVC 的 `/utf-8`。UniConv 自身使用的私有编译选项不会传播给调用方。
+
+字符集编译选项属于构建系统职责。UniConv 不通过公共头文件修改调用方翻译单元的执行字符集，也不隐式执行 `char8_t` 到 `char` 的转换。
 
 ## 依赖
 

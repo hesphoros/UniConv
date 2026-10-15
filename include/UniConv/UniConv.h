@@ -20,8 +20,8 @@
 *
 *  @author   hesphoros
 *  @email    hesphoros@gmail.com
-*  @version  3.1.0
-*  @date     2026/01/07
+*  @version  4.0.0
+*  @date     2026/10/15
 *  @license  MIT License
 *---------------------------------------------------------------------------*
 *  Remark         : None
@@ -31,15 +31,84 @@
 *  2025/03/10 | 1.0.0.1   | hesphoros      | Create file
 *****************************************************************************/
 
-#if _MSC_VER >= 1600
-#pragma execution_character_set("utf-8")
-// Block character encoding warnings to ensure cross-platform encoding consistency
-#pragma warning(push)
-#pragma warning(disable: 4819)  // Character encoding warning
+#ifndef UNICONV_UNICONV_H_INCLUDED
+#define UNICONV_UNICONV_H_INCLUDED
+
+// Public compile-time detection macros are owned by UniConv and are read-only.
+#if defined(UNICONV_CXX_STANDARD)
+#error "UNICONV_CXX_STANDARD is defined by <UniConv/UniConv.h> and must not be predefined"
+#else
+#if defined(_MSC_VER) && defined(_MSVC_LANG)
+#define UNICONV_CXX_STANDARD _MSVC_LANG
+#elif defined(__cplusplus)
+#define UNICONV_CXX_STANDARD __cplusplus
+#else
+#define UNICONV_CXX_STANDARD 0L
+#endif
 #endif
 
-#ifndef __UNICONV_H__
-#define __UNICONV_H__
+#if UNICONV_CXX_STANDARD < 201703L
+#error "UniConv requires C++17 or later"
+#endif
+
+#if defined(UNICONV_HAS_CHAR8_T)
+#error "UNICONV_HAS_CHAR8_T is defined by <UniConv/UniConv.h> and must not be predefined"
+#else
+#if defined(__cpp_char8_t) && __cpp_char8_t >= 201811L
+#define UNICONV_HAS_CHAR8_T 1
+#else
+#define UNICONV_HAS_CHAR8_T 0
+#endif
+#endif
+
+// Internal compiler, toolchain, and platform facts. These are not public API.
+#if defined(__clang__)
+#define UNICONV_DETAIL_COMPILER_CLANG 1
+#else
+#define UNICONV_DETAIL_COMPILER_CLANG 0
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define UNICONV_DETAIL_COMPILER_MSVC_CL 1
+#else
+#define UNICONV_DETAIL_COMPILER_MSVC_CL 0
+#endif
+
+#if defined(__clang__) && defined(_MSC_VER)
+#define UNICONV_DETAIL_COMPILER_CLANG_CL 1
+#else
+#define UNICONV_DETAIL_COMPILER_CLANG_CL 0
+#endif
+
+#if defined(__GNUC__) && !defined(__clang__)
+#define UNICONV_DETAIL_COMPILER_GCC 1
+#else
+#define UNICONV_DETAIL_COMPILER_GCC 0
+#endif
+
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#define UNICONV_DETAIL_TOOLCHAIN_MINGW 1
+#else
+#define UNICONV_DETAIL_TOOLCHAIN_MINGW 0
+#endif
+
+#if defined(_WIN32)
+#define UNICONV_DETAIL_PLATFORM_WINDOWS 1
+#else
+#define UNICONV_DETAIL_PLATFORM_WINDOWS 0
+#endif
+
+#if defined(__linux__)
+#define UNICONV_DETAIL_PLATFORM_LINUX 1
+#else
+#define UNICONV_DETAIL_PLATFORM_LINUX 0
+#endif
+
+#if defined(__APPLE__)
+#define UNICONV_DETAIL_PLATFORM_APPLE 1
+#else
+#define UNICONV_DETAIL_PLATFORM_APPLE 0
+#endif
 
 // iconv header - provided by libiconv-native (FetchContent) or system iconv
 #include <iconv.h>
@@ -99,6 +168,10 @@
     #endif
 #else
     #define UNICONV_EXPORT
+#endif
+
+#if !defined(UNICONV_NO_THREAD_LOCAL)
+    #define UNICONV_NO_THREAD_LOCAL 0
 #endif
 
 #if defined(_DEBUG) || !defined(NDEBUG)   // Debug Mode
@@ -169,13 +242,6 @@
 #define UNICONV_TEMPLATE_ENABLE_IF template<bool Condition = true> \
     std::enable_if_t<Condition, void>
 
-// Constexpr evaluation forcing
-#if defined(__cpp_consteval) && __cpp_consteval >= 201811L
-    #define UNICONV_CONSTEVAL consteval
-#else
-    #define UNICONV_CONSTEVAL constexpr
-#endif
-
 // Loop optimization hints
 #if defined(__clang__)
     #define UNICONV_UNROLL_LOOP(n) _Pragma("clang loop unroll_count(" #n ")")
@@ -215,7 +281,7 @@ namespace detail {
 	 * constexpr uint32_t hash2 = detail::fnv1a_hash(runtime_str.c_str(), runtime_str.size()); // Compute hash at runtime
 	 * @endcode
 	 */
-    UNICONV_CONSTEVAL uint32_t fnv1a_hash(const char* str, size_t len) noexcept {
+    constexpr uint32_t fnv1a_hash(const char* str, size_t len) noexcept {
         uint32_t hash = 2166136261u;  // FNV-1a offset basis
         for (size_t i = 0; i < len; ++i) {
             hash ^= static_cast<uint32_t>(str[i]);  // XOR each byte
@@ -298,39 +364,9 @@ namespace detail {
      * }
      * @endcode
      */
-    UNICONV_CONSTEVAL uint32_t operator""_hash(const char* str, size_t len) noexcept {
+    constexpr uint32_t operator""_hash(const char* str, size_t len) noexcept {
         return fnv1a_hash(str, len);
     }
-}
-
-// C++ standard version detection
-#if defined(_MSC_VER)
-// MSVC compiler uses _MSVC_LANG to indicate the C++ standard version
-#define CPP_STANDARD _MSVC_LANG
-#else
-#define CPP_STANDARD __cplusplus
-#endif
-
-// Make sure the C++ standard version is at least C++11
-static_assert(CPP_STANDARD >= 201103L, "Error: This code requires C++11 or later");
-
-/**
- * @brief Get the current C++ standard version as a string.
- * @return A string_view representing the current C++ standard version.
- * @retval "C++20 or later" if the standard is C++20 or later.
- */
-inline constexpr std::string_view current_cpp_standard() {
-#if CPP_STANDARD >= 202002L
-	return "C++20 or later";
-#elif CPP_STANDARD >= 201703L
-	return "C++17";
-#elif CPP_STANDARD >= 201402L
-	return "C++14";
-#elif CPP_STANDARD >= 201103L
-	return "C++11";
-#else
-	return "C++03 or earlier";
-#endif
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -2767,9 +2803,5 @@ private:
 	UniConv& operator=(const UniConv&) = delete;
 };
 
-#if _MSC_VER >= 1600
-#pragma warning(pop)  // 恢复警告设置
-#endif
-
-#endif // UNICONV_H__
+#endif // UNICONV_UNICONV_H_INCLUDED
 

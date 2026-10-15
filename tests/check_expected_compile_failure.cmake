@@ -1,0 +1,46 @@
+if(NOT DEFINED CXX_COMPILER OR NOT DEFINED SOURCE OR NOT DEFINED STANDARD)
+    message(FATAL_ERROR "CXX_COMPILER, SOURCE, and STANDARD are required")
+endif()
+
+string(REPLACE "|" ";" INCLUDE_DIRS "${INCLUDE_DIRS_ENCODED}")
+file(MAKE_DIRECTORY "${BINARY_DIR}")
+
+set(COMPILE_COMMAND "${CXX_COMPILER}")
+set(OBJECT_FILE "${BINARY_DIR}/expected_failure.o")
+
+if(CXX_COMPILER_ID STREQUAL "MSVC"
+   OR CXX_SIMULATE_ID STREQUAL "MSVC"
+   OR CXX_FRONTEND_VARIANT STREQUAL "MSVC")
+    list(APPEND COMPILE_COMMAND /nologo /c "/std:c++${STANDARD}" "${SOURCE}" "/Fo${OBJECT_FILE}")
+    foreach(INCLUDE_DIR IN LISTS INCLUDE_DIRS)
+        list(APPEND COMPILE_COMMAND "/I${INCLUDE_DIR}")
+    endforeach()
+else()
+    list(APPEND COMPILE_COMMAND -c "-std=c++${STANDARD}" "${SOURCE}" -o "${OBJECT_FILE}")
+    foreach(INCLUDE_DIR IN LISTS INCLUDE_DIRS)
+        list(APPEND COMPILE_COMMAND "-I${INCLUDE_DIR}")
+    endforeach()
+endif()
+
+execute_process(
+    COMMAND ${COMPILE_COMMAND}
+    RESULT_VARIABLE COMPILE_RESULT
+    OUTPUT_VARIABLE COMPILE_STDOUT
+    ERROR_VARIABLE COMPILE_STDERR
+)
+
+if(COMPILE_RESULT EQUAL 0)
+    message(FATAL_ERROR "Compilation unexpectedly succeeded for ${SOURCE}")
+endif()
+
+set(COMPILE_OUTPUT "${COMPILE_STDOUT}\n${COMPILE_STDERR}")
+if(DEFINED EXPECTED_DIAGNOSTIC AND NOT EXPECTED_DIAGNOSTIC STREQUAL "")
+    string(FIND "${COMPILE_OUTPUT}" "${EXPECTED_DIAGNOSTIC}" DIAGNOSTIC_POSITION)
+    if(DIAGNOSTIC_POSITION EQUAL -1)
+        message(FATAL_ERROR
+            "Compilation failed, but the expected diagnostic was absent.\n"
+            "Expected: ${EXPECTED_DIAGNOSTIC}\n"
+            "Compiler output:\n${COMPILE_OUTPUT}"
+        )
+    endif()
+endif()

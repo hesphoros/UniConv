@@ -4,10 +4,6 @@
  * @details 对比输出参数版本与返回值版本的性能差异，展示零拷贝优化效果
  */
 
-#if _MSC_VER >= 1600
-#pragma execution_character_set("utf-8")
-#endif
-
 #include <UniConv/UniConv.h>
 #include <iostream>
 #include <chrono>

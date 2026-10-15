@@ -1,5 +1,19 @@
 # 更新日志
 
+## v4.0.0 (2026-10-15)
+
+### 编译期接口
+- 新增只读宏 `UNICONV_CXX_STANDARD` 和 `UNICONV_HAS_CHAR8_T`
+- 公共头文件在低于 C++17 时直接报错
+- 修正 include guard、重复包含及 `UNICONV_NO_THREAD_LOCAL` 默认值
+- 增加 C++17/C++20、`char8_t` 开关和混合标准契约测试
+
+### 破坏性变更
+- 删除无前缀宏 `CPP_STANDARD` 和 `current_cpp_standard()`
+- 删除包含 `UniConv.h` 时自动执行的 MSVC `execution_character_set` pragma
+- 不再屏蔽 MSVC C4819，源文件字符集由构建目标显式配置
+- 不提供代码页常量、字面量包装或隐式 `char8_t` 到 `char` 的转换宏
+
 ## v3.1.0 (2026-01-07)
 
 ### 代码清理

@@ -9,14 +9,16 @@ else()
 endif()
 
 project(UniConv
-    VERSION 3.3.2
+    VERSION 4.0.0
     DESCRIPTION "High-performance C++ character encoding conversion library"
     LANGUAGES C CXX
 )
 
 # C++ 标准设置（仅主项目）
 if(NOT UNICONV_IS_SUBPROJECT)
-    set(CMAKE_CXX_STANDARD 17)
+    if(NOT DEFINED CMAKE_CXX_STANDARD)
+        set(CMAKE_CXX_STANDARD 17)
+    endif()
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
     
@@ -175,15 +177,6 @@ else()
 endif()
 
 # ============================================================================
-# 编译器设置
-# ============================================================================
-if(MSVC)
-    add_compile_options(/utf-8)
-    add_compile_options(/wd4996)
-    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-endif()
-
-# ============================================================================
 # 库目标
 # ============================================================================
 # 源文件
@@ -207,13 +200,24 @@ endif()
 # 别名目标
 add_library(UniConv::UniConv ALIAS UniConv)
 
+# UniConv requires C++17. The usage requirement is propagated to consumers,
+# while source/execution charset flags remain private to this target.
+target_compile_features(UniConv PUBLIC cxx_std_17)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"
+   OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC"
+   OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    target_compile_options(UniConv PRIVATE /utf-8 /wd4996)
+    target_compile_definitions(UniConv PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 # 库属性
 set_target_properties(UniConv PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
     OUTPUT_NAME "UniConv"
-    CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
 )
 
 # 包含目录
@@ -221,10 +225,13 @@ target_include_directories(UniConv
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-        $<BUILD_INTERFACE:${PHMAP_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_include_directories(UniConv SYSTEM PUBLIC
+    $<BUILD_INTERFACE:${PHMAP_INCLUDE_DIR}>
 )
 
 # 输出目录（仅主项目）
@@ -545,7 +552,11 @@ message(STATUS "UniConv configuration summary:")
 message(STATUS "  Version: ${PROJECT_VERSION}")
 message(STATUS "  Subproject: ${UNICONV_IS_SUBPROJECT}")
 message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  C++ standard: 17")
+if(DEFINED CMAKE_CXX_STANDARD)
+    message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD} (minimum 17)")
+else()
+    message(STATUS "  C++ standard: target minimum 17")
+endif()
 message(STATUS "  Shared library: ${UNICONV_BUILD_SHARED}")
 message(STATUS "  libiconv source: ${UNICONV_LIBICONV_SOURCE}")
 message(STATUS "  SIMD acceleration (simdutf): ${UNICONV_USE_SIMDUTF}")

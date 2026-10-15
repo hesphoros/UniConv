@@ -39,6 +39,12 @@ target_include_directories(UniConvBench
         ${PROJECT_SOURCE_DIR}/include
 )
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"
+   OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC"
+   OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    target_compile_options(UniConvBench PRIVATE /utf-8)
+endif()
+
 set_target_properties(UniConvBench PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
     CXX_STANDARD 17

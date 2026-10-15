@@ -20,8 +20,8 @@
 *
 *  @author   hesphoros
 *  @email    hesphoros@gmail.com
-*  @version  3.1.0
-*  @date     2026/01/07
+*  @version  4.0.0
+*  @date     2026/10/15
 *  @license  MIT License
 *---------------------------------------------------------------------------*
 *  Remark         : None
