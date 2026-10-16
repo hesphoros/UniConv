@@ -37,10 +37,13 @@
 *  2025/12/29 | 3.0.0.1   | hesphoros      | Refactor error handling system
 *  <Date>     | <Version> | <Author>       | <Description>
 *  2026/1/4   | 3.0.0.2   | hesphoros      | Add simdutf SIMD acceleration support
-
+*  <Date>     | <Version> | <Author>       | <Description>
+*  2026/10/15 | 4.0.0.1   | hesphoros      | Update documentation and examples
 *****************************************************************************/
 
 #include <UniConv/UniConv.h>
+
+#include <cmath>
 
 //==============================================================================
 // iconv 兼容性包装：处理不同平台的 const 签名差异
@@ -3733,5 +3736,1152 @@ bool UniConv::ToUtf16BEFromLocale(std::string_view input, std::u16string& output
         return true;
     }
     return false;
+}
+
+//==============================================================================
+// Native UTF-8/UTF-16 fast conversion
+//==============================================================================
+namespace {
+
+constexpr size_t kUtfFastSimdThreshold = 256;
+
+inline bool IsUtf8Continuation(unsigned char value) noexcept {
+    return value >= 0x80u && value <= 0xBFu;
+}
+
+ErrorCode ValidateUtf8AndGetUtf16Length(std::string_view input,
+                                        size_t& utf16_length) noexcept {
+    utf16_length = 0;
+    size_t offset = 0;
+    while (offset < input.size()) {
+        const unsigned char first = static_cast<unsigned char>(input[offset]);
+        const size_t remaining = input.size() - offset;
+        size_t sequence_length = 0;
+        size_t code_units = 0;
+
+        if (first <= 0x7Fu) {
+            sequence_length = 1;
+            code_units = 1;
+        } else if (first >= 0xC2u && first <= 0xDFu) {
+            sequence_length = 2;
+            code_units = 1;
+        } else if (first >= 0xE0u && first <= 0xEFu) {
+            sequence_length = 3;
+            code_units = 1;
+        } else if (first >= 0xF0u && first <= 0xF4u) {
+            sequence_length = 4;
+            code_units = 2;
+        } else {
+            return ErrorCode::InvalidSequence;
+        }
+
+        if (remaining < sequence_length) {
+            return ErrorCode::InvalidSequence;
+        }
+
+        if (sequence_length >= 2 &&
+            !IsUtf8Continuation(static_cast<unsigned char>(input[offset + 1]))) {
+            return ErrorCode::InvalidSequence;
+        }
+        if (sequence_length >= 3 &&
+            !IsUtf8Continuation(static_cast<unsigned char>(input[offset + 2]))) {
+            return ErrorCode::InvalidSequence;
+        }
+        if (sequence_length == 4 &&
+            !IsUtf8Continuation(static_cast<unsigned char>(input[offset + 3]))) {
+            return ErrorCode::InvalidSequence;
+        }
+
+        // Reject overlong encodings, UTF-8 encodings of surrogate code points,
+        // and values beyond the Unicode scalar range.
+        if (sequence_length == 3) {
+            const unsigned char second = static_cast<unsigned char>(input[offset + 1]);
+            if ((first == 0xE0u && second < 0xA0u) ||
+                (first == 0xEDu && second > 0x9Fu)) {
+                return ErrorCode::InvalidSequence;
+            }
+        } else if (sequence_length == 4) {
+            const unsigned char second = static_cast<unsigned char>(input[offset + 1]);
+            if ((first == 0xF0u && second < 0x90u) ||
+                (first == 0xF4u && second > 0x8Fu)) {
+                return ErrorCode::InvalidSequence;
+            }
+        }
+
+        if (utf16_length > std::numeric_limits<size_t>::max() - code_units) {
+            return ErrorCode::OutOfMemory;
+        }
+        utf16_length += code_units;
+        offset += sequence_length;
+    }
+    return ErrorCode::Success;
+}
+
+ErrorCode DecodeUtf8ToUtf16(std::string_view input,
+                            std::u16string& output) noexcept {
+    size_t utf16_length = 0;
+    const ErrorCode validation = ValidateUtf8AndGetUtf16Length(input, utf16_length);
+    if (validation != ErrorCode::Success) {
+        return validation;
+    }
+
+    try {
+        output.resize(utf16_length);
+    } catch (const std::bad_alloc&) {
+        output.clear();
+        return ErrorCode::OutOfMemory;
+    } catch (...) {
+        output.clear();
+        return ErrorCode::ConversionFailed;
+    }
+
+    size_t input_offset = 0;
+    size_t output_offset = 0;
+    while (input_offset < input.size()) {
+        const unsigned char first = static_cast<unsigned char>(input[input_offset]);
+        char32_t code_point = 0;
+        size_t sequence_length = 1;
+        if (first <= 0x7Fu) {
+            code_point = first;
+        } else if (first <= 0xDFu) {
+            code_point = static_cast<char32_t>(first & 0x1Fu) << 6;
+            code_point |= static_cast<char32_t>(static_cast<unsigned char>(input[input_offset + 1]) & 0x3Fu);
+            sequence_length = 2;
+        } else if (first <= 0xEFu) {
+            code_point = static_cast<char32_t>(first & 0x0Fu) << 12;
+            code_point |= static_cast<char32_t>(static_cast<unsigned char>(input[input_offset + 1]) & 0x3Fu) << 6;
+            code_point |= static_cast<char32_t>(static_cast<unsigned char>(input[input_offset + 2]) & 0x3Fu);
+            sequence_length = 3;
+        } else {
+            code_point = static_cast<char32_t>(first & 0x07u) << 18;
+            code_point |= static_cast<char32_t>(static_cast<unsigned char>(input[input_offset + 1]) & 0x3Fu) << 12;
+            code_point |= static_cast<char32_t>(static_cast<unsigned char>(input[input_offset + 2]) & 0x3Fu) << 6;
+            code_point |= static_cast<char32_t>(static_cast<unsigned char>(input[input_offset + 3]) & 0x3Fu);
+            sequence_length = 4;
+        }
+
+        if (code_point <= 0xFFFFu) {
+            output[output_offset++] = static_cast<char16_t>(code_point);
+        } else {
+            code_point -= 0x10000u;
+            output[output_offset++] = static_cast<char16_t>(0xD800u + (code_point >> 10));
+            output[output_offset++] = static_cast<char16_t>(0xDC00u + (code_point & 0x3FFu));
+        }
+        input_offset += sequence_length;
+    }
+    return output_offset == output.size() ? ErrorCode::Success : ErrorCode::ConversionFailed;
+}
+
+ErrorCode ValidateUtf16AndGetUtf8Length(std::u16string_view input,
+                                        size_t& utf8_length) noexcept {
+    utf8_length = 0;
+    size_t offset = 0;
+    while (offset < input.size()) {
+        const std::uint32_t value = static_cast<std::uint32_t>(input[offset]);
+        size_t code_units = 1;
+        size_t bytes = 0;
+        if (value >= 0xD800u && value <= 0xDBFFu) {
+            if (offset + 1 >= input.size()) {
+                return ErrorCode::InvalidSequence;
+            }
+            const std::uint32_t low = static_cast<std::uint32_t>(input[offset + 1]);
+            if (low < 0xDC00u || low > 0xDFFFu) {
+                return ErrorCode::InvalidSequence;
+            }
+            code_units = 2;
+            bytes = 4;
+        } else if (value >= 0xDC00u && value <= 0xDFFFu) {
+            return ErrorCode::InvalidSequence;
+        } else if (value <= 0x7Fu) {
+            bytes = 1;
+        } else if (value <= 0x7FFu) {
+            bytes = 2;
+        } else {
+            bytes = 3;
+        }
+
+        if (utf8_length > std::numeric_limits<size_t>::max() - bytes) {
+            return ErrorCode::OutOfMemory;
+        }
+        utf8_length += bytes;
+        offset += code_units;
+    }
+    return ErrorCode::Success;
+}
+
+ErrorCode EncodeUtf16ToUtf8(std::u16string_view input,
+                            std::string& output) noexcept {
+    size_t utf8_length = 0;
+    const ErrorCode validation = ValidateUtf16AndGetUtf8Length(input, utf8_length);
+    if (validation != ErrorCode::Success) {
+        return validation;
+    }
+
+    try {
+        output.resize(utf8_length);
+    } catch (const std::bad_alloc&) {
+        output.clear();
+        return ErrorCode::OutOfMemory;
+    } catch (...) {
+        output.clear();
+        return ErrorCode::ConversionFailed;
+    }
+
+    size_t input_offset = 0;
+    size_t output_offset = 0;
+    while (input_offset < input.size()) {
+        const std::uint32_t high = static_cast<std::uint32_t>(input[input_offset++]);
+        char32_t code_point = high;
+        if (high >= 0xD800u && high <= 0xDBFFu) {
+            const std::uint32_t low = static_cast<std::uint32_t>(input[input_offset++]);
+            code_point = static_cast<char32_t>(0x10000u +
+                                                ((high - 0xD800u) << 10) +
+                                                (low - 0xDC00u));
+        }
+
+        if (code_point <= 0x7Fu) {
+            output[output_offset++] = static_cast<char>(code_point);
+        } else if (code_point <= 0x7FFu) {
+            output[output_offset++] = static_cast<char>(0xC0u | (code_point >> 6));
+            output[output_offset++] = static_cast<char>(0x80u | (code_point & 0x3Fu));
+        } else if (code_point <= 0xFFFFu) {
+            output[output_offset++] = static_cast<char>(0xE0u | (code_point >> 12));
+            output[output_offset++] = static_cast<char>(0x80u | ((code_point >> 6) & 0x3Fu));
+            output[output_offset++] = static_cast<char>(0x80u | (code_point & 0x3Fu));
+        } else {
+            output[output_offset++] = static_cast<char>(0xF0u | (code_point >> 18));
+            output[output_offset++] = static_cast<char>(0x80u | ((code_point >> 12) & 0x3Fu));
+            output[output_offset++] = static_cast<char>(0x80u | ((code_point >> 6) & 0x3Fu));
+            output[output_offset++] = static_cast<char>(0x80u | (code_point & 0x3Fu));
+        }
+    }
+    return output_offset == output.size() ? ErrorCode::Success : ErrorCode::ConversionFailed;
+}
+
+ErrorCode Utf8ToUtf16FastCore(std::string_view input,
+                              std::u16string& output) noexcept {
+    output.clear();
+    if (input.empty()) {
+        return ErrorCode::Success;
+    }
+
+#ifdef UNICONV_HAS_SIMDUTF
+    if (input.size() >= kUtfFastSimdThreshold) {
+        if (!simdutf::validate_utf8(input.data(), input.size())) {
+            return ErrorCode::InvalidSequence;
+        }
+        const size_t output_length = simdutf::utf16_length_from_utf8(input.data(), input.size());
+        try {
+            output.resize(output_length);
+        } catch (const std::bad_alloc&) {
+            output.clear();
+            return ErrorCode::OutOfMemory;
+        } catch (...) {
+            output.clear();
+            return ErrorCode::ConversionFailed;
+        }
+        const size_t written = simdutf::convert_utf8_to_utf16(
+            input.data(), input.size(), output.data());
+        if (written == output_length) {
+            return ErrorCode::Success;
+        }
+        output.clear();
+        // The scalar path is a complete, validated fallback if a backend
+        // reports an unexpected write count before output is committed.
+    }
+#endif
+
+    return DecodeUtf8ToUtf16(input, output);
+}
+
+ErrorCode Utf16ToUtf8FastCore(std::u16string_view input,
+                              std::string& output) noexcept {
+    output.clear();
+    if (input.empty()) {
+        return ErrorCode::Success;
+    }
+
+#ifdef UNICONV_HAS_SIMDUTF
+    if (input.size() * sizeof(char16_t) >= kUtfFastSimdThreshold) {
+        if (!simdutf::validate_utf16(input.data(), input.size())) {
+            return ErrorCode::InvalidSequence;
+        }
+        const size_t output_length = simdutf::utf8_length_from_utf16(input.data(), input.size());
+        try {
+            output.resize(output_length);
+        } catch (const std::bad_alloc&) {
+            output.clear();
+            return ErrorCode::OutOfMemory;
+        } catch (...) {
+            output.clear();
+            return ErrorCode::ConversionFailed;
+        }
+        const size_t written = simdutf::convert_utf16_to_utf8(
+            input.data(), input.size(), output.data());
+        if (written == output_length) {
+            return ErrorCode::Success;
+        }
+        output.clear();
+        // Fall through to the complete scalar implementation.
+    }
+#endif
+
+    return EncodeUtf16ToUtf8(input, output);
+}
+
+} // anonymous namespace
+
+U16StringResult UniConv::ToUtf16FromUtf8Fast(std::string_view input) noexcept {
+    std::u16string output;
+    const ErrorCode status = Utf8ToUtf16FastCore(input, output);
+    if (status != ErrorCode::Success) {
+        return U16StringResult::Failure(status);
+    }
+    return U16StringResult::Success(std::move(output));
+}
+
+StringResult UniConv::ToUtf8FromUtf16Fast(std::u16string_view input) noexcept {
+    std::string output;
+    const ErrorCode status = Utf16ToUtf8FastCore(input, output);
+    if (status != ErrorCode::Success) {
+        return StringResult::Failure(status);
+    }
+    return StringResult::Success(std::move(output));
+}
+
+ErrorCode UniConv::ToUtf16FromUtf8Fast(std::string_view input,
+                                       std::u16string& output) noexcept {
+    return Utf8ToUtf16FastCore(input, output);
+}
+
+ErrorCode UniConv::ToUtf8FromUtf16Fast(std::u16string_view input,
+                                       std::string& output) noexcept {
+    return Utf16ToUtf8FastCore(input, output);
+}
+
+U16StringResult UniConv::ToUtf16FromUtf8Fast(const char* input,
+                                             size_t byte_count) noexcept {
+    if (!input) {
+        return U16StringResult::Failure(ErrorCode::InvalidParameter);
+    }
+    return ToUtf16FromUtf8Fast(std::string_view(input, byte_count));
+}
+
+StringResult UniConv::ToUtf8FromUtf16Fast(const char16_t* input,
+                                          size_t code_unit_count) noexcept {
+    if (!input) {
+        return StringResult::Failure(ErrorCode::InvalidParameter);
+    }
+    return ToUtf8FromUtf16Fast(std::u16string_view(input, code_unit_count));
+}
+
+ErrorCode UniConv::ToUtf16FromUtf8Fast(const char* input,
+                                       size_t byte_count,
+                                       std::u16string& output) noexcept {
+    output.clear();
+    if (!input) {
+        return ErrorCode::InvalidParameter;
+    }
+    return Utf8ToUtf16FastCore(std::string_view(input, byte_count), output);
+}
+
+ErrorCode UniConv::ToUtf8FromUtf16Fast(const char16_t* input,
+                                       size_t code_unit_count,
+                                       std::string& output) noexcept {
+    output.clear();
+    if (!input) {
+        return ErrorCode::InvalidParameter;
+    }
+    return Utf16ToUtf8FastCore(std::u16string_view(input, code_unit_count), output);
+}
+
+U16StringResult UniConv::ToUtf16FromUtf8Fast(const char* input) noexcept {
+    if (!input) {
+        return U16StringResult::Failure(ErrorCode::InvalidParameter);
+    }
+    return ToUtf16FromUtf8Fast(std::string_view(input, std::strlen(input)));
+}
+
+StringResult UniConv::ToUtf8FromUtf16Fast(const char16_t* input) noexcept {
+    if (!input) {
+        return StringResult::Failure(ErrorCode::InvalidParameter);
+    }
+    return ToUtf8FromUtf16Fast(std::u16string_view(input, std::char_traits<char16_t>::length(input)));
+}
+
+ErrorCode UniConv::ToUtf16FromUtf8Fast(const char* input,
+                                       std::u16string& output) noexcept {
+    output.clear();
+    if (!input) {
+        return ErrorCode::InvalidParameter;
+    }
+    return Utf8ToUtf16FastCore(std::string_view(input, std::strlen(input)), output);
+}
+
+ErrorCode UniConv::ToUtf8FromUtf16Fast(const char16_t* input,
+                                       std::string& output) noexcept {
+    output.clear();
+    if (!input) {
+        return ErrorCode::InvalidParameter;
+    }
+    return Utf16ToUtf8FastCore(
+        std::u16string_view(input, std::char_traits<char16_t>::length(input)), output);
+}
+
+//==============================================================================
+// Native integer parsing and formatting
+//==============================================================================
+namespace {
+
+template <typename CharT>
+constexpr std::uint32_t NumericCodeUnit(CharT value) noexcept {
+    using UnsignedCharT = std::make_unsigned_t<CharT>;
+    return static_cast<std::uint32_t>(static_cast<UnsignedCharT>(value));
+}
+
+template <typename CharT>
+constexpr int NumericDigit(CharT value, IntegerBase base) noexcept {
+    const std::uint32_t code_unit = NumericCodeUnit(value);
+    int digit = -1;
+    if (code_unit >= static_cast<std::uint32_t>('0') &&
+        code_unit <= static_cast<std::uint32_t>('9')) {
+        digit = static_cast<int>(code_unit - static_cast<std::uint32_t>('0'));
+    } else if (code_unit >= static_cast<std::uint32_t>('a') &&
+               code_unit <= static_cast<std::uint32_t>('f')) {
+        digit = static_cast<int>(code_unit - static_cast<std::uint32_t>('a')) + 10;
+    } else if (code_unit >= static_cast<std::uint32_t>('A') &&
+               code_unit <= static_cast<std::uint32_t>('F')) {
+        digit = static_cast<int>(code_unit - static_cast<std::uint32_t>('A')) + 10;
+    }
+
+    if (digit < 0 || (base == IntegerBase::Decimal && digit >= 10)) {
+        return -1;
+    }
+    return digit;
+}
+
+template <typename CharT, typename IntT>
+CompactResult<IntT> ParseIntegerView(std::basic_string_view<CharT> input,
+                                      IntegerParseOptions options) noexcept {
+    static_assert(std::is_signed_v<IntT>, "native integer parser expects a signed type");
+
+    if (options.base != IntegerBase::Auto &&
+        options.base != IntegerBase::Decimal &&
+        options.base != IntegerBase::Hexadecimal) {
+        return CompactResult<IntT>::Failure(ErrorCode::UnsupportedNumericBase);
+    }
+    if (input.empty()) {
+        return CompactResult<IntT>::Failure(ErrorCode::InvalidNumber);
+    }
+
+    size_t position = 0;
+    bool negative = false;
+    const std::uint32_t first = NumericCodeUnit(input[position]);
+    if (first == static_cast<std::uint32_t>('+') ||
+        first == static_cast<std::uint32_t>('-')) {
+        negative = first == static_cast<std::uint32_t>('-');
+        ++position;
+    }
+    if (position == input.size()) {
+        return CompactResult<IntT>::Failure(ErrorCode::InvalidNumber);
+    }
+
+    const bool has_hex_prefix =
+        input.size() - position >= 2 &&
+        NumericCodeUnit(input[position]) == static_cast<std::uint32_t>('0') &&
+        (NumericCodeUnit(input[position + 1]) == static_cast<std::uint32_t>('x') ||
+         NumericCodeUnit(input[position + 1]) == static_cast<std::uint32_t>('X'));
+
+    IntegerBase base = options.base;
+    if (base == IntegerBase::Auto) {
+        base = has_hex_prefix ? IntegerBase::Hexadecimal : IntegerBase::Decimal;
+    } else if (base == IntegerBase::Decimal && has_hex_prefix) {
+        return CompactResult<IntT>::Failure(ErrorCode::InvalidNumber);
+    }
+    if (has_hex_prefix && base == IntegerBase::Hexadecimal) {
+        position += 2;
+    }
+    if (position == input.size()) {
+        return CompactResult<IntT>::Failure(ErrorCode::InvalidNumber);
+    }
+
+    constexpr std::uint64_t positive_limit =
+        static_cast<std::uint64_t>(std::numeric_limits<IntT>::max());
+    const std::uint64_t magnitude_limit = negative ? positive_limit + 1u : positive_limit;
+    const std::uint64_t radix = base == IntegerBase::Hexadecimal ? 16u : 10u;
+    std::uint64_t magnitude = 0;
+    size_t digits = 0;
+
+    for (; position < input.size(); ++position) {
+        const int digit = NumericDigit(input[position], base);
+        if (digit < 0) {
+            return CompactResult<IntT>::Failure(ErrorCode::InvalidNumber);
+        }
+        ++digits;
+        const std::uint64_t unsigned_digit = static_cast<std::uint64_t>(digit);
+        if (magnitude > (magnitude_limit - unsigned_digit) / radix) {
+            return CompactResult<IntT>::Failure(ErrorCode::NumericOverflow);
+        }
+        magnitude = magnitude * radix + unsigned_digit;
+    }
+
+    if (digits == 0) {
+        return CompactResult<IntT>::Failure(ErrorCode::InvalidNumber);
+    }
+
+    if (negative) {
+        if (magnitude == positive_limit + 1u) {
+            return CompactResult<IntT>::Success(std::numeric_limits<IntT>::min());
+        }
+        const auto signed_magnitude = static_cast<std::int64_t>(magnitude);
+        return CompactResult<IntT>::Success(static_cast<IntT>(-signed_magnitude));
+    }
+    return CompactResult<IntT>::Success(static_cast<IntT>(magnitude));
+}
+
+template <typename CharT, typename IntT>
+CompactResult<IntT> ParseIntegerPointer(const CharT* input, size_t code_units,
+                                        IntegerParseOptions options) noexcept {
+    if (!input) {
+        return CompactResult<IntT>::Failure(ErrorCode::InvalidParameter);
+    }
+    return ParseIntegerView<CharT, IntT>(std::basic_string_view<CharT>(input, code_units), options);
+}
+
+template <typename CharT, typename IntT>
+CompactResult<IntT> ParseIntegerCString(const CharT* input,
+                                       IntegerParseOptions options) noexcept {
+    if (!input) {
+        return CompactResult<IntT>::Failure(ErrorCode::InvalidParameter);
+    }
+    return ParseIntegerView<CharT, IntT>(
+        std::basic_string_view<CharT>(input, std::char_traits<CharT>::length(input)), options);
+}
+
+template <typename CharT, typename IntT>
+ErrorCode FormatIntegerOutput(IntT value, std::basic_string<CharT>& output) noexcept {
+    output.clear();
+    char buffer[32]{};
+    try {
+        const auto converted = std::to_chars(std::begin(buffer), std::end(buffer), value, 10);
+        if (converted.ec != std::errc{}) {
+            return ErrorCode::ConversionFailed;
+        }
+        const size_t length = static_cast<size_t>(converted.ptr - buffer);
+        output.resize(length);
+        for (size_t i = 0; i < length; ++i) {
+            output[i] = static_cast<CharT>(static_cast<unsigned char>(buffer[i]));
+        }
+    } catch (const std::bad_alloc&) {
+        output.clear();
+        return ErrorCode::OutOfMemory;
+    } catch (...) {
+        output.clear();
+        return ErrorCode::ConversionFailed;
+    }
+    return ErrorCode::Success;
+}
+
+template <typename StringT, typename IntT>
+CompactResult<StringT> FormatIntegerResult(IntT value) noexcept {
+    StringT output;
+    const ErrorCode status = FormatIntegerOutput(value, output);
+    if (status != ErrorCode::Success) {
+        return CompactResult<StringT>::Failure(status);
+    }
+    return CompactResult<StringT>::Success(std::move(output));
+}
+
+} // anonymous namespace
+
+Int32Result UniConv::ParseInt32(std::string_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<char, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(std::string_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<char, std::int64_t>(input, options);
+}
+
+Int32Result UniConv::ParseInt32(std::u16string_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<char16_t, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(std::u16string_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<char16_t, std::int64_t>(input, options);
+}
+
+Int32Result UniConv::ParseInt32(std::u32string_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<char32_t, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(std::u32string_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<char32_t, std::int64_t>(input, options);
+}
+
+Int32Result UniConv::ParseInt32(std::wstring_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<wchar_t, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(std::wstring_view input, IntegerParseOptions options) noexcept {
+    return ParseIntegerView<wchar_t, std::int64_t>(input, options);
+}
+
+Int32Result UniConv::ParseInt32(const char* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<char, std::int32_t>(input, code_units, options);
+}
+
+Int64Result UniConv::ParseInt64(const char* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<char, std::int64_t>(input, code_units, options);
+}
+
+Int32Result UniConv::ParseInt32(const char16_t* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<char16_t, std::int32_t>(input, code_units, options);
+}
+
+Int64Result UniConv::ParseInt64(const char16_t* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<char16_t, std::int64_t>(input, code_units, options);
+}
+
+Int32Result UniConv::ParseInt32(const char32_t* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<char32_t, std::int32_t>(input, code_units, options);
+}
+
+Int64Result UniConv::ParseInt64(const char32_t* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<char32_t, std::int64_t>(input, code_units, options);
+}
+
+Int32Result UniConv::ParseInt32(const wchar_t* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<wchar_t, std::int32_t>(input, code_units, options);
+}
+
+Int64Result UniConv::ParseInt64(const wchar_t* input, size_t code_units,
+                                IntegerParseOptions options) noexcept {
+    return ParseIntegerPointer<wchar_t, std::int64_t>(input, code_units, options);
+}
+
+Int32Result UniConv::ParseInt32(const char* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<char, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(const char* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<char, std::int64_t>(input, options);
+}
+
+Int32Result UniConv::ParseInt32(const char16_t* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<char16_t, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(const char16_t* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<char16_t, std::int64_t>(input, options);
+}
+
+Int32Result UniConv::ParseInt32(const char32_t* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<char32_t, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(const char32_t* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<char32_t, std::int64_t>(input, options);
+}
+
+Int32Result UniConv::ParseInt32(const wchar_t* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<wchar_t, std::int32_t>(input, options);
+}
+
+Int64Result UniConv::ParseInt64(const wchar_t* input, IntegerParseOptions options) noexcept {
+    return ParseIntegerCString<wchar_t, std::int64_t>(input, options);
+}
+
+StringResult UniConv::ToStringFromInt32(std::int32_t value) noexcept {
+    return FormatIntegerResult<std::string>(value);
+}
+
+StringResult UniConv::ToStringFromInt64(std::int64_t value) noexcept {
+    return FormatIntegerResult<std::string>(value);
+}
+
+U16StringResult UniConv::ToUtf16StringFromInt32(std::int32_t value) noexcept {
+    return FormatIntegerResult<std::u16string>(value);
+}
+
+U16StringResult UniConv::ToUtf16StringFromInt64(std::int64_t value) noexcept {
+    return FormatIntegerResult<std::u16string>(value);
+}
+
+U32StringResult UniConv::ToUtf32StringFromInt32(std::int32_t value) noexcept {
+    return FormatIntegerResult<std::u32string>(value);
+}
+
+U32StringResult UniConv::ToUtf32StringFromInt64(std::int64_t value) noexcept {
+    return FormatIntegerResult<std::u32string>(value);
+}
+
+WideStringResult UniConv::ToWideStringFromInt32(std::int32_t value) noexcept {
+    return FormatIntegerResult<std::wstring>(value);
+}
+
+WideStringResult UniConv::ToWideStringFromInt64(std::int64_t value) noexcept {
+    return FormatIntegerResult<std::wstring>(value);
+}
+
+ErrorCode UniConv::ToStringFromInt32(std::int32_t value, std::string& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+ErrorCode UniConv::ToStringFromInt64(std::int64_t value, std::string& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+ErrorCode UniConv::ToUtf16StringFromInt32(std::int32_t value, std::u16string& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+ErrorCode UniConv::ToUtf16StringFromInt64(std::int64_t value, std::u16string& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+ErrorCode UniConv::ToUtf32StringFromInt32(std::int32_t value, std::u32string& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+ErrorCode UniConv::ToUtf32StringFromInt64(std::int64_t value, std::u32string& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+ErrorCode UniConv::ToWideStringFromInt32(std::int32_t value, std::wstring& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+ErrorCode UniConv::ToWideStringFromInt64(std::int64_t value, std::wstring& output) noexcept {
+    return FormatIntegerOutput(value, output);
+}
+
+//==============================================================================
+// Native floating-point parsing and formatting
+//==============================================================================
+namespace {
+
+inline bool EqualAsciiInsensitive(std::string_view value, std::string_view expected) noexcept {
+    if (value.size() != expected.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < value.size(); ++i) {
+        unsigned char actual = static_cast<unsigned char>(value[i]);
+        unsigned char wanted = static_cast<unsigned char>(expected[i]);
+        if (actual >= static_cast<unsigned char>('A') &&
+            actual <= static_cast<unsigned char>('Z')) {
+            actual = static_cast<unsigned char>(actual + ('a' - 'A'));
+        }
+        if (wanted >= static_cast<unsigned char>('A') &&
+            wanted <= static_cast<unsigned char>('Z')) {
+            wanted = static_cast<unsigned char>(wanted + ('a' - 'A'));
+        }
+        if (actual != wanted) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename FloatT>
+CompactResult<FloatT> ParseFloatingAscii(std::string_view input,
+                                          FloatingParseOptions options) noexcept {
+    static_assert(std::is_floating_point_v<FloatT>, "floating parser expects a floating type");
+    if (input.empty()) {
+        return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+    }
+
+    size_t position = 0;
+    bool negative = false;
+    if (input[position] == '+' || input[position] == '-') {
+        negative = input[position] == '-';
+        ++position;
+        if (position == input.size()) {
+            return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+        }
+    }
+
+    const std::string_view body = input.substr(position);
+    if (EqualAsciiInsensitive(body, "nan") ||
+        EqualAsciiInsensitive(body, "inf") ||
+        EqualAsciiInsensitive(body, "infinity")) {
+        if (!options.allow_non_finite) {
+            return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+        }
+        if (EqualAsciiInsensitive(body, "nan")) {
+            return CompactResult<FloatT>::Success(std::numeric_limits<FloatT>::quiet_NaN());
+        }
+        const FloatT infinity = std::numeric_limits<FloatT>::infinity();
+        return CompactResult<FloatT>::Success(negative ? -infinity : infinity);
+    }
+
+    // Validate the decimal grammar before handing it to from_chars. This
+    // prevents implementation-specific acceptance of whitespace, hex floats,
+    // or trailing characters.
+    bool integer_digits = false;
+    while (position < input.size() && input[position] >= '0' && input[position] <= '9') {
+        integer_digits = true;
+        ++position;
+    }
+
+    bool fraction_digits = false;
+    if (position < input.size() && input[position] == '.') {
+        ++position;
+        while (position < input.size() && input[position] >= '0' && input[position] <= '9') {
+            fraction_digits = true;
+            ++position;
+        }
+    }
+    if (!integer_digits && !fraction_digits) {
+        return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+    }
+
+    if (position < input.size() && (input[position] == 'e' || input[position] == 'E')) {
+        ++position;
+        if (position < input.size() && (input[position] == '+' || input[position] == '-')) {
+            ++position;
+        }
+        const size_t exponent_start = position;
+        while (position < input.size() && input[position] >= '0' && input[position] <= '9') {
+            ++position;
+        }
+        if (position == exponent_start) {
+            return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+        }
+    }
+    if (position != input.size()) {
+        return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+    }
+
+    // std::from_chars does not require or consistently accept a leading '+'.
+    // Strip it while preserving the zero-allocation path for all other input.
+    std::string normalized;
+    std::string_view parse_input = input;
+    try {
+        if (!input.empty() && input.front() == '+') {
+            normalized.assign(input.data() + 1, input.size() - 1);
+            parse_input = normalized;
+        }
+    } catch (const std::bad_alloc&) {
+        return CompactResult<FloatT>::Failure(ErrorCode::OutOfMemory);
+    } catch (...) {
+        return CompactResult<FloatT>::Failure(ErrorCode::ConversionFailed);
+    }
+
+    FloatT value{};
+    const auto parsed = std::from_chars(parse_input.data(),
+                                        parse_input.data() + parse_input.size(),
+                                        value,
+                                        std::chars_format::general);
+    if (parsed.ec == std::errc::result_out_of_range) {
+        return CompactResult<FloatT>::Failure(ErrorCode::NumericOverflow);
+    }
+    if (parsed.ec != std::errc{} || parsed.ptr != parse_input.data() + parse_input.size()) {
+        return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+    }
+    if (!std::isfinite(value)) {
+        return CompactResult<FloatT>::Failure(ErrorCode::NumericOverflow);
+    }
+    return CompactResult<FloatT>::Success(value);
+}
+
+template <typename CharT, typename FloatT>
+CompactResult<FloatT> ParseFloatingView(std::basic_string_view<CharT> input,
+                                         FloatingParseOptions options) noexcept {
+    if constexpr (std::is_same_v<CharT, char>) {
+        return ParseFloatingAscii<FloatT>(input, options);
+    } else {
+        std::string ascii;
+        try {
+            ascii.reserve(input.size());
+            for (CharT code_unit : input) {
+                const auto value = static_cast<std::uint32_t>(
+                    static_cast<std::make_unsigned_t<CharT>>(code_unit));
+                if (value > 0x7Fu) {
+                    return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
+                }
+                ascii.push_back(static_cast<char>(value));
+            }
+        } catch (const std::bad_alloc&) {
+            return CompactResult<FloatT>::Failure(ErrorCode::OutOfMemory);
+        } catch (...) {
+            return CompactResult<FloatT>::Failure(ErrorCode::ConversionFailed);
+        }
+        return ParseFloatingAscii<FloatT>(ascii, options);
+    }
+}
+
+template <typename CharT, typename FloatT>
+CompactResult<FloatT> ParseFloatingPointer(const CharT* input, size_t code_units,
+                                            FloatingParseOptions options) noexcept {
+    if (!input) {
+        return CompactResult<FloatT>::Failure(ErrorCode::InvalidParameter);
+    }
+    return ParseFloatingView<CharT, FloatT>(std::basic_string_view<CharT>(input, code_units), options);
+}
+
+template <typename CharT, typename FloatT>
+CompactResult<FloatT> ParseFloatingCString(const CharT* input,
+                                           FloatingParseOptions options) noexcept {
+    if (!input) {
+        return CompactResult<FloatT>::Failure(ErrorCode::InvalidParameter);
+    }
+    return ParseFloatingView<CharT, FloatT>(
+        std::basic_string_view<CharT>(input, std::char_traits<CharT>::length(input)), options);
+}
+
+inline bool IsSupportedFloatFormat(std::chars_format format) noexcept {
+    return format == std::chars_format::general ||
+           format == std::chars_format::fixed ||
+           format == std::chars_format::scientific ||
+           format == std::chars_format::hex;
+}
+
+template <typename CharT, typename FloatT>
+ErrorCode FormatFloatingOutput(FloatT value, std::basic_string<CharT>& output,
+                               FloatingFormatOptions options) noexcept {
+    output.clear();
+    if (options.precision < -1 || !IsSupportedFloatFormat(options.format)) {
+        return ErrorCode::InvalidParameter;
+    }
+    if (!options.allow_non_finite && !std::isfinite(value)) {
+        return ErrorCode::InvalidParameter;
+    }
+
+    char buffer[128]{};
+    char* begin = buffer;
+    char* end = buffer + sizeof(buffer);
+    char* result = nullptr;
+    if (std::isnan(value)) {
+        result = std::copy_n(std::signbit(value) ? "-nan" : "nan",
+                             std::signbit(value) ? 4 : 3, buffer);
+    } else if (std::isinf(value)) {
+        result = std::copy_n(std::signbit(value) ? "-inf" : "inf",
+                             std::signbit(value) ? 4 : 3, buffer);
+    } else if (options.precision >= 0) {
+        const auto converted = std::to_chars(begin, end, value,
+                                             options.format, options.precision);
+        if (converted.ec != std::errc{}) {
+            return ErrorCode::ConversionFailed;
+        }
+        result = converted.ptr;
+    } else {
+        const auto converted = std::to_chars(begin, end, value,
+                                             options.format);
+        if (converted.ec != std::errc{}) {
+            return ErrorCode::ConversionFailed;
+        }
+        result = converted.ptr;
+    }
+
+    const size_t length = static_cast<size_t>(result - begin);
+    try {
+        output.resize(length);
+        for (size_t i = 0; i < length; ++i) {
+            output[i] = static_cast<CharT>(static_cast<unsigned char>(buffer[i]));
+        }
+    } catch (const std::bad_alloc&) {
+        output.clear();
+        return ErrorCode::OutOfMemory;
+    } catch (...) {
+        output.clear();
+        return ErrorCode::ConversionFailed;
+    }
+    return ErrorCode::Success;
+}
+
+template <typename StringT, typename FloatT>
+CompactResult<StringT> FormatFloatingResult(FloatT value,
+                                             FloatingFormatOptions options) noexcept {
+    StringT output;
+    const ErrorCode status = FormatFloatingOutput(value, output, options);
+    if (status != ErrorCode::Success) {
+        return CompactResult<StringT>::Failure(status);
+    }
+    return CompactResult<StringT>::Success(std::move(output));
+}
+
+} // anonymous namespace
+
+FloatResult UniConv::ParseFloat(std::string_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<char, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(std::string_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<char, double>(input, options);
+}
+
+FloatResult UniConv::ParseFloat(std::u16string_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<char16_t, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(std::u16string_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<char16_t, double>(input, options);
+}
+
+FloatResult UniConv::ParseFloat(std::u32string_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<char32_t, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(std::u32string_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<char32_t, double>(input, options);
+}
+
+FloatResult UniConv::ParseFloat(std::wstring_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<wchar_t, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(std::wstring_view input, FloatingParseOptions options) noexcept {
+    return ParseFloatingView<wchar_t, double>(input, options);
+}
+
+FloatResult UniConv::ParseFloat(const char* input, size_t code_units,
+                                FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<char, float>(input, code_units, options);
+}
+
+DoubleResult UniConv::ParseDouble(const char* input, size_t code_units,
+                                  FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<char, double>(input, code_units, options);
+}
+
+FloatResult UniConv::ParseFloat(const char16_t* input, size_t code_units,
+                                FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<char16_t, float>(input, code_units, options);
+}
+
+DoubleResult UniConv::ParseDouble(const char16_t* input, size_t code_units,
+                                  FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<char16_t, double>(input, code_units, options);
+}
+
+FloatResult UniConv::ParseFloat(const char32_t* input, size_t code_units,
+                                FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<char32_t, float>(input, code_units, options);
+}
+
+DoubleResult UniConv::ParseDouble(const char32_t* input, size_t code_units,
+                                  FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<char32_t, double>(input, code_units, options);
+}
+
+FloatResult UniConv::ParseFloat(const wchar_t* input, size_t code_units,
+                                FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<wchar_t, float>(input, code_units, options);
+}
+
+DoubleResult UniConv::ParseDouble(const wchar_t* input, size_t code_units,
+                                  FloatingParseOptions options) noexcept {
+    return ParseFloatingPointer<wchar_t, double>(input, code_units, options);
+}
+
+FloatResult UniConv::ParseFloat(const char* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<char, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(const char* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<char, double>(input, options);
+}
+
+FloatResult UniConv::ParseFloat(const char16_t* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<char16_t, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(const char16_t* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<char16_t, double>(input, options);
+}
+
+FloatResult UniConv::ParseFloat(const char32_t* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<char32_t, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(const char32_t* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<char32_t, double>(input, options);
+}
+
+FloatResult UniConv::ParseFloat(const wchar_t* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<wchar_t, float>(input, options);
+}
+
+DoubleResult UniConv::ParseDouble(const wchar_t* input, FloatingParseOptions options) noexcept {
+    return ParseFloatingCString<wchar_t, double>(input, options);
+}
+
+StringResult UniConv::ToStringFromFloat(float value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::string>(value, options);
+}
+
+StringResult UniConv::ToStringFromDouble(double value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::string>(value, options);
+}
+
+U16StringResult UniConv::ToUtf16StringFromFloat(float value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::u16string>(value, options);
+}
+
+U16StringResult UniConv::ToUtf16StringFromDouble(double value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::u16string>(value, options);
+}
+
+U32StringResult UniConv::ToUtf32StringFromFloat(float value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::u32string>(value, options);
+}
+
+U32StringResult UniConv::ToUtf32StringFromDouble(double value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::u32string>(value, options);
+}
+
+WideStringResult UniConv::ToWideStringFromFloat(float value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::wstring>(value, options);
+}
+
+WideStringResult UniConv::ToWideStringFromDouble(double value, FloatingFormatOptions options) noexcept {
+    return FormatFloatingResult<std::wstring>(value, options);
+}
+
+ErrorCode UniConv::ToStringFromFloat(float value, std::string& output,
+                                     FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
+}
+
+ErrorCode UniConv::ToStringFromDouble(double value, std::string& output,
+                                      FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
+}
+
+ErrorCode UniConv::ToUtf16StringFromFloat(float value, std::u16string& output,
+                                          FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
+}
+
+ErrorCode UniConv::ToUtf16StringFromDouble(double value, std::u16string& output,
+                                           FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
+}
+
+ErrorCode UniConv::ToUtf32StringFromFloat(float value, std::u32string& output,
+                                          FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
+}
+
+ErrorCode UniConv::ToUtf32StringFromDouble(double value, std::u32string& output,
+                                           FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
+}
+
+ErrorCode UniConv::ToWideStringFromFloat(float value, std::wstring& output,
+                                         FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
+}
+
+ErrorCode UniConv::ToWideStringFromDouble(double value, std::wstring& output,
+                                          FloatingFormatOptions options) noexcept {
+    return FormatFloatingOutput(value, output, options);
 }
 

@@ -30,6 +30,7 @@ include(GoogleTest)
 add_executable(UniConvTests
     test_basic.cpp
     test_encoding_conversion.cpp
+    test_native_numeric.cpp
     test_robustness.cpp
 )
 

@@ -114,6 +114,10 @@
 #include <iconv.h>
 
 #include <string>
+#include <string_view>
+#include <charconv>
+#include <cstdint>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 #include <cwchar>
@@ -122,7 +126,6 @@
 #include <utility>
 #include <vector>
 #include <list>
-#include <string_view>
 #include <cerrno>
 #include <cstring>
 #include <system_error>
@@ -389,7 +392,10 @@ enum class ErrorCode : uint8_t {
     FileWriteError              = 11, /*!< File write error */
     InternalError               = 12, /*!< Internal error */
     EncodingNotFound            = 13, /*!< Encoding not found */
-    SystemError                 = 14  /*!< System error */
+    SystemError                 = 14, /*!< System error */
+    InvalidNumber               = 15, /*!< Numeric syntax error */
+    NumericOverflow             = 16, /*!< Numeric value is outside the target range */
+    UnsupportedNumericBase      = 17  /*!< Integer base is not supported */
 };
 
 // Compile-time error message mapping, zero runtime overhead
@@ -411,6 +417,9 @@ namespace detail {
             case ErrorCode::InternalError:              return "Internal error";
             case ErrorCode::EncodingNotFound:           return "Encoding not found";
             case ErrorCode::SystemError:                return "System error";
+            case ErrorCode::InvalidNumber:              return "Invalid number";
+            case ErrorCode::NumericOverflow:            return "Numeric overflow";
+            case ErrorCode::UnsupportedNumericBase:     return "Unsupported numeric base";
             default:                                    return "Unknown error";
         }
     }
@@ -1444,6 +1453,48 @@ using StringResult      = CompactResult<std::string>;
 using StringViewResult  = CompactResult<std::string_view>;
 using IntResult         = CompactResult<int>;
 using BoolResult        = CompactResult<bool>;
+using U16StringResult    = CompactResult<std::u16string>;
+using U32StringResult    = CompactResult<std::u32string>;
+using WideStringResult   = CompactResult<std::wstring>;
+using Int32Result        = CompactResult<std::int32_t>;
+using Int64Result        = CompactResult<std::int64_t>;
+using FloatResult         = CompactResult<float>;
+using DoubleResult        = CompactResult<double>;
+
+/**
+ * @brief Integer base selection for the native numeric parser.
+ * @note Only decimal and hexadecimal syntax are supported.  Auto recognizes
+ *       a leading 0x/0X prefix and otherwise uses decimal.
+ */
+enum class IntegerBase : std::uint8_t {
+    Auto = 0,
+    Decimal = 10,
+    Hexadecimal = 16
+};
+
+struct IntegerParseOptions {
+    IntegerBase base = IntegerBase::Auto;
+};
+
+/**
+ * @brief Options controlling floating-point parsing.
+ * @details Parsing accepts ASCII decimal notation, including an optional
+ *          exponent. Whitespace and non-finite spellings are rejected unless
+ *          explicitly enabled.
+ */
+struct FloatingParseOptions {
+    bool allow_non_finite = false;
+};
+
+/**
+ * @brief Options controlling locale-independent floating-point formatting.
+ * @details A negative precision requests the shortest round-trip form.
+ */
+struct FloatingFormatOptions {
+    std::chars_format format = std::chars_format::general;
+    int precision = -1;
+    bool allow_non_finite = true;
+};
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -2250,6 +2301,221 @@ public:
 	 * @return The converted wide string.
 	 */
 	std::wstring         ToWStringFromU16String(const char16_t* input);
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Native integer parsing and formatting ===
+	//----------------------------------------------------------------------------------------------------------------------
+	// These APIs parse/format ASCII numeric text and do not consult the process
+	// locale.  The explicit-length pointer overloads are binary-safe; the
+	// pointer-only overloads are NUL-terminated convenience wrappers.
+	using IntegerBase = ::IntegerBase;
+	using IntegerParseOptions = ::IntegerParseOptions;
+
+	static Int32Result ParseInt32(std::string_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(std::string_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(std::u16string_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(std::u16string_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(std::u32string_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(std::u32string_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(std::wstring_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(std::wstring_view input,
+	                              IntegerParseOptions options = {}) noexcept;
+
+	static Int32Result ParseInt32(const char* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const char* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(const char16_t* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const char16_t* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(const char32_t* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const char32_t* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(const wchar_t* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const wchar_t* input,
+	                              size_t code_units,
+	                              IntegerParseOptions options = {}) noexcept;
+
+	static Int32Result ParseInt32(const char* input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const char* input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(const char16_t* input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const char16_t* input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(const char32_t* input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const char32_t* input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int32Result ParseInt32(const wchar_t* input,
+	                              IntegerParseOptions options = {}) noexcept;
+	static Int64Result ParseInt64(const wchar_t* input,
+	                              IntegerParseOptions options = {}) noexcept;
+
+	static StringResult ToStringFromInt32(std::int32_t value) noexcept;
+	static StringResult ToStringFromInt64(std::int64_t value) noexcept;
+	static U16StringResult ToUtf16StringFromInt32(std::int32_t value) noexcept;
+	static U16StringResult ToUtf16StringFromInt64(std::int64_t value) noexcept;
+	static U32StringResult ToUtf32StringFromInt32(std::int32_t value) noexcept;
+	static U32StringResult ToUtf32StringFromInt64(std::int64_t value) noexcept;
+	static WideStringResult ToWideStringFromInt32(std::int32_t value) noexcept;
+	static WideStringResult ToWideStringFromInt64(std::int64_t value) noexcept;
+
+	static ErrorCode ToStringFromInt32(std::int32_t value, std::string& output) noexcept;
+	static ErrorCode ToStringFromInt64(std::int64_t value, std::string& output) noexcept;
+	static ErrorCode ToUtf16StringFromInt32(std::int32_t value, std::u16string& output) noexcept;
+	static ErrorCode ToUtf16StringFromInt64(std::int64_t value, std::u16string& output) noexcept;
+	static ErrorCode ToUtf32StringFromInt32(std::int32_t value, std::u32string& output) noexcept;
+	static ErrorCode ToUtf32StringFromInt64(std::int64_t value, std::u32string& output) noexcept;
+	static ErrorCode ToWideStringFromInt32(std::int32_t value, std::wstring& output) noexcept;
+	static ErrorCode ToWideStringFromInt64(std::int64_t value, std::wstring& output) noexcept;
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Native floating-point parsing and formatting ===
+	//----------------------------------------------------------------------------------------------------------------------
+	using FloatingParseOptions = ::FloatingParseOptions;
+	using FloatingFormatOptions = ::FloatingFormatOptions;
+
+	static FloatResult ParseFloat(std::string_view input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(std::string_view input,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(std::u16string_view input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(std::u16string_view input,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(std::u32string_view input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(std::u32string_view input,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(std::wstring_view input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(std::wstring_view input,
+	                                FloatingParseOptions options = {}) noexcept;
+
+	static FloatResult ParseFloat(const char* input, size_t code_units,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const char* input, size_t code_units,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(const char16_t* input, size_t code_units,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const char16_t* input, size_t code_units,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(const char32_t* input, size_t code_units,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const char32_t* input, size_t code_units,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(const wchar_t* input, size_t code_units,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const wchar_t* input, size_t code_units,
+	                                FloatingParseOptions options = {}) noexcept;
+
+	static FloatResult ParseFloat(const char* input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const char* input,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(const char16_t* input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const char16_t* input,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(const char32_t* input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const char32_t* input,
+	                                FloatingParseOptions options = {}) noexcept;
+	static FloatResult ParseFloat(const wchar_t* input,
+	                              FloatingParseOptions options = {}) noexcept;
+	static DoubleResult ParseDouble(const wchar_t* input,
+	                                FloatingParseOptions options = {}) noexcept;
+
+	static StringResult ToStringFromFloat(float value,
+	                                      FloatingFormatOptions options = {}) noexcept;
+	static StringResult ToStringFromDouble(double value,
+	                                       FloatingFormatOptions options = {}) noexcept;
+	static U16StringResult ToUtf16StringFromFloat(float value,
+	                                              FloatingFormatOptions options = {}) noexcept;
+	static U16StringResult ToUtf16StringFromDouble(double value,
+	                                               FloatingFormatOptions options = {}) noexcept;
+	static U32StringResult ToUtf32StringFromFloat(float value,
+	                                              FloatingFormatOptions options = {}) noexcept;
+	static U32StringResult ToUtf32StringFromDouble(double value,
+	                                               FloatingFormatOptions options = {}) noexcept;
+	static WideStringResult ToWideStringFromFloat(float value,
+	                                             FloatingFormatOptions options = {}) noexcept;
+	static WideStringResult ToWideStringFromDouble(double value,
+	                                              FloatingFormatOptions options = {}) noexcept;
+
+	static ErrorCode ToStringFromFloat(float value, std::string& output,
+	                                   FloatingFormatOptions options = {}) noexcept;
+	static ErrorCode ToStringFromDouble(double value, std::string& output,
+	                                    FloatingFormatOptions options = {}) noexcept;
+	static ErrorCode ToUtf16StringFromFloat(float value, std::u16string& output,
+	                                        FloatingFormatOptions options = {}) noexcept;
+	static ErrorCode ToUtf16StringFromDouble(double value, std::u16string& output,
+	                                         FloatingFormatOptions options = {}) noexcept;
+	static ErrorCode ToUtf32StringFromFloat(float value, std::u32string& output,
+	                                        FloatingFormatOptions options = {}) noexcept;
+	static ErrorCode ToUtf32StringFromDouble(double value, std::u32string& output,
+	                                         FloatingFormatOptions options = {}) noexcept;
+	static ErrorCode ToWideStringFromFloat(float value, std::wstring& output,
+	                                       FloatingFormatOptions options = {}) noexcept;
+	static ErrorCode ToWideStringFromDouble(double value, std::wstring& output,
+	                                        FloatingFormatOptions options = {}) noexcept;
+
+	//----------------------------------------------------------------------------------------------------------------------
+	// === Native UTF-8/UTF-16 fast conversion ===
+	//----------------------------------------------------------------------------------------------------------------------
+	/**
+	 * @brief Convert UTF-8 to native UTF-16 code units with validation.
+	 * @details The result is a sequence of host-endian char16_t code units;
+	 *          it is not a UTF-16LE/UTF-16BE byte buffer. The implementation
+	 *          uses simdutf when enabled and the validated scalar path otherwise.
+	 */
+	static U16StringResult ToUtf16FromUtf8Fast(std::string_view input) noexcept;
+	static StringResult ToUtf8FromUtf16Fast(std::u16string_view input) noexcept;
+
+	/** @brief Output-parameter overloads, retaining the caller's capacity. */
+	static ErrorCode ToUtf16FromUtf8Fast(std::string_view input,
+	                                     std::u16string& output) noexcept;
+	static ErrorCode ToUtf8FromUtf16Fast(std::u16string_view input,
+	                                     std::string& output) noexcept;
+
+	/** @brief Explicit-length pointer overloads (bytes/code units, respectively). */
+	static U16StringResult ToUtf16FromUtf8Fast(const char* input,
+	                                           size_t byte_count) noexcept;
+	static StringResult ToUtf8FromUtf16Fast(const char16_t* input,
+	                                        size_t code_unit_count) noexcept;
+	static ErrorCode ToUtf16FromUtf8Fast(const char* input,
+	                                     size_t byte_count,
+	                                     std::u16string& output) noexcept;
+	static ErrorCode ToUtf8FromUtf16Fast(const char16_t* input,
+	                                     size_t code_unit_count,
+	                                     std::string& output) noexcept;
+
+	/** @brief NUL-terminated pointer convenience overloads. */
+	static U16StringResult ToUtf16FromUtf8Fast(const char* input) noexcept;
+	static StringResult ToUtf8FromUtf16Fast(const char16_t* input) noexcept;
+	static ErrorCode ToUtf16FromUtf8Fast(const char* input,
+	                                     std::u16string& output) noexcept;
+	static ErrorCode ToUtf8FromUtf16Fast(const char16_t* input,
+	                                     std::string& output) noexcept;
 
 	/**
 	 * @brief Encoding to string
