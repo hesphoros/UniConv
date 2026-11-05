@@ -24,6 +24,8 @@ macOS 构建时检测浮点 `std::from_chars` 的可用性；工具链缺失实�
 5. 分别以 C++17、C++20 编译、链接并运行消费端，验证 UTF 往返、GBK 转换和数值解析。
 6. 打包库、公共依赖头文件、CMake 导出配置、许可证、构建元数据，计算 SHA-256。
 
+依赖系统代码页的中文 locale 用例会先检查该代码页能否表示中文，不适用时标记跳过；显式 GBK 和 Unicode 编码转换仍正常测试。
+
 静态包启用 `UNICONV_BUNDLE_DEPS=ON`，`UniConv` 静态库中合并 iconv、charset 及可选 simdutf。动态包将静态依赖链接至 UniConv；安装包仍携带公共头文件和 CMake 使用要求需要的依赖。Windows 动态包含 DLL 与导入库。
 
 ## 工作流与触发方式

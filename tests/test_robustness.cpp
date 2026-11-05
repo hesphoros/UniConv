@@ -446,7 +446,9 @@ TEST_F(RobustnessTest, Regression_Utf16BE_Ex_RoundTrip_Chinese) {
 //     (回归: 同类手动字节提取 bug)
 // ----------------------------------------------------------------------------
 TEST_F(RobustnessTest, Regression_ToLocaleFromUtf16BE_OutputParam) {
-    std::u16string u16 = conv->ToUtf16BEFromUtf8(chinese_text);
+    // ASCII is representable even in Windows ACP 1252. UTF-16BE still
+    // exercises the byte-order regression without assuming a Chinese locale.
+    std::u16string u16 = conv->ToUtf16BEFromUtf8(ascii_text);
     ASSERT_FALSE(u16.empty());
 
     // 返回值版
@@ -457,6 +459,7 @@ TEST_F(RobustnessTest, Regression_ToLocaleFromUtf16BE_OutputParam) {
     ASSERT_TRUE(ok);
 
     EXPECT_EQ(ret_val, out_param);
+    EXPECT_EQ(conv->ToUtf8FromLocale(out_param), ascii_text);
 }
 
 // ----------------------------------------------------------------------------

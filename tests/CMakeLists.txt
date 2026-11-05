@@ -78,6 +78,11 @@ function(uniconv_configure_macro_contract_target target_name cxx_standard)
        OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC"
        OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         target_compile_options(${target_name} PRIVATE /utf-8 /W4 /WX)
+        if(UNICONV_BUILD_SHARED)
+            # The DLL exports an existing class with private STL members.
+            # Its ABI warning is unrelated to the macro contracts under test.
+            target_compile_options(${target_name} PRIVATE /wd4251)
+        endif()
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(${target_name} PRIVATE -Wundef -Werror)
     endif()

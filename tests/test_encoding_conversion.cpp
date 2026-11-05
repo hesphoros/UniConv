@@ -1191,7 +1191,7 @@ TEST_F(EncodingConversionTest, OutputParam_ToUtf8FromLocale_Chinese) {
 }
 
 TEST_F(EncodingConversionTest, OutputParam_ToLocaleFromUtf8_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
     std::string output;
     bool ok = conv->ToLocaleFromUtf8(chinese_text, output);
     EXPECT_TRUE(ok);
@@ -1287,7 +1287,7 @@ TEST_F(EncodingConversionTest, Ex_ToUtf8FromLocaleEx_Chinese) {
 }
 
 TEST_F(EncodingConversionTest, Ex_ToLocaleFromUtf8Ex_Chinese) {
-    if (!IsLocaleAvailable()) GTEST_SKIP() << "Locale detection unavailable";
+    if (!IsLocaleChineseCapable()) GTEST_SKIP() << "Locale cannot represent Chinese characters";
     auto result = conv->ToLocaleFromUtf8Ex(chinese_text);
     EXPECT_TRUE(result.IsSuccess());
     EXPECT_FALSE(result.GetValue().empty());
