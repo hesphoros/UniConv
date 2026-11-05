@@ -203,6 +203,21 @@ add_library(UniConv::UniConv ALIAS UniConv)
 # while source/execution charset flags remain private to this target.
 target_compile_features(UniConv PUBLIC cxx_std_17)
 
+# Apple's floating-point from_chars is absent from older libc++ versions and
+# unavailable when deploying to macOS versions before 26, even with a new SDK.
+if(APPLE)
+    include(CheckCXXSourceCompiles)
+    check_cxx_source_compiles("#include <charconv>
+        int main() {
+            const char text[] = \"1.25\";
+            double value = 0;
+            return static_cast<int>(std::from_chars(text, text + 4, value).ec);
+        }" UNICONV_HAVE_FLOAT_FROM_CHARS)
+    if(NOT UNICONV_HAVE_FLOAT_FROM_CHARS)
+        target_compile_definitions(UniConv PRIVATE UNICONV_USE_POSIX_FLOAT_PARSER=1)
+    endif()
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"
    OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC"
    OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")

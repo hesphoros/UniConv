@@ -13,6 +13,8 @@
 
 每个平台构建 `static` / `shared` × `scalar` / `simd` 四个组合，共 16 个任务。SIMD 使用 simdutf 的运行时指令集选择；不使用 `-march=native`。macOS 分别提供两种架构的下载包，不是 Universal Binary。
 
+macOS 构建时检测浮点 `std::from_chars` 的可用性；工具链缺失实现或目标系统版本不支持时，内部使用带独立 C locale 的 `strtof_l` / `strtod_l` 兼容路径，不修改进程 locale。保留严格输入语法、溢出/下溢检查及现有公开 API。
+
 每个任务依次执行：
 
 1. 从指定提交检出代码，获取固定版本依赖。

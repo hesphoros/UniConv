@@ -7,6 +7,7 @@
 #include <UniConv/UniConv.h>
 
 #include <cstdint>
+#include <cerrno>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -54,26 +55,26 @@ TEST(NativeNumericParseTest, HonorsExplicitIntegerBaseOptions) {
 }
 
 TEST(NativeNumericParseTest, ParsesInt32Boundaries) {
-    const auto minimum = UniConv::ParseInt32(std::to_string(std::numeric_limits<std::int32_t>::min()));
+    const auto minimum = UniConv::ParseInt32(std::to_string((std::numeric_limits<std::int32_t>::min)()));
     ASSERT_TRUE(minimum.IsSuccess());
-    EXPECT_EQ(minimum.GetValue(), std::numeric_limits<std::int32_t>::min());
+    EXPECT_EQ(minimum.GetValue(), (std::numeric_limits<std::int32_t>::min)());
 
-    const auto maximum = UniConv::ParseInt32(std::to_string(std::numeric_limits<std::int32_t>::max()));
+    const auto maximum = UniConv::ParseInt32(std::to_string((std::numeric_limits<std::int32_t>::max)()));
     ASSERT_TRUE(maximum.IsSuccess());
-    EXPECT_EQ(maximum.GetValue(), std::numeric_limits<std::int32_t>::max());
+    EXPECT_EQ(maximum.GetValue(), (std::numeric_limits<std::int32_t>::max)());
 }
 
 TEST(NativeNumericParseTest, ParsesInt64BoundariesAndExplicitLength) {
-    const auto minimum_text = std::to_string(std::numeric_limits<std::int64_t>::min());
-    const auto maximum_text = std::to_string(std::numeric_limits<std::int64_t>::max());
+    const auto minimum_text = std::to_string((std::numeric_limits<std::int64_t>::min)());
+    const auto maximum_text = std::to_string((std::numeric_limits<std::int64_t>::max)());
 
     const auto minimum = UniConv::ParseInt64(minimum_text.data(), minimum_text.size());
     ASSERT_TRUE(minimum.IsSuccess());
-    EXPECT_EQ(minimum.GetValue(), std::numeric_limits<std::int64_t>::min());
+    EXPECT_EQ(minimum.GetValue(), (std::numeric_limits<std::int64_t>::min)());
 
     const auto maximum = UniConv::ParseInt64(maximum_text.data(), maximum_text.size());
     ASSERT_TRUE(maximum.IsSuccess());
-    EXPECT_EQ(maximum.GetValue(), std::numeric_limits<std::int64_t>::max());
+    EXPECT_EQ(maximum.GetValue(), (std::numeric_limits<std::int64_t>::max)());
 
     const char embedded_nul[] = {'1', '2', '\0', '3'};
     const auto bounded = UniConv::ParseInt64(embedded_nul, sizeof(embedded_nul));
@@ -128,11 +129,11 @@ TEST(NativeNumericFormatTest, FormatsInt32IntoAllNativeStringTypes) {
 }
 
 TEST(NativeNumericFormatTest, FormatsInt64Boundaries) {
-    const auto minimum = UniConv::ToStringFromInt64(std::numeric_limits<std::int64_t>::min());
+    const auto minimum = UniConv::ToStringFromInt64((std::numeric_limits<std::int64_t>::min)());
     ASSERT_TRUE(minimum.IsSuccess());
     EXPECT_EQ(minimum.GetValue(), "-9223372036854775808");
 
-    const auto maximum = UniConv::ToStringFromInt64(std::numeric_limits<std::int64_t>::max());
+    const auto maximum = UniConv::ToStringFromInt64((std::numeric_limits<std::int64_t>::max)());
     ASSERT_TRUE(maximum.IsSuccess());
     EXPECT_EQ(maximum.GetValue(), "9223372036854775807");
 
@@ -198,6 +199,33 @@ TEST(NativeFloatingParseTest, RejectsMalformedWhitespaceAndOverflow) {
     ASSERT_TRUE(infinity.IsSuccess());
     EXPECT_TRUE(std::isinf(infinity.GetValue()));
     EXPECT_LT(infinity.GetValue(), 0.0);
+}
+
+TEST(NativeFloatingParseTest, ParsesBoundedInputAndPreservesErrno) {
+    const char input[] = {'1', '.', '2', '5', 'x'};
+    errno = EDOM;
+    const auto bounded = UniConv::ParseDouble(std::string_view{input, 4});
+    const int after_parse = errno;
+    ASSERT_TRUE(bounded.IsSuccess());
+    EXPECT_DOUBLE_EQ(bounded.GetValue(), 1.25);
+    EXPECT_EQ(after_parse, EDOM);
+
+    const auto negative_zero = UniConv::ParseDouble("-0.0");
+    ASSERT_TRUE(negative_zero.IsSuccess());
+    EXPECT_TRUE(std::signbit(negative_zero.GetValue()));
+}
+
+TEST(NativeFloatingParseTest, AcceptsSubnormalsAndRejectsTotalUnderflow) {
+    const auto small_float = UniConv::ParseFloat("1.401298464324817e-45");
+    ASSERT_TRUE(small_float.IsSuccess());
+    EXPECT_EQ(small_float.GetValue(), std::numeric_limits<float>::denorm_min());
+
+    const auto small_double = UniConv::ParseDouble("4.9406564584124654e-324");
+    ASSERT_TRUE(small_double.IsSuccess());
+    EXPECT_EQ(small_double.GetValue(), std::numeric_limits<double>::denorm_min());
+
+    ExpectNumericFailure(UniConv::ParseFloat("1e-100"), ErrorCode::NumericOverflow);
+    ExpectNumericFailure(UniConv::ParseDouble("1e-5000"), ErrorCode::NumericOverflow);
 }
 
 TEST(NativeFloatingFormatTest, FormatsAllNativeStringTypesAndPrecision) {

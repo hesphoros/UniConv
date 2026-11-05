@@ -45,6 +45,10 @@
 
 #include <cmath>
 
+#if defined(UNICONV_USE_POSIX_FLOAT_PARSER)
+#include <xlocale.h>
+#endif
+
 //==============================================================================
 // iconv 兼容性包装：处理不同平台的 const 签名差异
 // libiconv-native 使用 char**，而 POSIX/glibc 使用 const char**
@@ -3808,7 +3812,7 @@ ErrorCode ValidateUtf8AndGetUtf16Length(std::string_view input,
             }
         }
 
-        if (utf16_length > std::numeric_limits<size_t>::max() - code_units) {
+        if (utf16_length > (std::numeric_limits<size_t>::max)() - code_units) {
             return ErrorCode::OutOfMemory;
         }
         utf16_length += code_units;
@@ -3900,7 +3904,7 @@ ErrorCode ValidateUtf16AndGetUtf8Length(std::u16string_view input,
             bytes = 3;
         }
 
-        if (utf8_length > std::numeric_limits<size_t>::max() - bytes) {
+        if (utf8_length > (std::numeric_limits<size_t>::max)() - bytes) {
             return ErrorCode::OutOfMemory;
         }
         utf8_length += bytes;
@@ -4206,7 +4210,7 @@ CompactResult<IntT> ParseIntegerView(std::basic_string_view<CharT> input,
     }
 
     constexpr std::uint64_t positive_limit =
-        static_cast<std::uint64_t>(std::numeric_limits<IntT>::max());
+        static_cast<std::uint64_t>((std::numeric_limits<IntT>::max)());
     const std::uint64_t magnitude_limit = negative ? positive_limit + 1u : positive_limit;
     const std::uint64_t radix = base == IntegerBase::Hexadecimal ? 16u : 10u;
     std::uint64_t magnitude = 0;
@@ -4231,7 +4235,7 @@ CompactResult<IntT> ParseIntegerView(std::basic_string_view<CharT> input,
 
     if (negative) {
         if (magnitude == positive_limit + 1u) {
-            return CompactResult<IntT>::Success(std::numeric_limits<IntT>::min());
+            return CompactResult<IntT>::Success((std::numeric_limits<IntT>::min)());
         }
         const auto signed_magnitude = static_cast<std::int64_t>(magnitude);
         return CompactResult<IntT>::Success(static_cast<IntT>(-signed_magnitude));
@@ -4489,6 +4493,19 @@ inline bool EqualAsciiInsensitive(std::string_view value, std::string_view expec
     return true;
 }
 
+#if defined(UNICONV_USE_POSIX_FLOAT_PARSER)
+// A private C locale keeps parsing independent of setlocale() on older macOS.
+// Initialization is thread-safe; the process locale is never modified.
+locale_t NumericCLocale() noexcept {
+    struct Locale {
+        locale_t value = newlocale(LC_NUMERIC_MASK, "C", nullptr);
+        ~Locale() { if (value) freelocale(value); }
+    };
+    static const Locale locale;
+    return locale.value;
+}
+#endif
+
 template <typename FloatT>
 CompactResult<FloatT> ParseFloatingAscii(std::string_view input,
                                           FloatingParseOptions options) noexcept {
@@ -4559,15 +4576,22 @@ CompactResult<FloatT> ParseFloatingAscii(std::string_view input,
         return CompactResult<FloatT>::Failure(ErrorCode::InvalidNumber);
     }
 
-    // std::from_chars does not require or consistently accept a leading '+'.
-    // Strip it while preserving the zero-allocation path for all other input.
+    // Strip leading '+' for from_chars. The POSIX compatibility path also
+    // copies bounded input to provide the terminator required by strto*_l.
     std::string normalized;
     std::string_view parse_input = input;
     try {
+#if defined(UNICONV_USE_POSIX_FLOAT_PARSER)
+        // strto*_l requires a terminator; string_view need not have one.
+        const size_t skip = input.front() == '+' ? 1 : 0;
+        normalized.assign(input.data() + skip, input.size() - skip);
+        parse_input = normalized;
+#else
         if (!input.empty() && input.front() == '+') {
             normalized.assign(input.data() + 1, input.size() - 1);
             parse_input = normalized;
         }
+#endif
     } catch (const std::bad_alloc&) {
         return CompactResult<FloatT>::Failure(ErrorCode::OutOfMemory);
     } catch (...) {
@@ -4575,10 +4599,32 @@ CompactResult<FloatT> ParseFloatingAscii(std::string_view input,
     }
 
     FloatT value{};
+#if defined(UNICONV_USE_POSIX_FLOAT_PARSER)
+    const int saved_errno = errno;
+    const locale_t locale = NumericCLocale();
+    if (!locale) {
+        const ErrorCode error = errno == ENOMEM ? ErrorCode::OutOfMemory : ErrorCode::ConversionFailed;
+        errno = saved_errno;
+        return CompactResult<FloatT>::Failure(error);
+    }
+    char* end = nullptr;
+    errno = 0;
+    if constexpr (std::is_same_v<FloatT, float>) {
+        value = strtof_l(normalized.c_str(), &end, locale);
+    } else {
+        value = strtod_l(normalized.c_str(), &end, locale);
+    }
+    // POSIX may report ERANGE for representable subnormals. Accept them, but
+    // reject values which underflow to zero, matching from_chars' contract.
+    const bool out_of_range = errno == ERANGE && (value == FloatT{} || !std::isfinite(value));
+    errno = saved_errno;
+    const std::from_chars_result parsed{end, out_of_range ? std::errc::result_out_of_range : std::errc{}};
+#else
     const auto parsed = std::from_chars(parse_input.data(),
                                         parse_input.data() + parse_input.size(),
                                         value,
                                         std::chars_format::general);
+#endif
     if (parsed.ec == std::errc::result_out_of_range) {
         return CompactResult<FloatT>::Failure(ErrorCode::NumericOverflow);
     }
