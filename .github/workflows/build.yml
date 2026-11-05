@@ -1,0 +1,113 @@
+name: Build and package
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact commit to build
+        type: string
+        required: true
+      version:
+        description: Package version; defaults to the CMake project version
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.platform.name }} / ${{ matrix.linkage }} / SIMD ${{ matrix.simd }}
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: linux-x64, runner: ubuntu-22.04 }
+          - { name: windows-x64, runner: windows-2022 }
+          - { name: macos-x64, runner: macos-15-intel }
+          - { name: macos-arm64, runner: macos-15 }
+        linkage: [static, shared]
+        simd: ['OFF', 'ON']
+    defaults:
+      run:
+        shell: bash
+    env:
+      PACKAGE_VERSION: ${{ inputs.version }}
+      PACKAGE_PLATFORM: ${{ matrix.platform.name }}
+      SHARED: ${{ matrix.linkage == 'shared' && 'ON' || 'OFF' }}
+      BUNDLE: ${{ matrix.linkage == 'static' && 'ON' || 'OFF' }}
+      SIMD: ${{ matrix.simd }}
+      CMAKE_BUILD_PARALLEL_LEVEL: 3
+      CTEST_PARALLEL_LEVEL: 3
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
+    steps:
+      - name: Check out the requested commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+
+      - name: Set up MSVC x64
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        with:
+          arch: x64
+
+      - name: Configure
+        run: |
+          cmake -S . -B build-ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL \
+            -DUNICONV_LIBICONV_SOURCE=FETCHCONTENT \
+            -DUNICONV_BUILD_TESTS=ON \
+            -DUNICONV_BUILD_BENCHMARKS=OFF \
+            -DUNICONV_BUILD_SHARED="$SHARED" \
+            -DUNICONV_BUNDLE_DEPS="$BUNDLE" \
+            -DUNICONV_USE_SIMDUTF="$SIMD"
+
+      - name: Build library, examples and tests
+        run: cmake --build build-ci --config Release
+
+      - name: Test
+        run: ctest --test-dir build-ci -C Release --output-on-failure --timeout 120 --no-tests=error
+
+      - name: Install, relocate, test consumers and archive
+        run: >-
+          python scripts/ci/package.py package --build-dir build-ci
+          --output-dir dist --platform "$PACKAGE_PLATFORM" --version "$PACKAGE_VERSION"
+
+      - name: Archive exact project and dependency sources
+        if: matrix.platform.name == 'linux-x64' && matrix.linkage == 'static' && matrix.simd == 'ON'
+        run: >-
+          python scripts/ci/package.py sources --build-dir build-ci
+          --output-dir dist --version "$PACKAGE_VERSION"
+
+      - name: Upload packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package-${{ matrix.platform.name }}-${{ matrix.linkage }}-simd-${{ matrix.simd }}
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload test diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: logs-${{ matrix.platform.name }}-${{ matrix.linkage }}-simd-${{ matrix.simd }}
+          path: |
+            build-ci/Testing/Temporary/
+            build-ci/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: ignore
+          retention-days: 7

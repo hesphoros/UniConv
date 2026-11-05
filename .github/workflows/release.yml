@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag, e.g. v4.0.0 or v4.0.0-rc.1
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      commit: ${{ steps.tag.outputs.commit }}
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Validate tag, commit and project version
+        id: tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: python scripts/ci/release.py validate --tag "$RELEASE_TAG"
+
+  build:
+    needs: validate
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.validate.outputs.commit }}
+      version: ${{ needs.validate.outputs.version }}
+
+  publish:
+    needs: [validate, build]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ needs.validate.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: package-*
+          path: dist
+          merge-multiple: true
+      - name: Verify all packages and generate SHA256SUMS
+        env:
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
+        run: python scripts/ci/release.py checksums --directory dist --version "$PACKAGE_VERSION"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+          PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Assemble everything as a draft before making the release public.
+          if gh release view "$RELEASE_TAG" --json isDraft > release-state.json 2>/dev/null; then
+            python -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "Release is already public; published assets are never overwritten"'
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "UniConv $RELEASE_TAG" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" dist/*.tar.gz dist/*.zip dist/SHA256SUMS --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease="$PRERELEASE"

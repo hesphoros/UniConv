@@ -65,8 +65,7 @@ if(UNICONV_LIBICONV_SOURCE STREQUAL "FETCHCONTENT")
     FetchContent_Declare(
         libiconv
         GIT_REPOSITORY https://github.com/hesphoros/libiconv-native.git
-        GIT_TAG        main
-        GIT_SHALLOW    TRUE
+        GIT_TAG        b9cd1c13e385c0f9aebd0cba60eb50c250107105
     )
     
     # libiconv 构建选项
@@ -323,6 +322,10 @@ if(UNICONV_BUNDLE_DEPS)
         endif()
 
         if(_UNICONV_BUNDLE_TARGETS)
+            # POST_BUILD reads these archives without linking their targets.
+            # In particular, simdutf must finish before the archive merge.
+            add_dependencies(UniConv ${_UNICONV_BUNDLE_TARGETS})
+
             # 构建各依赖库的文件路径生成器表达式
             set(_BUNDLE_LIB_PATHS "")
             foreach(_target ${_UNICONV_BUNDLE_TARGETS})
@@ -448,8 +451,11 @@ if(NOT UNICONV_IS_SUBPROJECT)
         )
     endif()
 
-    # parallel_hashmap 现在作为外部依赖，不再 vendor 安装
-    # 用户需要通过 vcpkg 或系统包管理器安装 parallel-hashmap
+    # UniConv.h includes phmap.h, so installed packages need these headers too.
+    install(DIRECTORY "${PHMAP_INCLUDE_DIR}/parallel_hashmap"
+        DESTINATION ${UNICONV_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h"
+    )
 
     # 安装 iconv 目录下的头文件
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/include/iconv)
@@ -493,6 +499,7 @@ if(NOT UNICONV_IS_SUBPROJECT)
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/UniConvConfig.cmake.in"
             "${CMAKE_CURRENT_BINARY_DIR}/UniConvConfig.cmake"
             INSTALL_DESTINATION ${UNICONV_INSTALL_CMAKEDIR}
+            PATH_VARS CMAKE_INSTALL_LIBDIR
             NO_SET_AND_CHECK_MACRO
             NO_CHECK_REQUIRED_COMPONENTS_MACRO
         )

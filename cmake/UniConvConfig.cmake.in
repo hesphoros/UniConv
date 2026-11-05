@@ -4,8 +4,20 @@
 
 include(CMakeFindDependencyMacro)
 
-# Find dependencies if any (iconv is embedded in UniConv)
-# find_dependency() calls go here if needed
+# A bundled static library already contains simdutf. Other SIMD builds expose
+# simdutf as a usage requirement and need its installed imported target.
+if(@UNICONV_USE_SIMDUTF@ AND (NOT @UNICONV_BUNDLE_DEPS@ OR @UNICONV_BUILD_SHARED@))
+    find_dependency(simdutf CONFIG)
+endif()
+
+# libiconv-native's static export is needed only by unbundled static builds.
+# Load its targets directly: its 1.18 package config aliases an unnamespaced
+# build-tree target which does not exist in an installed package.
+if("@UNICONV_HAS_FETCHCONTENT_LIBICONV@" AND NOT @UNICONV_BUILD_SHARED@ AND NOT @UNICONV_BUNDLE_DEPS@)
+    if(NOT TARGET Iconv::iconv)
+        include("@PACKAGE_CMAKE_INSTALL_LIBDIR@/cmake/iconv/iconvTargets.cmake")
+    endif()
+endif()
 
 # Include the exported targets
 include("${CMAKE_CURRENT_LIST_DIR}/UniConvTargets.cmake")

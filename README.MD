@@ -7,6 +7,7 @@
 *180+ 种编码 · SIMD 加速 · 无锁并发 · 多核并行批处理*
 
 [![Release](https://img.shields.io/github/v/release/hesphoros/UniConv?include_prereleases)](https://github.com/hesphoros/UniConv/releases)
+[![CI](https://github.com/hesphoros/UniConv/actions/workflows/ci.yml/badge.svg)](https://github.com/hesphoros/UniConv/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://isocpp.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
@@ -101,6 +102,8 @@ cmake .. -DUNICONV_BUILD_BENCHMARKS=ON                 # 性能基准 (Google Be
 ```
 
 测试套件包含运行时转换回归、头文件契约、`char8_t` 配置和混合 C++ 标准测试。
+
+GitHub Actions 自动构建 Linux x64、Windows x64、macOS x64 / arm64，并覆盖静态库、动态库和 SIMD 开关。推送与 CMake 版本一致的 `v*` 标签后，测试通过的构建包会自动发布到 GitHub Release，附带完整依赖源码包和 SHA-256 校验清单。详见 [跨平台构建与发布](doc/CI_and_Releases.md)。
 
 ## 编译期宏与 UTF-8
 
